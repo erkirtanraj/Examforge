@@ -46,11 +46,32 @@ const TopicRow = ({ t }) => {
   );
 };
 
+const SubjectRow = ({ t }) => {
+  const [pill, bar, label] = LEVEL[t.level];
+  return (
+    <div className="card-elev p-4" data-testid={`subject-topic-${t.subject_id}`}>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="heading-font font-semibold text-white flex-1 min-w-[160px]">{t.name}</div>
+        <span className={`text-[10px] mono-font px-2 py-0.5 rounded border ${pill}`}>{label}</span>
+        <div className="flex items-center gap-4 text-xs mono-font text-gray-400">
+          <span>ACC {t.accuracy}%</span><span>{t.correct}/{t.questions} CORRECT</span><span>{t.skipped} SKIPPED</span>
+        </div>
+      </div>
+      <div className="mt-3 flex items-center gap-3">
+        <div className="flex-1 h-2 rounded-full bg-gray-800 overflow-hidden"><div className={`h-full bg-gradient-to-r ${bar} transition-[width] duration-700`} style={{ width: `${t.score_pct}%` }} /></div>
+        <span className="mono-font text-sm text-white w-14 text-right">{t.score_pct}%</span>
+      </div>
+    </div>
+  );
+};
+
 export default function WeakTopics() {
   const [d, setD] = useState(null);
+  const [view, setView] = useState("section");
   useEffect(() => { api.get("/my/weak-topics").then((r) => setD(r.data)); }, []);
   if (!d) return null;
   const weakest = d.topics.find((t) => t.level !== "strong");
+  const subjects = d.subjects || [];
 
   return (
     <section className="mt-10" data-testid="weak-topics">
@@ -61,8 +82,18 @@ export default function WeakTopics() {
             {d.topics.length ? `Based on ${d.results_analyzed} sectional mock${d.results_analyzed === 1 ? "" : "s"}. ${weakest ? `Focus on ${weakest.name} first.` : "You're strong across every section — keep it up."}` : ""}
           </p>
         </div>
+        <div className="flex rounded-md border border-gray-800 p-0.5 text-xs" role="tablist">
+          {[["section", "By section"], ["subject", "By subject"]].map(([k, l]) => (
+            <button key={k} type="button" onClick={() => setView(k)} data-testid={`weak-view-${k}`}
+                    className={`px-3 py-1.5 rounded transition-colors ${view === k ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white"}`}>{l}</button>
+          ))}
+        </div>
       </div>
-      {d.topics.length === 0 ? (
+      {view === "subject" ? (
+        subjects.length === 0 ? (
+          <div className="card-elev p-6 text-sm text-gray-400" data-testid="subject-topics-empty">No subject-tagged questions attempted yet. Attempt a mock to see your subject-wise accuracy.</div>
+        ) : <div className="space-y-3" data-testid="subject-topics">{subjects.map((t) => <SubjectRow key={t.subject_id} t={t} />)}</div>
+      ) : d.topics.length === 0 ? (
         <div className="card-elev p-6 text-sm text-gray-400" data-testid="weak-topics-empty">
           Take a sectional mock (Quant, Reasoning, English, GA) to unlock your topic-wise report. <Link to="/test-series" className="text-blue-400">Find one →</Link>
         </div>

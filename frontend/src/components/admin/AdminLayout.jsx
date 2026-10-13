@@ -4,7 +4,7 @@ import { useAuth } from "../../lib/auth";
 import BrandLogo from "../BrandLogo";
 import {
   LayoutDashboard, FileQuestion, Layers, PlayCircle, BookOpen, FileText, Tags, Users,
-  ShoppingBag, Settings, LogOut, ExternalLink, Menu, X, Ticket, PanelTop, Home, ScrollText, Megaphone,
+  ShoppingBag, Settings, LogOut, ExternalLink, Menu, X, Ticket, PanelTop, Home, ScrollText, Megaphone, BookMarked,
 } from "lucide-react";
 
 const MENU = [
@@ -18,6 +18,7 @@ const MENU = [
       { to: "/admin/courses", label: "Courses", icon: BookOpen },
       { to: "/admin/materials", label: "Study Materials", icon: FileText },
       { to: "/admin/categories", label: "Categories", icon: Tags, adminOnly: true },
+      { to: "/admin/subjects", label: "Subjects", icon: BookMarked },
     ],
   },
   {

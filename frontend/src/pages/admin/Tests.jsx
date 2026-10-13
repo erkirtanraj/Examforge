@@ -36,7 +36,8 @@ export default function Tests() {
       passing_marks: f.passing_marks === "" ? null : Number(f.passing_marks), instructions: f.instructions,
       is_published: f.is_published, sectional_timing: f.sectional_timing,
       live_start_at: f.live_start_at ? new Date(f.live_start_at).toISOString() : null, live_window_minutes: Number(f.live_window_minutes) || 120,
-      sections: f.sections.map((s) => ({ name: s.name, duration_minutes: s.duration_minutes ? Number(s.duration_minutes) : null, question_ids: s.question_ids })),
+      sections: f.sections.map((s) => ({ name: s.name, duration_minutes: s.duration_minutes ? Number(s.duration_minutes) : null, question_ids: s.question_ids,
+        positive_marks: s.positive_marks ?? null, negative_marks: s.negative_marks ?? null, language: s.language || "bilingual" })),
       question_ids: f.sections.flatMap((s) => s.question_ids),
     }, "/tests"));
   };

@@ -34,6 +34,7 @@ const Tests = lazy(() => import("./pages/admin/Tests"));
 const Courses = lazy(() => import("./pages/admin/Courses"));
 const Materials = lazy(() => import("./pages/admin/Materials"));
 const Categories = lazy(() => import("./pages/admin/Categories"));
+const Subjects = lazy(() => import("./pages/admin/Subjects"));
 const Users = lazy(() => import("./pages/admin/Users"));
 const Orders = lazy(() => import("./pages/admin/Orders"));
 const Settings = lazy(() => import("./pages/admin/Settings"));
@@ -89,6 +90,7 @@ function AppRouter() {
           <Route path="courses" element={<Courses />} />
           <Route path="materials" element={<Materials />} />
           <Route path="categories" element={adminOnly(<Categories />)} />
+          <Route path="subjects" element={<Subjects />} />
           <Route path="users" element={adminOnly(<Users />)} />
           <Route path="orders" element={adminOnly(<Orders />)} />
           <Route path="coupons" element={adminOnly(<Coupons />)} />

@@ -1,17 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { X } from "lucide-react";
-import { FormDialog, Field, inputCls, CategorySelect, errMsg } from "../../components/admin/kit";
+import { FormDialog, Field, inputCls, CategorySelect, SubjectSelect, errMsg } from "../../components/admin/kit";
 import LangToggle from "../../components/LangToggle";
 
 const KEYS = "ABCDEFGH".split("");
 const blankQ = () => ({
   text: "", text_hi: "", type: "mcq_single", options: KEYS.slice(0, 4).map((k) => ({ key: k, text: "", text_hi: "" })), correct: [],
-  explanation: "", explanation_hi: "", category_id: "", difficulty: "medium", language: "en", positive_marks: 1, negative_marks: 0, image_url: "",
+  explanation: "", explanation_hi: "", category_id: "", subject_id: "", difficulty: "medium", language: "en", positive_marks: 1, negative_marks: 0, image_url: "",
 });
 const TF = [{ key: "A", text: "True", text_hi: "सत्य" }, { key: "B", text: "False", text_hi: "असत्य" }];
 
-export default function QuestionForm({ open, onOpenChange, initial, categories, onSave }) {
+export default function QuestionForm({ open, onOpenChange, initial, categories, subjects = [], onSave }) {
   const [f, setF] = useState(blankQ());
   const [saving, setSaving] = useState(false);
   const [lang, setLang] = useState("en");
@@ -20,7 +20,7 @@ export default function QuestionForm({ open, onOpenChange, initial, categories, 
 
   useEffect(() => {
     if (open) setLang("en");
-    if (open) setF(initial ? { ...blankQ(), ...initial, text_hi: initial.text_hi || "", explanation_hi: initial.explanation_hi || "", category_id: initial.category_id || "", image_url: initial.image_url || "" } : blankQ());
+    if (open) setF(initial ? { ...blankQ(), ...initial, text_hi: initial.text_hi || "", explanation_hi: initial.explanation_hi || "", category_id: initial.category_id || "", subject_id: initial.subject_id || "", image_url: initial.image_url || "" } : blankQ());
   }, [open, initial]);
 
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
@@ -41,7 +41,7 @@ export default function QuestionForm({ open, onOpenChange, initial, categories, 
     if (f.type !== "numerical" && f.options.some((o) => !o.text.trim())) return toast.error("Fill in every option");
     setSaving(true);
     try {
-      await onSave({ ...f, category_id: f.category_id || null, image_url: f.image_url || null,
+      await onSave({ ...f, category_id: f.category_id || null, subject_id: f.subject_id || null, image_url: f.image_url || null,
         text_hi: f.text_hi?.trim() || null, explanation_hi: f.explanation_hi?.trim() || null,
         options: f.options.map((o) => ({ ...o, text_hi: o.text_hi?.trim() || null })),
         positive_marks: Number(f.positive_marks), negative_marks: Number(f.negative_marks) });
@@ -60,7 +60,7 @@ export default function QuestionForm({ open, onOpenChange, initial, categories, 
       <Field label={lang === "hi" ? "Question (हिन्दी)" : "Question"}>
         <textarea rows={3} value={f[tk] || ""} onChange={(e) => set(tk, e.target.value)} className={inputCls} data-testid={lang === "hi" ? "q-text-hi" : "q-text"} />
       </Field>
-      <div className="grid sm:grid-cols-3 gap-3">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <Field label="Type">
           <select value={f.type} onChange={(e) => changeType(e.target.value)} className={inputCls} data-testid="q-type">
             <option value="mcq_single">MCQ · single answer</option>
@@ -70,7 +70,10 @@ export default function QuestionForm({ open, onOpenChange, initial, categories, 
           </select>
         </Field>
         <Field label="Category">
-          <CategorySelect value={f.category_id} onChange={(v) => set("category_id", v)} categories={categories} testid="q-category" />
+          <CategorySelect value={f.category_id} onChange={(v) => setF((p) => ({ ...p, category_id: v, subject_id: subjects.find((s) => s.id === p.subject_id)?.category_id === v ? p.subject_id : "" }))} categories={categories} testid="q-category" />
+        </Field>
+        <Field label="Subject">
+          <SubjectSelect value={f.subject_id} onChange={(v) => setF((p) => ({ ...p, subject_id: v, category_id: p.category_id || subjects.find((s) => s.id === v)?.category_id || "" }))} subjects={subjects} categoryId={f.category_id} testid="q-subject" />
         </Field>
         <Field label="Difficulty">
           <select value={f.difficulty} onChange={(e) => set("difficulty", e.target.value)} className={inputCls} data-testid="q-difficulty">

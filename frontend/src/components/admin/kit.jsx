@@ -156,3 +156,21 @@ export function useCategories() {
   useEffect(() => { api.get("/categories").then((r) => setCats(r.data)); }, []);
   return cats;
 }
+
+export function useSubjects() {
+  const [subs, setSubs] = useState([]);
+  const reload = useCallback(() => api.get("/subjects").then((r) => setSubs(r.data)), []);
+  useEffect(() => { reload(); }, [reload]);
+  return [subs, reload];
+}
+
+export const SubjectSelect = ({ value, onChange, subjects, categoryId, testid, allowAll }) => {
+  const list = categoryId ? subjects.filter((s) => s.category_id === categoryId) : subjects;
+  return (
+    <select value={value || ""} onChange={(e) => onChange(e.target.value)} className={inputCls} data-testid={testid}>
+      <option value="">{allowAll ? "All subjects" : "— None —"}</option>
+      {allowAll && <option value="none">Without subject</option>}
+      {list.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+    </select>
+  );
+};

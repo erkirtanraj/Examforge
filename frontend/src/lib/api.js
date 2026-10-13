@@ -14,8 +14,12 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (r) => r,
   (err) => {
-    if (err.response?.status === 401) {
-      // keep silent, let caller handle
+    const { status, data } = err.response || {};
+    const detail = typeof data?.detail === "string" ? data.detail : "";
+    const forced = (status === 403 && detail.includes("suspended")) || (status === 401 && detail.includes("session has expired"));
+    if (forced && localStorage.getItem("lms_token")) {
+      localStorage.removeItem("lms_token");
+      window.location.assign(`/login?reason=${status === 403 ? "suspended" : "expired"}`);
     }
     return Promise.reject(err);
   }

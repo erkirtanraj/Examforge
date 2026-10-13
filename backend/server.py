@@ -17,6 +17,7 @@ import openpyxl
 from fastapi import UploadFile, File, Form
 import razorpay
 from site_routes import build_site_router, seed_pages, UPLOAD_DIR
+from admin_routes import build_admin_router
 from perf import PublicCacheMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.gzip import GZipMiddleware
@@ -89,6 +90,10 @@ async def get_current_user(creds: HTTPAuthorizationCredentials = Depends(bearer)
     user = await db.users.find_one({"id": data["uid"]}, {"_id": 0, "password_hash": 0})
     if not user:
         raise HTTPException(401, "User not found")
+    if user.get("status") == "suspended":
+        raise HTTPException(403, "Your account has been suspended. Please contact support.")
+    if data.get("iat", 0) < user.pop("tokens_valid_after", 0):
+        raise HTTPException(401, "Your session has expired. Please sign in again.")
     return user
 
 def require_roles(*roles):
@@ -154,6 +159,9 @@ class TestSection(BaseModel):
     name: str
     duration_minutes: Optional[int] = None
     question_ids: List[str] = []
+    positive_marks: Optional[float] = Field(None, ge=0)
+    negative_marks: Optional[float] = Field(None, ge=0)
+    language: Literal["bilingual", "en", "hi"] = "bilingual"
 
 class TestIn(BaseModel):
     series_id: str
@@ -259,6 +267,8 @@ async def login(data: LoginIn):
     user = await db.users.find_one({"email": data.email.lower()})
     if not user or not verify_pw(data.password, user.get("password_hash") or ""):
         raise HTTPException(401, "Invalid credentials")
+    if user.get("status") == "suspended":
+        raise HTTPException(403, "Your account has been suspended. Please contact support.")
     token = make_token(user["id"], user["role"])
     return {"token": token, "user": {"id": user["id"], "name": user["name"], "email": user["email"], "role": user["role"]}}
 
@@ -290,6 +300,8 @@ async def google_login(data: GoogleSessionIn):
                 "role": "student", "created_at": now_iso(), "avatar_url": info.get("picture"),
                 "auth_provider": "google"}
         await db.users.insert_one(dict(user))
+    elif user.get("status") == "suspended":
+        raise HTTPException(403, "Your account has been suspended. Please contact support.")
     elif not user.get("avatar_url") and info.get("picture"):
         await db.users.update_one({"id": user["id"]}, {"$set": {"avatar_url": info["picture"]}})
     token = make_token(user["id"], user["role"])
@@ -351,7 +363,7 @@ HEADER_ALIASES = {"question_text": "question", "text": "question", "q": "questio
                   "correct_answer": "correct", "correct_option": "correct", "answer_key": "correct", "key": "correct",
                   "marks": "positive_marks", "positive": "positive_marks", "negative": "negative_marks",
                   "negative_mark": "negative_marks", "level": "difficulty", "solution": "explanation",
-                  "image": "image_url", "subject": "category", "exam": "category", "question_type": "type"}
+                  "image": "image_url", "exam": "category", "question_type": "type"}
 OPT_KEYS = "ABCDEFGH"
 DIFFS = {"easy": "easy", "e": "easy", "medium": "medium", "m": "medium", "moderate": "medium", "hard": "hard", "h": "hard", "difficult": "hard"}
 MAX_IMPORT_ROWS = 2000
@@ -421,7 +433,7 @@ def _parse_correct_choice(raw: str, options: list, multi_allowed: bool):
         return None, "Several correct answers given — set type to 'multi'"
     return out, None
 
-def _parse_import_row(row: dict, cats: dict, defaults: dict):
+def _parse_import_row(row: dict, cats: dict, defaults: dict, subjects: dict):
     text = row.get("question", "")
     if not text:
         return None, "Question text is empty"
@@ -470,6 +482,13 @@ def _parse_import_row(row: dict, cats: dict, defaults: dict):
     cid = cats.get(cat_name.lower()) if cat_name else defaults["category_id"]
     if cat_name and not cid:
         return None, f"Unknown category '{cat_name}'"
+    sub_name, sid = row.get("subject", ""), defaults.get("subject_id")
+    if sub_name:
+        matches = subjects.get(sub_name.lower(), [])
+        hit = next((x for x in matches if x["category_id"] == cid), None) or (matches[0] if matches and not cid else None)
+        if not hit:
+            return None, f"Unknown subject '{sub_name}'" + (" in this category" if matches else " — add it under Subjects first")
+        sid, cid = hit["id"], cid or hit["category_id"]
     diff = DIFFS.get(row.get("difficulty", "").lower() or "medium")
     if not diff:
         return None, f"Unknown difficulty '{row.get('difficulty')}' (easy, medium, hard)"
@@ -481,7 +500,7 @@ def _parse_import_row(row: dict, cats: dict, defaults: dict):
     try:
         q = QuestionIn(text=text, type=qtype, options=options, correct=correct, explanation=row.get("explanation", ""),
                        text_hi=row.get("question_hi") or None, explanation_hi=row.get("explanation_hi") or None,
-                       category_id=cid, difficulty=diff, positive_marks=pos, negative_marks=neg,
+                       category_id=cid, subject_id=sid or None, difficulty=diff, positive_marks=pos, negative_marks=neg,
                        image_url=row.get("image_url") or None)
     except ValidationError as e:
         return None, e.errors()[0].get("msg", "Invalid row")
@@ -489,7 +508,7 @@ def _parse_import_row(row: dict, cats: dict, defaults: dict):
 
 @api.post("/questions/import")
 async def import_questions(file: UploadFile = File(...), commit: bool = Form(False), category_id: str = Form(""),
-                           positive_marks: float = Form(1.0), negative_marks: float = Form(0.0),
+                           positive_marks: float = Form(1.0), negative_marks: float = Form(0.0), subject_id: str = Form(""),
                            user=Depends(require_roles("admin", "teacher"))):
     content = await file.read()
     if len(content) > 5 * 1024 * 1024:
@@ -503,10 +522,14 @@ async def import_questions(file: UploadFile = File(...), commit: bool = Form(Fal
     async for c in db.categories.find({}, {"_id": 0, "id": 1, "name": 1, "slug": 1}):
         cats[c["name"].lower()] = c["id"]
         cats[c["slug"].lower()] = c["id"]
-    defaults = {"category_id": category_id or None, "positive_marks": positive_marks, "negative_marks": negative_marks}
+    subjects = {}
+    async for x in db.subjects.find({}, {"_id": 0, "id": 1, "name": 1, "category_id": 1}):
+        subjects.setdefault(x["name"].strip().lower(), []).append(x)
+    defaults = {"category_id": category_id or None, "positive_marks": positive_marks, "negative_marks": negative_marks,
+                "subject_id": subject_id or None}
     valid, errors = [], []
     for n, row in rows:
-        q, err = _parse_import_row(row, cats, defaults)
+        q, err = _parse_import_row(row, cats, defaults, subjects)
         if err:
             errors.append({"row": n, "message": err})
         else:
@@ -601,6 +624,34 @@ async def live_mocks():
     out.sort(key=lambda x: x["live_start_at"])
     return {"server_now": now.isoformat(), "mocks": out}
 
+def _section_of(sections) -> dict:
+    return {qid: s for s in sections or [] for qid in s["question_ids"]}
+
+def _marks(q: dict, sec: dict) -> tuple:
+    pos, neg = sec.get("positive_marks"), sec.get("negative_marks")
+    return (q.get("positive_marks", 1.0) if pos is None else pos, q.get("negative_marks", 0.0) if neg is None else neg)
+
+def _localize(q: dict, lang: str):
+    """English-only drops Hindi; Hindi-only swaps Hindi in (falls back to English where blank)."""
+    if lang == "hi":
+        q["text"] = q.get("text_hi") or q["text"]
+        if q.get("explanation_hi"):
+            q["explanation"] = q["explanation_hi"]
+        q["options"] = [{**o, "text": o.get("text_hi") or o["text"]} for o in q.get("options") or []]
+    if lang in ("en", "hi"):
+        q.pop("text_hi", None)
+        q.pop("explanation_hi", None)
+        q["options"] = [{k: v for k, v in o.items() if k != "text_hi"} for o in q.get("options") or []]
+
+def _apply_section_rules(qs: list, sections) -> list:
+    smap = _section_of(sections)
+    for q in qs:
+        sec = smap.get(q["id"], {})
+        q["positive_marks"], q["negative_marks"] = _marks(q, sec)
+        q["display_language"] = sec.get("language", "bilingual")
+        _localize(q, q["display_language"])
+    return qs
+
 async def _prepare_test(data: dict) -> dict:
     """Normalise sections, flatten question_ids, compute duration (sectional) and total marks."""
     data["live_start_at"] = _parse_dt(data.get("live_start_at"), "live start time")
@@ -621,8 +672,9 @@ async def _prepare_test(data: dict) -> dict:
     data["sections"] = secs
     if not data["question_ids"]:
         raise HTTPException(422, "Add at least one question")
-    qs = await db.questions.find({"id": {"$in": data["question_ids"]}}, {"_id": 0, "positive_marks": 1}).to_list(5000)
-    data["total_marks"] = data.get("total_marks") or sum(q.get("positive_marks", 1.0) for q in qs)
+    qs = await db.questions.find({"id": {"$in": data["question_ids"]}}, {"_id": 0, "id": 1, "positive_marks": 1}).to_list(5000)
+    smap = _section_of(secs)
+    data["total_marks"] = data.get("total_marks") or sum(_marks(q, smap.get(q["id"], {}))[0] for q in qs)
     return data
 
 @api.get("/tests/{test_id}")
@@ -710,7 +762,7 @@ async def get_attempt(attempt_id: str, user=Depends(get_current_user)):
     qids = a["sections"][a["current_section"]]["question_ids"] if a.get("sectional_timing") else a["question_ids"]
     qs = await db.questions.find({"id": {"$in": qids}}, {"_id": 0, "correct": 0, "explanation": 0, "explanation_hi": 0}).to_list(5000)
     qmap = {q["id"]: q for q in qs}
-    a["questions"] = [qmap[qid] for qid in qids if qid in qmap]
+    a["questions"] = _apply_section_rules([qmap[qid] for qid in qids if qid in qmap], a.get("sections"))
     t = await db.tests.find_one({"id": a["test_id"]}, {"_id": 0, "title": 1})
     a["test_title"] = t["title"] if t else "Online Examination"
     a["server_now"] = now_iso()
@@ -820,7 +872,10 @@ async def _finalize_attempt(attempt: dict, answers: dict, marked: list, auto: bo
     if existing_result:
         return existing_result
     # Load questions with correct answers
-    qs = await db.questions.find({"id": {"$in": attempt["question_ids"]}}).to_list(1000)
+    qs = await db.questions.find({"id": {"$in": attempt["question_ids"]}}).to_list(5000)
+    smap = _section_of(attempt.get("sections"))
+    for q in qs:
+        q["positive_marks"], q["negative_marks"] = _marks(q, smap.get(q["id"], {}))
     score = 0.0
     total_marks = 0.0
     correct_count = 0
@@ -935,8 +990,8 @@ async def get_result(attempt_id: str, user=Depends(get_current_user)):
     if not res:
         raise HTTPException(404, "Result not available yet")
     # Load full questions with answers for review
-    qs = await db.questions.find({"id": {"$in": a["question_ids"]}}, {"_id": 0}).to_list(1000)
-    res["questions"] = qs
+    qs = await db.questions.find({"id": {"$in": a["question_ids"]}}, {"_id": 0}).to_list(5000)
+    res["questions"] = _apply_section_rules(qs, a.get("sections"))
     res["user_answers"] = a.get("answers", {})
     res["rank"] = await _rank_for(res)
     return res
@@ -1297,7 +1352,28 @@ async def weak_topics(user=Depends(get_current_user)):
             item["suggestions"] = cands[:3]
         out.append(item)
     out.sort(key=lambda x: x["score_pct"])
-    return {"topics": out, "results_analyzed": len(results)}
+    return {"topics": out, "results_analyzed": len(results), "subjects": await _subject_report(user["id"])}
+
+async def _subject_report(user_id: str) -> list:
+    results = await db.test_results.find({"user_id": user_id}, {"_id": 0, "details": 1}).to_list(1000)
+    qids = list({d["qid"] for r in results for d in r.get("details") or []})
+    qinfo = {q["id"]: q async for q in db.questions.find({"id": {"$in": qids}}, {"_id": 0, "id": 1, "subject_id": 1, "positive_marks": 1})}
+    names = {s["id"]: s["name"] async for s in db.subjects.find({}, {"_id": 0, "id": 1, "name": 1})}
+    agg = {}
+    for r in results:
+        for d in r.get("details") or []:
+            sid = (qinfo.get(d["qid"]) or {}).get("subject_id")
+            if not sid or sid not in names:
+                continue
+            t = agg.setdefault(sid, {"subject_id": sid, "name": names[sid], "questions": 0, "correct": 0, "wrong": 0, "skipped": 0})
+            t["questions"] += 1
+            t[{"correct": "correct", "wrong": "wrong"}.get(d["status"], "skipped")] += 1
+    out = []
+    for t in agg.values():
+        acc = round(t["correct"] / max(1, t["correct"] + t["wrong"]) * 100, 1)
+        score = round(t["correct"] / max(1, t["questions"]) * 100, 1)
+        out.append({**t, "accuracy": acc, "score_pct": score, "level": "weak" if score < 50 else "average" if score < 75 else "strong"})
+    return sorted(out, key=lambda x: x["score_pct"])
 
 @api.post("/orders/verify")
 async def verify_payment(data: VerifyPaymentIn, user=Depends(get_current_user)):
@@ -1429,6 +1505,7 @@ CONTENT = {
     "lessons": (db.lessons, LessonIn),
     "study-materials": (db.study_materials, StudyMaterialIn),
     "categories": (db.categories, CategoryIn),
+    "subjects": (db.subjects, SubjectIn),
 }
 
 def _content(kind: str):
@@ -1466,6 +1543,8 @@ async def delete_content(kind: str, item_id: str, _=Depends(require_roles("admin
         await db.lessons.delete_many({"section_id": item_id})
     elif kind == "questions":
         await _detach_questions([item_id])
+    elif kind == "subjects":
+        await db.questions.update_many({"subject_id": item_id}, {"$set": {"subject_id": None}})
     return {"ok": True}
 
 # ---- Payment settings (admin) ----
@@ -1533,6 +1612,7 @@ async def startup():
     await _seed_sectional_mocks()
     await _seed_extras()
     await seed_pages(db)
+    await _seed_subjects()
 
 async def _seed_data():
     log.info("Seeding sample data...")
@@ -1743,8 +1823,37 @@ async def _seed_extras():
 async def shutdown():
     client.close()
 
+SEED_SUBJECTS = {
+    "SSC CGL": ["Quantitative Aptitude", "General Intelligence & Reasoning", "English Comprehension", "General Awareness"],
+    "Banking (SBI/IBPS PO)": ["Quantitative Aptitude", "Reasoning Ability", "English Language"],
+    "UPSC Civil Services": ["History", "Polity", "Geography", "Economy"],
+    "Railways RRB NTPC": ["Mathematics", "General Intelligence & Reasoning", "General Awareness"],
+    "NEET / JEE": ["Physics", "Chemistry", "Biology", "Mathematics"],
+}
+
+async def _seed_subjects():
+    """Seed default subjects once and tag untagged questions using their test section names."""
+    if await db.subjects.count_documents({}) == 0:
+        async for c in db.categories.find({}, {"_id": 0, "id": 1, "name": 1}):
+            for name in SEED_SUBJECTS.get(c["name"], []):
+                await db.subjects.insert_one({"id": gen_id(), "name": name, "category_id": c["id"], "created_at": now_iso()})
+    subs = {(x["category_id"], x["name"].lower()): x["id"] async for x in db.subjects.find({}, {"_id": 0})}
+    series_cat = {x["id"]: x.get("category_id") async for x in db.test_series.find({}, {"_id": 0, "id": 1, "category_id": 1})}
+    async for t in db.tests.find({"sections.1": {"$exists": True}}, {"_id": 0, "series_id": 1, "sections": 1}):
+        for sec in t["sections"]:
+            cid = series_cat.get(t["series_id"])
+            if not cid or sec["name"].strip().lower() == "general":
+                continue
+            sid = subs.get((cid, sec["name"].strip().lower()))
+            if not sid:
+                sid = gen_id()
+                await db.subjects.insert_one({"id": sid, "name": sec["name"].strip(), "category_id": cid, "created_at": now_iso()})
+                subs[(cid, sec["name"].strip().lower())] = sid
+            await db.questions.update_many({"id": {"$in": sec["question_ids"]}, "subject_id": None}, {"$set": {"subject_id": sid}})
+
 app.include_router(api)
 app.include_router(build_site_router(db, require_roles))
+app.include_router(build_admin_router(db, require_roles, hash_pw, _detach_questions))
 app.mount("/api/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 app.add_middleware(PublicCacheMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=800)

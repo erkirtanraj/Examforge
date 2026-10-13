@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import BrandLogo from "../components/BrandLogo";
 import { useAuth } from "../lib/auth";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import { GraduationCap, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import GoogleButton, { OrDivider } from "../components/GoogleButton";
 
@@ -13,6 +14,7 @@ export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const nav = useNavigate();
+  const reason = useSearchParams()[0].get("reason");
 
   const submit = async (e) => {
     e.preventDefault();
@@ -32,11 +34,13 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-md card-elev p-8 fade-in">
         <div className="flex items-center gap-2 mb-6">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center">
-            <GraduationCap className="w-5 h-5 text-white" />
-          </div>
-          <span className="heading-font text-xl font-bold text-white">ExamForge</span>
+          <BrandLogo />
         </div>
+        {reason && (
+          <div className="mb-5 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200" data-testid="login-reason-notice">
+            {reason === "suspended" ? "Your account has been suspended. Please contact support." : "Your session has expired. Please sign in again."}
+          </div>
+        )}
         <h1 className="heading-font text-2xl font-bold text-white mb-1">Welcome back</h1>
         <p className="text-sm text-gray-400 mb-6">Sign in to continue your prep.</p>
         <GoogleButton />

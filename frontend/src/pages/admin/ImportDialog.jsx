@@ -4,15 +4,15 @@ import { Upload, FileSpreadsheet, Download, CheckCircle2, AlertTriangle, Loader2
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { Button } from "../../components/ui/button";
 import { api } from "../../lib/api";
-import { Field, inputCls, CategorySelect, errMsg } from "../../components/admin/kit";
+import { Field, inputCls, CategorySelect, SubjectSelect, errMsg } from "../../components/admin/kit";
 
 const TEMPLATE = [
-  "question,type,option_a,option_b,option_c,option_d,correct,explanation,category,difficulty,positive_marks,negative_marks,question_hi,option_a_hi,option_b_hi,option_c_hi,option_d_hi",
-  "Which planet is known as the Red Planet?,mcq,Venus,Jupiter,Mars,Saturn,C,Iron oxide makes Mars look red,SSC CGL,easy,2,0.5,किस ग्रह को लाल ग्रह कहा जाता है?,शुक्र,बृहस्पति,मंगल,शनि",
-  "What is 25% of 80?,mcq,15,20,25,30,B,25% of 80 = 20,SSC CGL,easy,2,0.5",
-  "Which of these are prime numbers?,multi,2,9,11,15,\"A,C\",2 and 11 have exactly two factors,SSC CGL,medium,2,0.5",
-  "The Earth revolves around the Sun.,true_false,,,,,True,,SSC CGL,easy,1,0",
-  "What is the value of 12 x 12?,numerical,,,,,144,,SSC CGL,easy,1,0",
+  "question,type,option_a,option_b,option_c,option_d,correct,explanation,category,subject,difficulty,positive_marks,negative_marks,question_hi,option_a_hi,option_b_hi,option_c_hi,option_d_hi",
+  "Which planet is known as the Red Planet?,mcq,Venus,Jupiter,Mars,Saturn,C,Iron oxide makes Mars look red,SSC CGL,General Awareness,easy,2,0.5,किस ग्रह को लाल ग्रह कहा जाता है?,शुक्र,बृहस्पति,मंगल,शनि",
+  "What is 25% of 80?,mcq,15,20,25,30,B,25% of 80 = 20,SSC CGL,Quantitative Aptitude,easy,2,0.5",
+  "Which of these are prime numbers?,multi,2,9,11,15,\"A,C\",2 and 11 have exactly two factors,SSC CGL,Quantitative Aptitude,medium,2,0.5",
+  "The Earth revolves around the Sun.,true_false,,,,,True,,SSC CGL,General Awareness,easy,1,0",
+  "What is the value of 12 x 12?,numerical,,,,,144,,SSC CGL,Quantitative Aptitude,easy,1,0",
 ].join("\n");
 
 const downloadTemplate = () => {
@@ -21,9 +21,9 @@ const downloadTemplate = () => {
   URL.revokeObjectURL(url);
 };
 
-export default function ImportDialog({ open, onOpenChange, categories, onImported }) {
+export default function ImportDialog({ open, onOpenChange, categories, subjects = [], onImported }) {
   const [file, setFile] = useState(null);
-  const [opts, setOpts] = useState({ category_id: "", positive_marks: 1, negative_marks: 0 });
+  const [opts, setOpts] = useState({ category_id: "", subject_id: "", positive_marks: 1, negative_marks: 0 });
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
   const inputRef = useRef(null);
@@ -78,12 +78,13 @@ export default function ImportDialog({ open, onOpenChange, categories, onImporte
               <input ref={inputRef} type="file" accept=".csv,.xlsx,.xlsm" className="hidden" data-testid="import-file-input"
                      onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
             </div>
-            <div className="grid sm:grid-cols-3 gap-3">
-              <Field label="Default category"><CategorySelect value={opts.category_id} onChange={(v) => setOpts({ ...opts, category_id: v })} categories={categories} testid="import-default-category" /></Field>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <Field label="Default category"><CategorySelect value={opts.category_id} onChange={(v) => setOpts({ ...opts, category_id: v, subject_id: "" })} categories={categories} testid="import-default-category" /></Field>
+              <Field label="Default subject"><SubjectSelect value={opts.subject_id} onChange={(v) => setOpts({ ...opts, subject_id: v })} subjects={subjects} categoryId={opts.category_id} testid="import-default-subject" /></Field>
               <Field label="Default marks (+)"><input type="number" step="0.25" min="0" value={opts.positive_marks} onChange={(e) => setOpts({ ...opts, positive_marks: e.target.value })} className={inputCls} data-testid="import-default-positive" /></Field>
               <Field label="Default negative (−)"><input type="number" step="0.25" min="0" value={opts.negative_marks} onChange={(e) => setOpts({ ...opts, negative_marks: e.target.value })} className={inputCls} data-testid="import-default-negative" /></Field>
             </div>
-            <p className="text-xs text-gray-500">Defaults apply to rows where the column is empty. Columns: question, type (mcq · multi · true_false · numerical), option_a…option_h, correct (letter, "A,C", option text, True/False or a number), explanation, category (name or slug), difficulty, positive_marks, negative_marks. Hindi (optional): question_hi, option_a_hi…option_h_hi, explanation_hi.</p>
+            <p className="text-xs text-gray-500">Defaults apply to rows where the column is empty. Columns: question, type (mcq · multi · true_false · numerical), option_a…option_h, correct (letter, "A,C", option text, True/False or a number), explanation, category (name or slug), subject (name, must exist under Subjects), difficulty, positive_marks, negative_marks. Hindi (optional): question_hi, option_a_hi…option_h_hi, explanation_hi.</p>
             {busy && !result && <div className="flex items-center gap-2 text-sm text-gray-400"><Loader2 className="w-4 h-4 animate-spin" />Checking file…</div>}
             {result && <ImportPreview result={result} />}
             {result && (
