@@ -13,6 +13,7 @@ const loadApi = () => {
         window.clearTimeout(timeout);
         if (error) {
           apiPromise = null;
+          document.querySelector('script[src="https://www.youtube.com/iframe_api"]')?.remove();
           reject(error);
         } else {
           resolve(YT);
