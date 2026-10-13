@@ -2,20 +2,25 @@ import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { X } from "lucide-react";
 import { FormDialog, Field, inputCls, CategorySelect, errMsg } from "../../components/admin/kit";
+import LangToggle from "../../components/LangToggle";
 
 const KEYS = "ABCDEFGH".split("");
 const blankQ = () => ({
-  text: "", type: "mcq_single", options: KEYS.slice(0, 4).map((k) => ({ key: k, text: "" })), correct: [],
-  explanation: "", category_id: "", difficulty: "medium", language: "en", positive_marks: 1, negative_marks: 0, image_url: "",
+  text: "", text_hi: "", type: "mcq_single", options: KEYS.slice(0, 4).map((k) => ({ key: k, text: "", text_hi: "" })), correct: [],
+  explanation: "", explanation_hi: "", category_id: "", difficulty: "medium", language: "en", positive_marks: 1, negative_marks: 0, image_url: "",
 });
-const TF = [{ key: "A", text: "True" }, { key: "B", text: "False" }];
+const TF = [{ key: "A", text: "True", text_hi: "सत्य" }, { key: "B", text: "False", text_hi: "असत्य" }];
 
 export default function QuestionForm({ open, onOpenChange, initial, categories, onSave }) {
   const [f, setF] = useState(blankQ());
   const [saving, setSaving] = useState(false);
+  const [lang, setLang] = useState("en");
+  const tk = lang === "hi" ? "text_hi" : "text";
+  const ek = lang === "hi" ? "explanation_hi" : "explanation";
 
   useEffect(() => {
-    if (open) setF(initial ? { ...blankQ(), ...initial, category_id: initial.category_id || "", image_url: initial.image_url || "" } : blankQ());
+    if (open) setLang("en");
+    if (open) setF(initial ? { ...blankQ(), ...initial, text_hi: initial.text_hi || "", explanation_hi: initial.explanation_hi || "", category_id: initial.category_id || "", image_url: initial.image_url || "" } : blankQ());
   }, [open, initial]);
 
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
@@ -26,7 +31,7 @@ export default function QuestionForm({ open, onOpenChange, initial, categories, 
   const toggleCorrect = (k) => setF((p) => ({
     ...p, correct: p.type === "mcq_multi" ? (p.correct.includes(k) ? p.correct.filter((x) => x !== k) : [...p.correct, k]) : [k],
   }));
-  const setOpt = (i, text) => setF((p) => ({ ...p, options: p.options.map((o, j) => (j === i ? { ...o, text } : o)) }));
+  const setOpt = (i, v) => setF((p) => ({ ...p, options: p.options.map((o, j) => (j === i ? { ...o, [tk]: v } : o)) }));
   const addOpt = () => setF((p) => (p.options.length < 8 ? { ...p, options: [...p.options, { key: KEYS[p.options.length], text: "" }] } : p));
   const removeOpt = (i) => setF((p) => ({ ...p, correct: [], options: p.options.filter((_, j) => j !== i).map((o, j) => ({ ...o, key: KEYS[j] })) }));
 
@@ -37,6 +42,8 @@ export default function QuestionForm({ open, onOpenChange, initial, categories, 
     setSaving(true);
     try {
       await onSave({ ...f, category_id: f.category_id || null, image_url: f.image_url || null,
+        text_hi: f.text_hi?.trim() || null, explanation_hi: f.explanation_hi?.trim() || null,
+        options: f.options.map((o) => ({ ...o, text_hi: o.text_hi?.trim() || null })),
         positive_marks: Number(f.positive_marks), negative_marks: Number(f.negative_marks) });
       onOpenChange(false);
     } catch (e) { toast.error(errMsg(e)); } finally { setSaving(false); }
@@ -46,8 +53,12 @@ export default function QuestionForm({ open, onOpenChange, initial, categories, 
   return (
     <FormDialog open={open} onOpenChange={onOpenChange} title={initial ? "Edit question" : "New question"}
                 onSubmit={submit} saving={saving} testid="question-form" wide>
-      <Field label="Question">
-        <textarea rows={3} value={f.text} onChange={(e) => set("text", e.target.value)} className={inputCls} data-testid="q-text" />
+      <div className="flex items-center justify-between gap-3 -mt-1">
+        <span className="text-xs text-gray-500">{lang === "hi" ? "Hindi is optional — students fall back to English where it's blank." : "English is required."}</span>
+        <LangToggle lang={lang} onChange={setLang} testid="q-lang" />
+      </div>
+      <Field label={lang === "hi" ? "Question (हिन्दी)" : "Question"}>
+        <textarea rows={3} value={f[tk] || ""} onChange={(e) => set(tk, e.target.value)} className={inputCls} data-testid={lang === "hi" ? "q-text-hi" : "q-text"} />
       </Field>
       <div className="grid sm:grid-cols-3 gap-3">
         <Field label="Type">
@@ -80,8 +91,8 @@ export default function QuestionForm({ open, onOpenChange, initial, categories, 
                         className={`w-8 h-8 shrink-0 rounded mono-font text-sm font-semibold transition-colors ${f.correct.includes(o.key) ? "bg-emerald-500 text-white" : "bg-gray-800 text-gray-300 hover:bg-gray-700"}`}>
                   {o.key}
                 </button>
-                <input value={o.text} onChange={(e) => setOpt(i, e.target.value)} disabled={f.type === "true_false"}
-                       className="flex-1 bg-transparent border-0 text-sm text-white focus:outline-none" placeholder={`Option ${o.key}`} data-testid={`q-option-${o.key}`} />
+                <input value={o[tk] || ""} onChange={(e) => setOpt(i, e.target.value)} disabled={f.type === "true_false"}
+                       className="flex-1 bg-transparent border-0 text-sm text-white focus:outline-none" placeholder={lang === "hi" ? `${o.text || `Option ${o.key}`} (हिन्दी)` : `Option ${o.key}`} data-testid={lang === "hi" ? `q-option-hi-${o.key}` : `q-option-${o.key}`} />
                 {f.type !== "true_false" && f.options.length > 2 && (
                   <button type="button" onClick={() => removeOpt(i)} className="p-1 text-gray-500 hover:text-rose-300"><X className="w-4 h-4" /></button>
                 )}
@@ -107,7 +118,7 @@ export default function QuestionForm({ open, onOpenChange, initial, categories, 
         </Field>
       </div>
       <Field label="Explanation (shown after submission)">
-        <textarea rows={2} value={f.explanation} onChange={(e) => set("explanation", e.target.value)} className={inputCls} data-testid="q-explanation" />
+        <textarea rows={2} value={f[ek] || ""} onChange={(e) => set(ek, e.target.value)} className={inputCls} data-testid={lang === "hi" ? "q-explanation-hi" : "q-explanation"} />
       </Field>
       <Field label="Image URL (optional)">
         <input value={f.image_url} onChange={(e) => set("image_url", e.target.value)} className={inputCls} data-testid="q-image" />

@@ -7,7 +7,8 @@ import { api } from "../../lib/api";
 import { Field, inputCls, CategorySelect, errMsg } from "../../components/admin/kit";
 
 const TEMPLATE = [
-  "question,type,option_a,option_b,option_c,option_d,correct,explanation,category,difficulty,positive_marks,negative_marks",
+  "question,type,option_a,option_b,option_c,option_d,correct,explanation,category,difficulty,positive_marks,negative_marks,question_hi,option_a_hi,option_b_hi,option_c_hi,option_d_hi",
+  "Which planet is known as the Red Planet?,mcq,Venus,Jupiter,Mars,Saturn,C,Iron oxide makes Mars look red,SSC CGL,easy,2,0.5,किस ग्रह को लाल ग्रह कहा जाता है?,शुक्र,बृहस्पति,मंगल,शनि",
   "What is 25% of 80?,mcq,15,20,25,30,B,25% of 80 = 20,SSC CGL,easy,2,0.5",
   "Which of these are prime numbers?,multi,2,9,11,15,\"A,C\",2 and 11 have exactly two factors,SSC CGL,medium,2,0.5",
   "The Earth revolves around the Sun.,true_false,,,,,True,,SSC CGL,easy,1,0",
@@ -15,7 +16,7 @@ const TEMPLATE = [
 ].join("\n");
 
 const downloadTemplate = () => {
-  const url = URL.createObjectURL(new Blob([TEMPLATE], { type: "text/csv" }));
+  const url = URL.createObjectURL(new Blob(["\uFEFF" + TEMPLATE], { type: "text/csv;charset=utf-8" }));
   Object.assign(document.createElement("a"), { href: url, download: "question-import-template.csv" }).click();
   URL.revokeObjectURL(url);
 };
@@ -82,7 +83,7 @@ export default function ImportDialog({ open, onOpenChange, categories, onImporte
               <Field label="Default marks (+)"><input type="number" step="0.25" min="0" value={opts.positive_marks} onChange={(e) => setOpts({ ...opts, positive_marks: e.target.value })} className={inputCls} data-testid="import-default-positive" /></Field>
               <Field label="Default negative (−)"><input type="number" step="0.25" min="0" value={opts.negative_marks} onChange={(e) => setOpts({ ...opts, negative_marks: e.target.value })} className={inputCls} data-testid="import-default-negative" /></Field>
             </div>
-            <p className="text-xs text-gray-500">Defaults apply to rows where the column is empty. Columns: question, type (mcq · multi · true_false · numerical), option_a…option_h, correct (letter, "A,C", option text, True/False or a number), explanation, category (name or slug), difficulty, positive_marks, negative_marks.</p>
+            <p className="text-xs text-gray-500">Defaults apply to rows where the column is empty. Columns: question, type (mcq · multi · true_false · numerical), option_a…option_h, correct (letter, "A,C", option text, True/False or a number), explanation, category (name or slug), difficulty, positive_marks, negative_marks. Hindi (optional): question_hi, option_a_hi…option_h_hi, explanation_hi.</p>
             {busy && !result && <div className="flex items-center gap-2 text-sm text-gray-400"><Loader2 className="w-4 h-4 animate-spin" />Checking file…</div>}
             {result && <ImportPreview result={result} />}
             {result && (

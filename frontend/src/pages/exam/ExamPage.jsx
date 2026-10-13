@@ -20,6 +20,8 @@ export default function ExamPage() {
   const [dialog, setDialog] = useState(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [lang, setLangState] = useState(() => localStorage.getItem("exam_lang") || "en");
+  const setLang = (l) => { setLangState(l); localStorage.setItem("exam_lang", l); };
   const version = useRef(0);
   const live = useRef({ answers: {}, marked: new Set() });
   const busy = useRef(false);
@@ -119,13 +121,13 @@ export default function ExamPage() {
 
   return (
     <div className="min-h-screen bg-[#090D16] text-white flex flex-col">
-      <ExamTopBar title={attempt.test_title} timeLeft={timeLeft} sectional={sectional} sectionName={sectionName}
+      <ExamTopBar title={attempt.test_title} timeLeft={timeLeft} showLang={qs.some((x) => x.text_hi)} lang={lang} onLang={setLang} sectional={sectional} sectionName={sectionName}
                   isLastSection={isLastSection} onSubmit={() => setDialog(sectional && !isLastSection ? "section" : "submit")} />
       <SectionBar sections={sections} sectional={sectional} current={attempt.current_section} active={activeSection}
                   answers={answers} onSelect={(i) => setIdx(qs.findIndex((x) => sectionOf[x.id] === i))} />
       <div className="flex-1 flex flex-col lg:flex-row">
         <div className="flex-1 p-4 sm:p-6 overflow-auto">
-          <QuestionPanel q={q} number={idx + 1} total={qs.length} answer={answers[q.id]} isMarked={marked.has(q.id)} saving={saving}
+          <QuestionPanel q={q} lang={lang} number={idx + 1} total={qs.length} answer={answers[q.id]} isMarked={marked.has(q.id)} saving={saving}
             onToggle={toggle} onNumeric={setAns}
             onMark={() => setMarked((m) => { const n = new Set(m); n.has(q.id) ? n.delete(q.id) : n.add(q.id); return n; })}
             onClear={() => setAnswers((a) => { const n = { ...a }; delete n[q.id]; return n; })}

@@ -4,11 +4,13 @@ import { api } from "../lib/api";
 import { Button } from "../components/ui/button";
 import { Trophy, Target, Clock, CheckCircle2, XCircle, MinusCircle } from "lucide-react";
 import RankCard from "../components/RankCard";
+import LangToggle, { pick } from "../components/LangToggle";
 import SectionBreakdown from "../components/SectionBreakdown";
 
 export default function TestResult() {
   const { attemptId } = useParams();
   const [r, setR] = useState(null);
+  const [lang, setLang] = useState(() => localStorage.getItem("exam_lang") || "en");
 
   useEffect(() => {
     api.get(`/attempts/${attemptId}/result`).then((x) => setR(x.data));
@@ -57,7 +59,10 @@ export default function TestResult() {
       <SectionBreakdown sections={r.sections} />
       <RankCard rank={r.rank} testId={r.test_id} />
 
-      <h2 className="heading-font text-xl font-semibold text-white mt-10 mb-4">Answer review</h2>
+      <div className="flex items-center justify-between mt-10 mb-4">
+        <h2 className="heading-font text-xl font-semibold text-white">Answer review</h2>
+        {r.questions?.some((q) => q.text_hi) && <LangToggle lang={lang} onChange={setLang} testid="result-lang" />}
+      </div>
       <div className="space-y-4">
         {r.questions?.map((q, i) => {
           const yours = r.user_answers?.[q.id];
@@ -75,7 +80,7 @@ export default function TestResult() {
                   {yoursArr.length === 0 ? "UNATTEMPTED" : isCorrect ? "CORRECT" : "WRONG"}
                 </div>
               </div>
-              <div className="text-white font-medium">{q.text}</div>
+              <div className="text-white font-medium">{pick(lang, q.text, q.text_hi)}</div>
               <div className="mt-3 space-y-1.5">
                 {q.options?.map((o) => {
                   const isAns = correct.includes(o.key);
@@ -86,7 +91,7 @@ export default function TestResult() {
                       isUserSel ? "border-rose-500/50 bg-rose-500/10 text-rose-200" :
                       "border-gray-800 text-gray-400"
                     }`}>
-                      <span className="mono-font mr-2">{o.key}.</span>{o.text}
+                      <span className="mono-font mr-2">{o.key}.</span>{pick(lang, o.text, o.text_hi)}
                       {isAns && <span className="ml-2 text-xs mono-font">✓ CORRECT</span>}
                       {isUserSel && !isAns && <span className="ml-2 text-xs mono-font">YOUR ANSWER</span>}
                     </div>
@@ -96,7 +101,7 @@ export default function TestResult() {
               {q.explanation && (
                 <div className="mt-3 p-3 rounded-md bg-blue-500/5 border border-blue-500/20 text-sm text-blue-100">
                   <span className="mono-font text-xs text-blue-300 uppercase tracking-wider">Explanation</span>
-                  <div className="mt-1">{q.explanation}</div>
+                  <div className="mt-1">{pick(lang, q.explanation, q.explanation_hi)}</div>
                 </div>
               )}
             </div>

@@ -6,6 +6,9 @@ import { Badge } from "../components/ui/badge";
 import { useAuth } from "../lib/auth";
 import { Clock, FileText, Lock, Play, ShieldCheck, Trophy, Layers } from "lucide-react";
 import { toast } from "sonner";
+import CouponBox from "../components/CouponBox";
+import TestStartButton from "../components/TestStartButton";
+import { fmtDateTime } from "../components/Countdown";
 
 export default function TestSeriesDetail() {
   const { id } = useParams();
@@ -14,6 +17,7 @@ export default function TestSeriesDetail() {
   const { user } = useAuth();
   const nav = useNavigate();
   const [buying, setBuying] = useState(false);
+  const [coupon, setCoupon] = useState(null);
 
   useEffect(() => {
     api.get(`/test-series/${id}`).then((r) => setSeries(r.data));
@@ -38,7 +42,7 @@ export default function TestSeriesDetail() {
     if (!user) { nav("/login"); return; }
     setBuying(true);
     try {
-      const { data } = await api.post("/orders", { item_type: "test_series", item_id: id });
+      const { data } = await api.post("/orders", { item_type: "test_series", item_id: id, coupon_code: coupon?.code || null });
       if (data.status === "paid") {
         toast.success("Enrolled successfully");
         const r = await api.get("/my/entitlements");
@@ -100,15 +104,13 @@ export default function TestSeriesDetail() {
                   <div className="text-white font-medium">{t.title}</div>
                   <div className="text-xs text-gray-500 flex gap-4 mt-1">
                     <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {t.duration_minutes} min</span>
+                    {t.live_start_at && <span className="flex items-center gap-1 text-rose-300 mono-font" data-testid={`live-badge-${t.id}`}>● LIVE {fmtDateTime(t.live_start_at)}</span>}
                     {t.sections?.length > 1 && <span className="flex items-center gap-1" data-testid={`test-sections-${t.id}`}><Layers className="w-3 h-3" /> {t.sections.map((s) => s.name).join(" · ")}{t.sectional_timing ? " (timed)" : ""}</span>}
                     <Link to={`/leaderboard/${t.id}`} className="flex items-center gap-1 text-amber-300 hover:text-amber-200" data-testid={`leaderboard-link-${t.id}`}><Trophy className="w-3 h-3" /> Leaderboard</Link>
                     <span className="flex items-center gap-1"><FileText className="w-3 h-3" /> {t.total_marks} marks</span>
                   </div>
                 </div>
-                <Button onClick={() => startTest(t.id)} data-testid={`start-test-${t.id}`}
-                        className={hasAccess ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-700"}>
-                  {hasAccess ? <><Play className="w-4 h-4 mr-1" />Start</> : <><Lock className="w-4 h-4 mr-1" />Locked</>}
-                </Button>
+                <TestStartButton t={t} hasAccess={hasAccess} onStart={() => startTest(t.id)} />
               </div>
             ))}
           </div>
@@ -116,12 +118,17 @@ export default function TestSeriesDetail() {
 
         <aside>
           <div className="card-elev p-6 sticky top-24">
-            <div className="heading-font text-3xl font-bold text-white">
-              {series.is_free ? "Free" : `₹${(series.price / 100).toFixed(0)}`}
+            <div className="heading-font text-3xl font-bold text-white" data-testid="series-price">
+              {series.is_free ? "Free" : coupon ? (
+                <span className="flex items-baseline gap-3">₹{(coupon.final_amount / 100).toFixed(0)}
+                  <span className="text-lg text-gray-500 line-through font-normal" data-testid="series-original-price">₹{(series.price / 100).toFixed(0)}</span>
+                </span>
+              ) : `₹${(series.price / 100).toFixed(0)}`}
             </div>
             <div className="text-xs text-gray-400 mono-font uppercase mt-1">
               {series.validity_days} days validity
             </div>
+            {!series.is_free && !hasAccess && user && <CouponBox itemType="test_series" itemId={id} applied={coupon} onApplied={setCoupon} />}
             <Button onClick={hasAccess ? () => startTest(series.tests?.[0]?.id) : buy} disabled={buying}
                     data-testid="series-buy-btn" className="w-full mt-5 bg-blue-600 hover:bg-blue-700 h-11">
               {hasAccess ? "Start Learning" : (buying ? "Processing…" : (series.is_free ? "Enroll Free" : "Buy Now"))}

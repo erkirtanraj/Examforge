@@ -10,13 +10,14 @@ export default function Orders() {
   return (
     <div>
       <PageHeader eyebrow="Management" title="Orders" desc="Every enrollment and Razorpay payment." />
-      <DataTable head={["Item", "Type", "Amount", "Status", "Razorpay payment", "Date"]} testid="orders-table"
+      <DataTable head={["Item", "Type", "Amount", "Coupon", "Status", "Razorpay payment", "Date"]} testid="orders-table"
                  empty={!orders.length ? "No orders yet." : null}>
         {orders.map((o) => (
           <tr key={o.id} className="border-t border-gray-800" data-testid={`order-row-${o.id}`}>
             <td className="p-3 text-white">{o.item_title || "—"}</td>
             <td className="p-3 text-gray-400 mono-font text-xs uppercase">{o.item_type.replace("_", " ")}</td>
             <td className="p-3 text-gray-300 mono-font">{rupees(o.amount)}</td>
+            <td className="p-3 mono-font text-xs">{o.coupon_code ? <span className="text-emerald-300">{o.coupon_code} −{rupees(o.discount)}</span> : <span className="text-gray-600">—</span>}</td>
             <td className="p-3"><Pill tone={TONE[o.status] || "gray"}>{o.status.toUpperCase()}</Pill></td>
             <td className="p-3 mono-font text-xs text-gray-500">{o.razorpay_payment_id || "—"}</td>
             <td className="p-3 text-gray-400 whitespace-nowrap">{new Date(o.created_at).toLocaleString()}</td>

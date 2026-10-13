@@ -4,9 +4,11 @@ import { api } from "../../lib/api";
 import { PageHeader, DataTable, Pill, RowActions, NewButton, FormDialog, Field, inputCls, useResource, useEditor, useCategories } from "../../components/admin/kit";
 import SectionsEditor from "./SectionsEditor";
 
-const BLANK = { series_id: "", title: "", duration_minutes: 60, passing_marks: "", instructions: "", is_published: true, sectional_timing: false, sections: [{ name: "General", duration_minutes: null, question_ids: [] }] };
+const BLANK = { series_id: "", title: "", duration_minutes: 60, passing_marks: "", instructions: "", is_published: true, sectional_timing: false, live_start_at: "", live_window_minutes: 120, sections: [{ name: "General", duration_minutes: null, question_ids: [] }] };
+const toLocal = (iso) => { const d = new Date(iso); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
 const toForm = (t) => ({
   ...t, passing_marks: t.passing_marks ?? "", instructions: t.instructions || "", sectional_timing: !!t.sectional_timing,
+  live_start_at: t.live_start_at ? toLocal(t.live_start_at) : "", live_window_minutes: t.live_window_minutes || 120,
   sections: t.sections?.length ? t.sections : [{ name: "General", duration_minutes: null, question_ids: t.question_ids || [] }],
 });
 
@@ -33,6 +35,7 @@ export default function Tests() {
       series_id: f.series_id, title: f.title, duration_minutes: f.sectional_timing ? sectionTotal : Number(f.duration_minutes),
       passing_marks: f.passing_marks === "" ? null : Number(f.passing_marks), instructions: f.instructions,
       is_published: f.is_published, sectional_timing: f.sectional_timing,
+      live_start_at: f.live_start_at ? new Date(f.live_start_at).toISOString() : null, live_window_minutes: Number(f.live_window_minutes) || 120,
       sections: f.sections.map((s) => ({ name: s.name, duration_minutes: s.duration_minutes ? Number(s.duration_minutes) : null, question_ids: s.question_ids })),
       question_ids: f.sections.flatMap((s) => s.question_ids),
     }, "/tests"));
@@ -54,7 +57,7 @@ export default function Tests() {
             </td>
             <td className="p-3 text-gray-300 whitespace-nowrap">{t.duration_minutes} min</td>
             <td className="p-3 mono-font text-gray-300">{t.total_marks}</td>
-            <td className="p-3">{t.is_published ? <Pill tone="emerald">LIVE</Pill> : <Pill tone="gray">DRAFT</Pill>}</td>
+            <td className="p-3 space-x-1 whitespace-nowrap">{t.is_published ? <Pill tone="emerald">PUBLISHED</Pill> : <Pill tone="gray">DRAFT</Pill>}{t.live_start_at && <Pill tone="rose">LIVE {new Date(t.live_start_at).toLocaleDateString()}</Pill>}</td>
             <td className="p-3"><RowActions id={t.id} onDelete={() => remove(t.id)}
                   onEdit={() => ed.openEdit(t, toForm)} /></td>
           </tr>
@@ -73,6 +76,15 @@ export default function Tests() {
           <Field label="Title"><input required value={f.title} onChange={(e) => ed.set("title", e.target.value)} className={inputCls} data-testid="test-title-input" /></Field>
           <Field label={f.sectional_timing ? "Duration (sum of sections)" : "Duration (minutes)"}><input type="number" min="1" disabled={f.sectional_timing} value={f.sectional_timing ? sectionTotal : f.duration_minutes} onChange={(e) => ed.set("duration_minutes", e.target.value)} className={`${inputCls} disabled:opacity-60`} data-testid="test-duration-input" /></Field>
           <Field label="Passing marks (optional)"><input type="number" min="0" value={f.passing_marks} onChange={(e) => ed.set("passing_marks", e.target.value)} className={inputCls} data-testid="test-passing-input" /></Field>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3 rounded-md border border-rose-500/20 bg-rose-500/5 p-3">
+          <Field label="All-India live start (optional)">
+            <input type="datetime-local" value={f.live_start_at} onChange={(e) => ed.set("live_start_at", e.target.value)} className={inputCls} data-testid="test-live-start-input" />
+          </Field>
+          <Field label="Shown as 'Live now' for (minutes)">
+            <input type="number" min="1" disabled={!f.live_start_at} value={f.live_window_minutes} onChange={(e) => ed.set("live_window_minutes", e.target.value)} className={`${inputCls} disabled:opacity-40`} data-testid="test-live-window-input" />
+          </Field>
+          <p className="sm:col-span-2 text-xs text-gray-500">Students can't start before this time. The home page shows a countdown; afterwards the test stays open for practice.</p>
         </div>
         <Field label="Instructions"><textarea rows={2} value={f.instructions} onChange={(e) => ed.set("instructions", e.target.value)} className={inputCls} data-testid="test-instructions-input" /></Field>
         <div className="flex flex-wrap gap-6">

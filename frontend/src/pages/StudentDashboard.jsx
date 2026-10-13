@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import WeakTopics from "../components/WeakTopics";
 import { BookOpen, Target, TrendingUp, Trophy, FileText, ArrowRight } from "lucide-react";
 
 export default function StudentDashboard() {
@@ -30,6 +31,8 @@ export default function StudentDashboard() {
         <StatCard icon={<Target className="w-5 h-5" />} label="Avg. Accuracy" value={stats ? `${stats.avg_accuracy}%` : "—"} color="cyan" testid="stat-accuracy" />
         <StatCard icon={<BookOpen className="w-5 h-5" />} label="Courses Enrolled" value={stats?.courses_enrolled ?? "—"} color="violet" testid="stat-courses" />
       </div>
+
+      <WeakTopics />
 
       <div className="mt-10 grid lg:grid-cols-3 gap-6">
         <section className="lg:col-span-2">

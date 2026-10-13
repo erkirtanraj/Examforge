@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { Button } from "../components/ui/button";
+import LiveMockBanner from "../components/LiveMockBanner";
 import { Trophy, Clock, Users, TrendingUp, BookOpen, Target, Zap, GraduationCap, Award, ArrowRight, FileText, Scale, Landmark, Train, Atom, CheckCircle2 } from "lucide-react";
 
 const ICONS = { FileText, Scale, Landmark, Train, Atom, GraduationCap };
@@ -98,6 +99,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <LiveMockBanner />
 
       {/* Categories */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 py-16">

@@ -118,6 +118,7 @@ class SubjectIn(BaseModel):
 class QuestionOption(BaseModel):
     key: str  # A, B, C, D
     text: str
+    text_hi: Optional[str] = None
 
 class QuestionIn(BaseModel):
     text: str
@@ -125,6 +126,8 @@ class QuestionIn(BaseModel):
     options: List[QuestionOption] = []
     correct: List[str]  # list of correct keys / value
     explanation: Optional[str] = ""
+    text_hi: Optional[str] = None
+    explanation_hi: Optional[str] = None
     subject_id: Optional[str] = None
     category_id: Optional[str] = None
     difficulty: Literal["easy", "medium", "hard"] = "medium"
@@ -159,6 +162,8 @@ class TestIn(BaseModel):
     sections: List[TestSection] = []
     sectional_timing: bool = False
     is_published: bool = True
+    live_start_at: Optional[str] = None
+    live_window_minutes: int = 120
 
 class CourseIn(BaseModel):
     title: str
@@ -202,6 +207,22 @@ class SubmitIn(BaseModel):
 class OrderIn(BaseModel):
     item_type: Literal["test_series", "course", "study_material"]
     item_id: str
+    coupon_code: Optional[str] = None
+
+class CouponCheckIn(BaseModel):
+    item_type: Literal["test_series", "course", "study_material"]
+    item_id: str
+    code: str
+
+class CouponIn(BaseModel):
+    code: str
+    discount_type: Literal["percent", "flat"] = "percent"
+    value: float  # percent (1-100) or rupees
+    max_uses: Optional[int] = None
+    valid_until: Optional[str] = None
+    item_ids: List[str] = []
+    active: bool = True
+    description: str = ""
 
 class VerifyPaymentIn(BaseModel):
     razorpay_order_id: str
@@ -340,10 +361,14 @@ def _cell(v) -> str:
         return "True" if v else "False"
     return str(v).strip()
 
-def _norm_header(h) -> str:
-    h = re.sub(r"[^a-z0-9_/]", "", _cell(h).lower().replace(" ", "_").replace("-", "_"))
+def _norm_base(h: str) -> str:
     m = re.fullmatch(r"(?:option_?|opt_?)?([a-h])", h)
     return f"option_{m.group(1)}" if m else HEADER_ALIASES.get(h, h)
+
+def _norm_header(h) -> str:
+    h = re.sub(r"[^a-z0-9_/]", "", _cell(h).lower().replace(" ", "_").replace("-", "_"))
+    m = re.fullmatch(r"(.+?)_(?:hi|hindi)", h)
+    return f"{_norm_base(m.group(1))}_hi" if m else _norm_base(h)
 
 def _read_rows(filename: str, content: bytes) -> list:
     name = filename.lower()
@@ -409,7 +434,7 @@ def _parse_import_row(row: dict, cats: dict, defaults: dict):
         if v and gap:
             return None, "Options must be filled in order (no gaps)"
         if v:
-            options.append({"key": k, "text": v})
+            options.append({"key": k, "text": v, "text_hi": row.get(f"option_{k.lower()}_hi") or None})
         else:
             gap = True
     if qtype is None:
@@ -424,7 +449,7 @@ def _parse_import_row(row: dict, cats: dict, defaults: dict):
         correct = ["A"] if v in ("true", "t", "a", "1", "yes") else ["B"] if v in ("false", "f", "b", "0", "no") else None
         if not correct:
             return None, "True/False answer must be True or False"
-        options = [{"key": "A", "text": "True"}, {"key": "B", "text": "False"}]
+        options = [{"key": "A", "text": "True", "text_hi": "सत्य"}, {"key": "B", "text": "False", "text_hi": "असत्य"}]
     elif qtype == "numerical":
         try:
             float(correct_raw)
@@ -451,6 +476,7 @@ def _parse_import_row(row: dict, cats: dict, defaults: dict):
         return None, "Marks must be numbers"
     try:
         q = QuestionIn(text=text, type=qtype, options=options, correct=correct, explanation=row.get("explanation", ""),
+                       text_hi=row.get("question_hi") or None, explanation_hi=row.get("explanation_hi") or None,
                        category_id=cid, difficulty=diff, positive_marks=pos, negative_marks=neg,
                        image_url=row.get("image_url") or None)
     except ValidationError as e:
@@ -538,8 +564,43 @@ async def create_test(data: TestIn, user=Depends(require_roles("admin", "teacher
     doc.pop("_id", None)
     return doc
 
+def _parse_dt(v: Optional[str], label: str) -> Optional[str]:
+    if not v:
+        return None
+    try:
+        d = datetime.fromisoformat(v.replace("Z", "+00:00"))
+    except ValueError:
+        raise HTTPException(422, f"Invalid {label}")
+    if d.tzinfo is None:
+        d = d.replace(tzinfo=timezone.utc)
+    return d.astimezone(timezone.utc).isoformat()
+
+def _live_window(t: dict):
+    if not t.get("live_start_at"):
+        return None, None
+    start = datetime.fromisoformat(t["live_start_at"])
+    return start, start + timedelta(minutes=t.get("live_window_minutes") or 120)
+
+@api.get("/live-mocks")
+async def live_mocks():
+    now = datetime.now(timezone.utc)
+    rows = await db.tests.find({"is_published": True, "live_start_at": {"$ne": None}}, {"_id": 0, "question_ids": 0}).to_list(500)
+    out = []
+    for t in rows:
+        start, end = _live_window(t)
+        if now > end:
+            continue
+        s = await db.test_series.find_one({"id": t["series_id"]}, {"_id": 0, "id": 1, "title": 1, "is_free": 1, "price": 1})
+        out.append({"id": t["id"], "title": t["title"], "series": s, "live_start_at": start.isoformat(), "live_end_at": end.isoformat(),
+                    "status": "live" if now >= start else "upcoming", "duration_minutes": t.get("duration_minutes"),
+                    "total_marks": t.get("total_marks"), "sections": [x["name"] for x in t.get("sections") or []]})
+    out.sort(key=lambda x: x["live_start_at"])
+    return {"server_now": now.isoformat(), "mocks": out}
+
 async def _prepare_test(data: dict) -> dict:
     """Normalise sections, flatten question_ids, compute duration (sectional) and total marks."""
+    data["live_start_at"] = _parse_dt(data.get("live_start_at"), "live start time")
+    data["live_window_minutes"] = max(1, int(data.get("live_window_minutes") or 120))
     secs = [s for s in data.get("sections") or [] if s["question_ids"]]
     if secs:
         seen = set()
@@ -598,6 +659,9 @@ async def start_attempt(test_id: str, user=Depends(get_current_user)):
     t = await db.tests.find_one({"id": test_id}, {"_id": 0})
     if not t:
         raise HTTPException(404, "Test not found")
+    live_start, _end = _live_window(t)
+    if live_start and datetime.now(timezone.utc) < live_start:
+        raise HTTPException(403, "This live mock hasn't opened yet")
     series = await db.test_series.find_one({"id": t["series_id"]}, {"_id": 0})
     if series and not await has_access(user["id"], "test_series", series["id"]):
         raise HTTPException(403, "Purchase required")
@@ -640,7 +704,7 @@ async def get_attempt(attempt_id: str, user=Depends(get_current_user)):
         return {"id": a["id"], "status": a["status"]}
     # Sectional mode only reveals the current section's questions
     qids = a["sections"][a["current_section"]]["question_ids"] if a.get("sectional_timing") else a["question_ids"]
-    qs = await db.questions.find({"id": {"$in": qids}}, {"_id": 0, "correct": 0, "explanation": 0}).to_list(5000)
+    qs = await db.questions.find({"id": {"$in": qids}}, {"_id": 0, "correct": 0, "explanation": 0, "explanation_hi": 0}).to_list(5000)
     qmap = {q["id"]: q for q in qs}
     a["questions"] = [qmap[qid] for qid in qids if qid in qmap]
     t = await db.tests.find_one({"id": a["test_id"]}, {"_id": 0, "title": 1})
@@ -1061,6 +1125,19 @@ async def create_order(data: OrderIn, user=Depends(get_current_user)):
         order.pop("_id", None)
         return order
     amount = int(item["price"])
+    coupon_code, discount = None, 0
+    if data.coupon_code:
+        c, d = await _apply_coupon(data.coupon_code, user["id"], data.item_id, amount)
+        final = _final_amount(amount, d)
+        coupon_code, discount, amount = c["code"], amount - final, final
+    if amount == 0:
+        order = {"id": gen_id(), "user_id": user["id"], "item_type": data.item_type, "item_id": data.item_id,
+                 "amount": 0, "currency": "INR", "status": "paid", "created_at": now_iso(), "razorpay_order_id": None,
+                 "item_title": item.get("title"), "coupon_code": coupon_code, "discount": discount, "original_amount": discount}
+        await db.orders.insert_one(order)
+        await _grant_entitlement(user["id"], data.item_type, data.item_id, order["id"])
+        order.pop("_id", None)
+        return order
     oid = gen_id()
     receipt = oid[:40]
     rzp_order = None
@@ -1078,6 +1155,7 @@ async def create_order(data: OrderIn, user=Depends(get_current_user)):
              "amount": amount, "currency": "INR", "status": "created", "created_at": now_iso(),
              "razorpay_order_id": rzp_order["id"] if rzp_order else None, "receipt": receipt,
              "item_title": item.get("title")}
+    order.update(coupon_code=coupon_code, discount=discount, original_amount=amount + discount)
     await db.orders.insert_one(order)
     order.pop("_id", None)
     return {**order, "razorpay_key": rzp_key, "demo_mode": not bool(rzp_client)}
@@ -1092,6 +1170,130 @@ async def _grant_entitlement(user_id: str, item_type: str, item_id: str, order_i
     exists = await db.entitlements.find_one({"user_id": user_id, "item_type": item_type, "item_id": item_id, "order_id": order_id})
     if not exists:
         await db.entitlements.insert_one(doc)
+        order = await db.orders.find_one({"id": order_id}, {"_id": 0, "coupon_code": 1})
+        if order and order.get("coupon_code"):
+            await db.coupons.update_one({"code": order["coupon_code"]}, {"$inc": {"used_count": 1}})
+
+# ---- Coupons ----
+async def _apply_coupon(code: str, user_id: str, item_id: str, amount: int):
+    c = await db.coupons.find_one({"code": code.strip().upper()}, {"_id": 0})
+    if not c or not c.get("active"):
+        raise HTTPException(400, "Invalid or inactive coupon")
+    if c.get("valid_until") and datetime.now(timezone.utc) > datetime.fromisoformat(c["valid_until"]):
+        raise HTTPException(400, "This coupon has expired")
+    if c.get("max_uses") and c.get("used_count", 0) >= c["max_uses"]:
+        raise HTTPException(400, "This coupon has reached its usage limit")
+    if c.get("item_ids") and item_id not in c["item_ids"]:
+        raise HTTPException(400, "This coupon isn't valid for this item")
+    if amount <= 0:
+        raise HTTPException(400, "Coupons apply to paid items only")
+    if await db.orders.find_one({"user_id": user_id, "coupon_code": c["code"], "status": "paid"}):
+        raise HTTPException(400, "You've already used this coupon")
+    d = round(amount * c["value"] / 100) if c["discount_type"] == "percent" else int(round(c["value"] * 100))
+    return c, min(d, amount)
+
+def _final_amount(amount: int, discount: int) -> int:
+    f = amount - discount
+    return 0 if f <= 0 else max(f, 100)  # Razorpay minimum is ₹1
+
+@api.post("/coupons/validate")
+async def validate_coupon(data: CouponCheckIn, user=Depends(get_current_user)):
+    item = await _get_item(data.item_type, data.item_id)
+    amount = 0 if item.get("is_free") else int(item.get("price", 0))
+    c, d = await _apply_coupon(data.code, user["id"], data.item_id, amount)
+    final = _final_amount(amount, d)
+    return {"code": c["code"], "original": amount, "discount": amount - final, "final_amount": final, "description": c.get("description", "")}
+
+def _coupon_doc(data: CouponIn) -> dict:
+    code = re.sub(r"\s+", "", data.code).upper()
+    if not re.fullmatch(r"[A-Z0-9_-]{3,30}", code):
+        raise HTTPException(422, "Code must be 3-30 letters, numbers, - or _")
+    if data.discount_type == "percent" and not 0 < data.value <= 100:
+        raise HTTPException(422, "Percent discount must be between 1 and 100")
+    if data.discount_type == "flat" and data.value <= 0:
+        raise HTTPException(422, "Flat discount must be more than ₹0")
+    if data.max_uses is not None and data.max_uses < 1:
+        raise HTTPException(422, "Max uses must be at least 1")
+    return {**data.model_dump(), "code": code, "valid_until": _parse_dt(data.valid_until, "expiry date")}
+
+@api.get("/admin/coupons")
+async def list_coupons(_=Depends(require_roles("admin"))):
+    return await db.coupons.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+
+@api.post("/admin/coupons")
+async def create_coupon(data: CouponIn, user=Depends(require_roles("admin"))):
+    doc = _coupon_doc(data)
+    if await db.coupons.find_one({"code": doc["code"]}):
+        raise HTTPException(400, "A coupon with this code already exists")
+    doc.update(id=gen_id(), used_count=0, created_by=user["id"], created_at=now_iso())
+    await db.coupons.insert_one(dict(doc))
+    return doc
+
+@api.put("/admin/coupons/{coupon_id}")
+async def update_coupon(coupon_id: str, data: CouponIn, _=Depends(require_roles("admin"))):
+    doc = _coupon_doc(data)
+    if await db.coupons.find_one({"code": doc["code"], "id": {"$ne": coupon_id}}):
+        raise HTTPException(400, "A coupon with this code already exists")
+    res = await db.coupons.update_one({"id": coupon_id}, {"$set": {**doc, "updated_at": now_iso()}})
+    if not res.matched_count:
+        raise HTTPException(404, "Coupon not found")
+    return await db.coupons.find_one({"id": coupon_id}, {"_id": 0})
+
+@api.delete("/admin/coupons/{coupon_id}")
+async def delete_coupon(coupon_id: str, _=Depends(require_roles("admin"))):
+    res = await db.coupons.delete_one({"id": coupon_id})
+    if not res.deleted_count:
+        raise HTTPException(404, "Coupon not found")
+    return {"ok": True}
+
+# ---- Weak topic report ----
+@api.get("/my/weak-topics")
+async def weak_topics(user=Depends(get_current_user)):
+    results = await db.test_results.find({"user_id": user["id"], "sections.0": {"$exists": True}},
+                                         {"_id": 0, "sections": 1, "created_at": 1}).sort("created_at", 1).to_list(1000)
+    topics = {}
+    for r in results:
+        for s in r["sections"]:
+            t = topics.setdefault(s["name"].strip().lower(), {"name": s["name"], "attempts": 0, "score": 0.0, "total": 0.0,
+                                                              "correct": 0, "wrong": 0, "skipped": 0, "history": []})
+            t["attempts"] += 1
+            t["score"] += s["score"]
+            t["total"] += s["total_marks"]
+            t["correct"] += s["correct"]
+            t["wrong"] += s["wrong"]
+            t["skipped"] += s["unattempted"]
+            t["history"].append(round(max(0, s["score"]) / s["total_marks"] * 100, 1) if s["total_marks"] else 0)
+    attempted = set(await db.test_attempts.distinct("test_id", {"user_id": user["id"]}))
+    owned = set(await db.entitlements.distinct("item_id", {"user_id": user["id"], "item_type": "test_series"}))
+    series = {s["id"]: s async for s in db.test_series.find({}, {"_id": 0, "id": 1, "title": 1, "is_free": 1})}
+    tests = await db.tests.find({"is_published": True, "sections.0": {"$exists": True}},
+                                {"_id": 0, "id": 1, "title": 1, "series_id": 1, "sections.name": 1, "live_start_at": 1}).to_list(1000)
+    now = datetime.now(timezone.utc)
+    is_admin = user["role"] in ("admin", "super_admin")
+    out = []
+    for key, t in topics.items():
+        pct = round(max(0, t["score"]) / t["total"] * 100, 1) if t["total"] else 0
+        h = t["history"]
+        item = {"name": t["name"], "attempts": t["attempts"], "score_pct": pct, "correct": t["correct"], "wrong": t["wrong"],
+                "skipped": t["skipped"], "accuracy": round(t["correct"] / max(1, t["correct"] + t["wrong"]) * 100, 1),
+                "trend": round(h[-1] - h[-2], 1) if len(h) > 1 else None,
+                "level": "weak" if pct < 50 else "average" if pct < 75 else "strong", "suggestions": []}
+        if item["level"] != "strong":
+            cands = []
+            for x in tests:
+                if not any(s["name"].strip().lower() == key for s in x.get("sections") or []):
+                    continue
+                if x.get("live_start_at") and datetime.fromisoformat(x["live_start_at"]) > now:
+                    continue
+                s = series.get(x["series_id"]) or {}
+                access = is_admin or bool(s.get("is_free")) or x["series_id"] in owned
+                cands.append({"test_id": x["id"], "title": x["title"], "series_id": x["series_id"], "series_title": s.get("title"),
+                              "attempted": x["id"] in attempted, "has_access": access})
+            cands.sort(key=lambda c: (c["attempted"], not c["has_access"]))
+            item["suggestions"] = cands[:3]
+        out.append(item)
+    out.sort(key=lambda x: x["score_pct"])
+    return {"topics": out, "results_analyzed": len(results)}
 
 @api.post("/orders/verify")
 async def verify_payment(data: VerifyPaymentIn, user=Depends(get_current_user)):
@@ -1325,6 +1527,7 @@ async def startup():
     if not await db.users.find_one({"email": "admin@lms.com"}):
         await _seed_data()
     await _seed_sectional_mocks()
+    await _seed_extras()
 
 async def _seed_data():
     log.info("Seeding sample data...")
@@ -1499,6 +1702,37 @@ async def _seed_sectional_mocks():
                 "sections": [{"name": n, "duration_minutes": 5 if timed else None, "question_ids": by_section[n]} for n in names]}
         await db.tests.insert_one({"id": gen_id(), **(await _prepare_test(data)), "created_at": now_iso()})
     log.info("Seeded sectional mocks")
+
+HINDI_SEED = {
+    "A shopkeeper sells an item for ₹550 at 10% profit. What is the cost price?": ("एक दुकानदार 10% लाभ पर एक वस्तु ₹550 में बेचता है। क्रय मूल्य क्या है?", None, "क्रय मूल्य = 550 / 1.1 = 500"),
+    "The average of 5 numbers is 24. If one number is removed, the average becomes 25. The removed number is:": ("5 संख्याओं का औसत 24 है। एक संख्या हटाने पर औसत 25 हो जाता है। हटाई गई संख्या है:", None, "कुल 120 − (4 × 25) = 20"),
+    "A can finish a work in 12 days and B in 18 days. Together they finish it in:": ("A किसी काम को 12 दिनों में और B 18 दिनों में पूरा कर सकता है। दोनों मिलकर इसे कितने दिनों में पूरा करेंगे?", ["6.8 दिन", "7.2 दिन", "7.5 दिन", "8 दिन"], "1/12 + 1/18 = 5/36 → 36/5 = 7.2 दिन"),
+    "Simple interest on ₹4000 at 5% per annum for 3 years is:": ("₹4000 पर 5% वार्षिक दर से 3 वर्ष का साधारण ब्याज है:", None, "साधारण ब्याज = 4000 × 5 × 3 / 100 = 600"),
+    "Who is known as the 'Father of the Indian Constitution'?": ("'भारतीय संविधान के जनक' के रूप में किसे जाना जाता है?", ["महात्मा गांधी", "बी. आर. अम्बेडकर", "जवाहरलाल नेहरू", "सरदार पटेल"], "डॉ. बी. आर. अम्बेडकर प्रारूप समिति के अध्यक्ष थे"),
+    "The Reserve Bank of India was established in:": ("भारतीय रिज़र्व बैंक की स्थापना किस वर्ष हुई थी?", None, "RBI की स्थापना 1 अप्रैल 1935 को हुई"),
+    "Which planet is known as the Red Planet?": ("किस ग्रह को लाल ग्रह कहा जाता है?", ["शुक्र", "बृहस्पति", "मंगल", "शनि"], "आयरन ऑक्साइड के कारण मंगल लाल दिखाई देता है"),
+    "The headquarters of the International Monetary Fund is in:": ("अंतर्राष्ट्रीय मुद्रा कोष (IMF) का मुख्यालय कहाँ है?", ["जिनेवा", "न्यूयॉर्क", "पेरिस", "वाशिंगटन, डी.सी."], "IMF का मुख्यालय वाशिंगटन, डी.सी. में है"),
+}
+LIVE_TITLE = "All-India Live Mock · SSC CGL #1"
+
+async def _seed_extras():
+    """Idempotent demo data: Hindi translations, a scheduled live mock, a welcome coupon."""
+    for text, (hi, opts_hi, expl_hi) in HINDI_SEED.items():
+        q = await db.questions.find_one({"text": text, "text_hi": None}, {"_id": 0, "id": 1, "options": 1})
+        if q:
+            opts = [{**o, "text_hi": opts_hi[i] if opts_hi else None} for i, o in enumerate(q["options"])]
+            await db.questions.update_one({"id": q["id"]}, {"$set": {"text_hi": hi, "explanation_hi": expl_hi, "options": opts}})
+    if not await db.tests.find_one({"title": LIVE_TITLE}):
+        src = await db.tests.find_one({"title": "SSC CGL Tier I · Sectional Mock 1"}, {"_id": 0})
+        if src:
+            start = (datetime.now(timezone.utc) + timedelta(days=2)).replace(minute=0, second=0, microsecond=0)
+            await db.tests.insert_one({**src, "id": gen_id(), "title": LIVE_TITLE, "live_start_at": start.isoformat(),
+                                       "live_window_minutes": 120, "created_at": now_iso(),
+                                       "instructions": "All-India live mock. Opens for everyone at the scheduled time."})
+    if not await db.coupons.find_one({"code": "WELCOME20"}):
+        await db.coupons.insert_one({"id": gen_id(), "code": "WELCOME20", "discount_type": "percent", "value": 20, "max_uses": None,
+                                     "valid_until": None, "item_ids": [], "active": True, "used_count": 0,
+                                     "description": "20% off your first purchase", "created_at": now_iso()})
 
 @app.on_event("shutdown")
 async def shutdown():

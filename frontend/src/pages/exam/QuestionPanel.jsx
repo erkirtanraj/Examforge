@@ -1,10 +1,11 @@
 import React from "react";
 import { Flag, ChevronLeft, ChevronRight, ChevronsRight } from "lucide-react";
 import { Button } from "../../components/ui/button";
+import { pick } from "../../components/LangToggle";
 
 const ghost = "border-gray-700 bg-transparent text-gray-200 hover:bg-gray-800";
 
-export default function QuestionPanel({ q, number, total, answer, isMarked, saving, onToggle, onNumeric, onMark, onClear, onPrev, onNext, nextIsSection, isFirst, isLast }) {
+export default function QuestionPanel({ q, lang, number, total, answer, isMarked, saving, onToggle, onNumeric, onMark, onClear, onPrev, onNext, nextIsSection, isFirst, isLast }) {
   const sel = (key) => (Array.isArray(answer) ? answer.includes(key) : answer === key);
   return (
     <div className="max-w-3xl mx-auto">
@@ -18,7 +19,7 @@ export default function QuestionPanel({ q, number, total, answer, isMarked, savi
         </div>
       </div>
       <div className="card-elev p-5 sm:p-6">
-        <div className="text-white text-base sm:text-lg leading-relaxed" data-testid="exam-question-text">{q.text}</div>
+        <div className="text-white text-base sm:text-lg leading-relaxed" data-testid="exam-question-text">{pick(lang, q.text, q.text_hi)}</div>
         {q.image_url && <img src={q.image_url} alt="" className="mt-4 rounded-md max-h-80" />}
         {q.type === "numerical" ? (
           <input type="number" step="any" value={answer ?? ""} onChange={(e) => onNumeric(e.target.value)} placeholder="Enter your answer"
@@ -28,7 +29,7 @@ export default function QuestionPanel({ q, number, total, answer, isMarked, savi
             {q.options?.map((o) => (
               <button key={o.key} onClick={() => onToggle(o.key)} data-testid={`option-${o.key}`}
                       className={`w-full text-left p-3 rounded-md border transition-colors ${sel(o.key) ? "border-blue-500 bg-blue-500/10 text-white" : "border-gray-800 hover:border-gray-600 text-gray-300"}`}>
-                <span className="mono-font font-semibold mr-3">{o.key}.</span>{o.text}
+                <span className="mono-font font-semibold mr-3">{o.key}.</span>{pick(lang, o.text, o.text_hi)}
               </button>
             ))}
           </div>

@@ -3,7 +3,7 @@ import { NavLink, Outlet, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
 import {
   LayoutDashboard, FileQuestion, Layers, PlayCircle, BookOpen, FileText, Tags, Users,
-  ShoppingBag, Settings, GraduationCap, LogOut, ExternalLink, Menu, X,
+  ShoppingBag, Settings, GraduationCap, LogOut, ExternalLink, Menu, X, Ticket,
 } from "lucide-react";
 
 const MENU = [
@@ -25,6 +25,7 @@ const MENU = [
     items: [
       { to: "/admin/users", label: "Users", icon: Users },
       { to: "/admin/orders", label: "Orders", icon: ShoppingBag },
+      { to: "/admin/coupons", label: "Coupons", icon: Ticket },
     ],
   },
   { group: "System", adminOnly: true, items: [{ to: "/admin/settings", label: "Settings", icon: Settings }] },

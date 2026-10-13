@@ -29,6 +29,7 @@ import Categories from "./pages/admin/Categories";
 import Users from "./pages/admin/Users";
 import Orders from "./pages/admin/Orders";
 import Settings from "./pages/admin/Settings";
+import Coupons from "./pages/admin/Coupons";
 
 const ADMIN_ROLES = ["admin", "super_admin"];
 const STAFF_ROLES = [...ADMIN_ROLES, "teacher"];
@@ -73,6 +74,7 @@ function AppRouter() {
           <Route path="categories" element={adminOnly(<Categories />)} />
           <Route path="users" element={adminOnly(<Users />)} />
           <Route path="orders" element={adminOnly(<Orders />)} />
+          <Route path="coupons" element={adminOnly(<Coupons />)} />
           <Route path="settings" element={adminOnly(<Settings />)} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
