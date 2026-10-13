@@ -4,7 +4,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
 CACHE_TTL = 60
-CACHEABLE = {"/api/site", "/api/categories", "/api/subjects", "/api/test-series", "/api/courses", "/api/study-materials"}
+CACHEABLE = {"/api/site", "/api/categories", "/api/subjects", "/api/test-series", "/api/courses"}
 NO_INVALIDATE = ("/api/auth", "/api/attempts", "/api/payments", "/api/webhooks", "/api/my", "/api/coupons", "/api/tests/", "/api/announcement/", "/api/lessons/")
 
 
