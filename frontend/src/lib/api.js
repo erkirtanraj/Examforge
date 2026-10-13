@@ -20,3 +20,5 @@ api.interceptors.response.use(
     return Promise.reject(err);
   }
 );
+
+export const assetUrl = (u) => (u && u.startsWith("/api/") ? `${BACKEND_URL}${u}` : u);

@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import { NavLink, Outlet, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
-import { useSite } from "../../lib/site";
+import BrandLogo from "../BrandLogo";
 import {
   LayoutDashboard, FileQuestion, Layers, PlayCircle, BookOpen, FileText, Tags, Users,
-  ShoppingBag, Settings, GraduationCap, LogOut, ExternalLink, Menu, X, Ticket, PanelTop, Home, ScrollText,
+  ShoppingBag, Settings, LogOut, ExternalLink, Menu, X, Ticket, PanelTop, Home, ScrollText,
 } from "lucide-react";
 
 const MENU = [
@@ -68,16 +68,12 @@ export default function AdminLayout() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
-  const { site } = useSite();
   const isAdmin = ["admin", "super_admin"].includes(user?.role);
 
   const shell = (
     <>
       <Link to="/" className="flex items-center gap-2 px-5 h-16 border-b border-gray-800 shrink-0" data-testid="admin-brand">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center">
-          <GraduationCap className="w-4 h-4 text-white" />
-        </div>
-        <span className="heading-font font-bold text-white">{site?.header?.brand_name}</span>
+        <BrandLogo small />
         <span className="ml-auto text-[10px] mono-font text-cyan-300 border border-cyan-500/30 rounded px-1.5 py-0.5">
           {isAdmin ? "ADMIN" : "TEACHER"}
         </span>
@@ -120,7 +116,7 @@ export default function AdminLayout() {
           </button>
           <span className="heading-font font-semibold text-white">Admin Panel</span>
         </div>
-        <main className="px-4 sm:px-8 py-8 max-w-7xl"><Outlet /></main>
+        <main className="px-4 sm:px-8 py-8 max-w-7xl min-w-0"><Suspense fallback={<div className="text-gray-400 text-sm">Loading…</div>}><Outlet /></Suspense></main>
       </div>
     </div>
   );

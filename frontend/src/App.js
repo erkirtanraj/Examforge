@@ -1,41 +1,41 @@
-import React, { useEffect } from "react";
+import React, { useEffect, lazy, Suspense } from "react";
 import "./App.css";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./lib/auth";
 import { Toaster } from "./components/ui/sonner";
 import { SiteProvider } from "./lib/site";
 import Footer from "./components/Footer";
-import LegalPage from "./pages/LegalPage";
-import SiteSettings from "./pages/admin/SiteSettings";
-import HomeSettings from "./pages/admin/HomeSettings";
-import LegalPages from "./pages/admin/LegalPages";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import TestSeriesCatalog from "./pages/TestSeriesCatalog";
-import TestSeriesDetail from "./pages/TestSeriesDetail";
-import ExamAttempt from "./pages/exam/ExamPage";
-import Leaderboards from "./pages/Leaderboards";
-import Leaderboard from "./pages/Leaderboard";
-import TestResult from "./pages/TestResult";
-import StudentDashboard from "./pages/StudentDashboard";
-import CourseCatalog from "./pages/CourseCatalog";
-import CourseDetail from "./pages/CourseDetail";
-import StudyMaterials from "./pages/StudyMaterials";
 import AuthCallback from "./pages/AuthCallback";
-import AdminLayout from "./components/admin/AdminLayout";
-import Overview from "./pages/admin/Overview";
-import Questions from "./pages/admin/Questions";
-import Series from "./pages/admin/Series";
-import Tests from "./pages/admin/Tests";
-import Courses from "./pages/admin/Courses";
-import Materials from "./pages/admin/Materials";
-import Categories from "./pages/admin/Categories";
-import Users from "./pages/admin/Users";
-import Orders from "./pages/admin/Orders";
-import Settings from "./pages/admin/Settings";
-import Coupons from "./pages/admin/Coupons";
+const LegalPage = lazy(() => import("./pages/LegalPage"));
+const SiteSettings = lazy(() => import("./pages/admin/SiteSettings"));
+const HomeSettings = lazy(() => import("./pages/admin/HomeSettings"));
+const LegalPages = lazy(() => import("./pages/admin/LegalPages"));
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const TestSeriesCatalog = lazy(() => import("./pages/TestSeriesCatalog"));
+const TestSeriesDetail = lazy(() => import("./pages/TestSeriesDetail"));
+const ExamAttempt = lazy(() => import("./pages/exam/ExamPage"));
+const Leaderboards = lazy(() => import("./pages/Leaderboards"));
+const Leaderboard = lazy(() => import("./pages/Leaderboard"));
+const TestResult = lazy(() => import("./pages/TestResult"));
+const StudentDashboard = lazy(() => import("./pages/StudentDashboard"));
+const CourseCatalog = lazy(() => import("./pages/CourseCatalog"));
+const CourseDetail = lazy(() => import("./pages/CourseDetail"));
+const StudyMaterials = lazy(() => import("./pages/StudyMaterials"));
+const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
+const Overview = lazy(() => import("./pages/admin/Overview"));
+const Questions = lazy(() => import("./pages/admin/Questions"));
+const Series = lazy(() => import("./pages/admin/Series"));
+const Tests = lazy(() => import("./pages/admin/Tests"));
+const Courses = lazy(() => import("./pages/admin/Courses"));
+const Materials = lazy(() => import("./pages/admin/Materials"));
+const Categories = lazy(() => import("./pages/admin/Categories"));
+const Users = lazy(() => import("./pages/admin/Users"));
+const Orders = lazy(() => import("./pages/admin/Orders"));
+const Settings = lazy(() => import("./pages/admin/Settings"));
+const Coupons = lazy(() => import("./pages/admin/Coupons"));
 
 const ADMIN_ROLES = ["admin", "super_admin"];
 const STAFF_ROLES = [...ADMIN_ROLES, "teacher"];
@@ -50,12 +50,19 @@ function Protected({ children, roles }) {
 
 const adminOnly = (el) => <Protected roles={ADMIN_ROLES}>{el}</Protected>;
 
+const PageLoader = () => (
+  <div className="min-h-[60vh] flex items-center justify-center" data-testid="page-loader">
+    <div className="w-8 h-8 rounded-full border-2 border-gray-700 border-t-cyan-400 animate-spin" />
+  </div>
+);
+
 function AppRouter() {
   const location = useLocation();
   if (location.hash?.includes("session_id=")) return <AuthCallback />;
   return (
     <>
       <Navbar />
+      <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
@@ -89,6 +96,7 @@ function AppRouter() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
       <Footer />
     </>
   );

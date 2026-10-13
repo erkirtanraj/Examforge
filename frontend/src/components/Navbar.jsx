@@ -3,8 +3,9 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { useSite } from "../lib/site";
 import SmartLink from "./SmartLink";
+import BrandLogo from "./BrandLogo";
 import { Button } from "./ui/button";
-import { GraduationCap, LayoutDashboard, LogOut, Shield, Menu, X } from "lucide-react";
+import { LayoutDashboard, LogOut, Shield, Menu, X } from "lucide-react";
 import { useState } from "react";
 
 export default function Navbar() {
@@ -23,11 +24,8 @@ export default function Navbar() {
   return (
     <header className="glass-nav sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2" data-testid="nav-logo">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center">
-            <GraduationCap className="w-5 h-5 text-white" />
-          </div>
-          <span className="heading-font text-xl font-bold text-white" data-testid="nav-brand-name">{header?.brand_name}</span>
+        <Link to="/" className="flex items-center gap-2 min-w-0" data-testid="nav-logo">
+          <BrandLogo />
         </Link>
 
         <nav className="hidden md:flex items-center gap-6">

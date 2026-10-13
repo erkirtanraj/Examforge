@@ -1,5 +1,6 @@
 """Admin-managed site content: header, footer, home page and legal pages."""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Literal, Optional
 from datetime import datetime, timezone
@@ -15,6 +16,9 @@ class LinkItem(BaseModel):
 
 class HeaderIn(BaseModel):
     brand_name: str = "ExamForge"
+    logo_url: str = ""
+    favicon_url: str = ""
+    show_brand_name: bool = True
     nav_links: List[LinkItem] = []
     cta_label: str = "Get Started"
     cta_url: str = "/register"
@@ -69,7 +73,7 @@ class PageIn(BaseModel):
 
 DEFAULTS = {
     "header": {
-        "brand_name": "ExamForge",
+        "brand_name": "ExamForge", "logo_url": "", "favicon_url": "", "show_brand_name": True,
         "nav_links": [{"label": "Test Series", "url": "/test-series"}, {"label": "Courses", "url": "/courses"},
                       {"label": "Study Materials", "url": "/study-materials"}, {"label": "Leaderboard", "url": "/leaderboard"}],
         "cta_label": "Get Started", "cta_url": "/register",
@@ -106,6 +110,13 @@ SEED_PAGES = [
 ]
 
 
+UPLOAD_DIR = Path(__file__).parent / "uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
+IMAGE_TYPES = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif",
+               "image/svg+xml": "svg", "image/x-icon": "ico", "image/vnd.microsoft.icon": "ico"}
+MAX_UPLOAD = 2 * 1024 * 1024
+
+
 def _now():
     return datetime.now(timezone.utc).isoformat()
 
@@ -135,7 +146,9 @@ def build_site_router(db, require_roles):
 
     async def content():
         doc = await db.settings.find_one({"key": "site"}, {"_id": 0}) or {}
-        return {k: doc.get(k, v) for k, v in DEFAULTS.items()}
+        out = {k: doc.get(k, v) for k, v in DEFAULTS.items()}
+        out["header"] = {**DEFAULTS["header"], **out["header"]}
+        return out
 
     async def metrics():
         return {
@@ -169,6 +182,18 @@ def build_site_router(db, require_roles):
     @r.put("/admin/site/home")
     async def save_home(data: HomeIn, user=admin):
         return await save(data.model_dump(), user)
+
+    @r.post("/admin/uploads")
+    async def upload_image(file: UploadFile = File(...), _=admin):
+        ext = IMAGE_TYPES.get(file.content_type)
+        if not ext:
+            raise HTTPException(400, "Only PNG, JPG, WEBP, GIF, SVG or ICO images are allowed")
+        data = await file.read(MAX_UPLOAD + 1)
+        if len(data) > MAX_UPLOAD:
+            raise HTTPException(400, "Image must be 2 MB or smaller")
+        name = f"{uuid.uuid4().hex}.{ext}"
+        (UPLOAD_DIR / name).write_bytes(data)
+        return {"url": f"/api/uploads/{name}"}
 
     @r.get("/pages/{slug}")
     async def public_page(slug: str):

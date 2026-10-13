@@ -53,7 +53,7 @@ export default function CourseDetail() {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <div className="card-elev p-0 overflow-hidden">
             <div className="aspect-video bg-black">

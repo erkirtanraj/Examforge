@@ -1,5 +1,7 @@
 import React from "react";
-import { Loader2, PanelTop, PanelBottom } from "lucide-react";
+import { Loader2, PanelTop, PanelBottom, Palette } from "lucide-react";
+import ImageField from "../../components/admin/ImageField";
+import { Switch } from "../../components/ui/switch";
 import { PageHeader, Field, inputCls } from "../../components/admin/kit";
 import ListEditor from "../../components/admin/ListEditor";
 import useSiteForm from "../../components/admin/useSiteForm";
@@ -16,11 +18,24 @@ export default function SiteSettings() {
   const { header, footer } = form;
   return (
     <div className="max-w-3xl">
-      <PageHeader eyebrow="System" title="Site Settings" desc="Header and footer shown on every public page. Use /page/<slug> to link legal pages." />
+      <PageHeader eyebrow="System" title="Site Settings" desc="Logo, header and footer shown on every page. Use /page/<slug> to link legal pages." />
       <form onSubmit={save} className="space-y-6">
+        <section className="card-elev p-6 space-y-5" data-testid="branding-settings">
+          <div className="flex items-center gap-2 heading-font font-semibold text-white"><Palette className="w-5 h-5 text-cyan-300" />Logo &amp; branding</div>
+          <Input label="Brand name" value={header.brand_name} onChange={(v) => set("header", { brand_name: v })} testid="site-brand-name" />
+          <ImageField label="Logo" value={header.logo_url} onChange={(v) => set("header", { logo_url: v })} testid="logo" hint="PNG, SVG or WEBP, up to 2 MB. Transparent background, about 36 px tall works best." />
+          <ImageField label="Browser tab icon (favicon)" value={header.favicon_url} onChange={(v) => set("header", { favicon_url: v })} testid="favicon" hint="Square image (ICO, PNG or SVG), 32×32 or 64×64." />
+          <div className="flex items-center justify-between gap-4 rounded-md border border-gray-800 px-4 py-3">
+            <div>
+              <div className="text-sm text-white">Show brand name next to logo</div>
+              <div className="text-xs text-gray-500">Turn off if your logo already contains the name.</div>
+            </div>
+            <Switch checked={header.show_brand_name} onCheckedChange={(v) => set("header", { show_brand_name: v })} data-testid="show-brand-name-switch" />
+          </div>
+        </section>
+
         <section className="card-elev p-6 space-y-4" data-testid="header-settings">
           <div className="flex items-center gap-2 heading-font font-semibold text-white"><PanelTop className="w-5 h-5 text-cyan-300" />Header</div>
-          <Input label="Brand name" value={header.brand_name} onChange={(v) => set("header", { brand_name: v })} testid="site-brand-name" />
           <Field label="Menu links" />
           <ListEditor items={header.nav_links} onChange={(v) => set("header", { nav_links: v })} fields={LINK_FIELDS} blank={{ label: "", url: "/" }} testid="nav-links-editor" max={8} addLabel="Add menu link" />
           <div className="grid sm:grid-cols-2 gap-4">

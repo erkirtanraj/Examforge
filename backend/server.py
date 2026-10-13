@@ -16,7 +16,10 @@ import bcrypt, secrets, asyncio, requests, bisect, csv, io, re
 import openpyxl
 from fastapi import UploadFile, File, Form
 import razorpay
-from site_routes import build_site_router, seed_pages
+from site_routes import build_site_router, seed_pages, UPLOAD_DIR
+from perf import PublicCacheMiddleware
+from fastapi.staticfiles import StaticFiles
+from starlette.middleware.gzip import GZipMiddleware
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -1742,6 +1745,9 @@ async def shutdown():
 
 app.include_router(api)
 app.include_router(build_site_router(db, require_roles))
+app.mount("/api/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
+app.add_middleware(PublicCacheMiddleware)
+app.add_middleware(GZipMiddleware, minimum_size=800)
 
 app.add_middleware(
     CORSMiddleware,

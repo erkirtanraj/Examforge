@@ -20,7 +20,7 @@ export default function QuestionPanel({ q, lang, number, total, answer, isMarked
       </div>
       <div className="card-elev p-5 sm:p-6">
         <div className="text-white text-base sm:text-lg leading-relaxed" data-testid="exam-question-text">{pick(lang, q.text, q.text_hi)}</div>
-        {q.image_url && <img src={q.image_url} alt="" className="mt-4 rounded-md max-h-80" />}
+        {q.image_url && <img loading="lazy" decoding="async" src={q.image_url} alt="" className="mt-4 rounded-md max-h-80" />}
         {q.type === "numerical" ? (
           <input type="number" step="any" value={answer ?? ""} onChange={(e) => onNumeric(e.target.value)} placeholder="Enter your answer"
                  className="mt-5 w-full sm:w-64 px-3 py-2 rounded-md bg-[#0b1120] border border-gray-700 text-white mono-font focus:outline-none focus:border-blue-500" data-testid="numeric-answer" />

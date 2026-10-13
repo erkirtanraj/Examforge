@@ -24,7 +24,7 @@ export default function Courses() {
     <div>
       <PageHeader eyebrow="Content" title="Course builder" desc="Courses → sections → lessons. Pick a course to edit its curriculum."
                   action={<NewButton onClick={ed.openNew} label="New course" testid="new-course-btn" />} />
-      <div className="grid lg:grid-cols-[320px_1fr] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
         <div className="space-y-2" data-testid="course-list">
           {items.map((c) => (
             <div key={c.id} onClick={() => setSelected(c.id)} data-testid={`course-item-${c.id}`}

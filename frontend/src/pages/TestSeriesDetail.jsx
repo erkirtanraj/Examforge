@@ -81,10 +81,10 @@ export default function TestSeriesDetail() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
-      <div className="grid lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 min-w-0">
           <div className="aspect-video rounded-xl overflow-hidden bg-gray-800 border border-gray-800 mb-6">
-            {series.thumbnail && <img src={series.thumbnail} alt="" className="w-full h-full object-cover" />}
+            {series.thumbnail && <img loading="lazy" decoding="async" src={series.thumbnail} alt="" className="w-full h-full object-cover" />}
           </div>
           <div className="flex items-center gap-2 mb-3">
             {series.is_free
@@ -98,11 +98,11 @@ export default function TestSeriesDetail() {
           <h2 className="heading-font text-xl font-semibold text-white mt-10 mb-4">Included tests</h2>
           <div className="space-y-3">
             {series.tests?.map((t, i) => (
-              <div key={t.id} className="card-elev p-4 flex items-center justify-between">
-                <div>
+              <div key={t.id} className="card-elev p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="min-w-0">
                   <div className="text-xs text-gray-400 mono-font">TEST #{i + 1}</div>
                   <div className="text-white font-medium">{t.title}</div>
-                  <div className="text-xs text-gray-500 flex gap-4 mt-1">
+                  <div className="text-xs text-gray-500 flex flex-wrap gap-x-4 gap-y-1 mt-1">
                     <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {t.duration_minutes} min</span>
                     {t.live_start_at && <span className="flex items-center gap-1 text-rose-300 mono-font" data-testid={`live-badge-${t.id}`}>● LIVE {fmtDateTime(t.live_start_at)}</span>}
                     {t.sections?.length > 1 && <span className="flex items-center gap-1" data-testid={`test-sections-${t.id}`}><Layers className="w-3 h-3" /> {t.sections.map((s) => s.name).join(" · ")}{t.sectional_timing ? " (timed)" : ""}</span>}
@@ -117,7 +117,7 @@ export default function TestSeriesDetail() {
         </div>
 
         <aside>
-          <div className="card-elev p-6 sticky top-24">
+          <div className="card-elev p-6 lg:sticky lg:top-24">
             <div className="heading-font text-3xl font-bold text-white" data-testid="series-price">
               {series.is_free ? "Free" : coupon ? (
                 <span className="flex items-baseline gap-3">₹{(coupon.final_amount / 100).toFixed(0)}{" "}

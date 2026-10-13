@@ -16,7 +16,7 @@ export default function CourseCatalog() {
         {list.map((c) => (
           <Link key={c.id} to={`/courses/${c.id}`} data-testid={`course-card-${c.id}`} className="card-elev overflow-hidden hover:border-blue-500/40">
             <div className="aspect-video bg-gray-800">
-              {c.thumbnail && <img src={c.thumbnail} alt="" className="w-full h-full object-cover" />}
+              {c.thumbnail && <img loading="lazy" decoding="async" src={c.thumbnail} alt="" className="w-full h-full object-cover" />}
             </div>
             <div className="p-5">
               <div className="heading-font text-lg font-semibold text-white">{c.title}</div>
