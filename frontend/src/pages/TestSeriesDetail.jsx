@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api } from "../lib/api";
+import { api, assetUrl } from "../lib/api";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { useAuth } from "../lib/auth";
@@ -86,7 +86,7 @@ export default function TestSeriesDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 min-w-0">
           <div className="aspect-video rounded-xl overflow-hidden bg-gray-800 border border-gray-800 mb-6">
-            {series.thumbnail && <img loading="lazy" decoding="async" src={series.thumbnail} alt="" className="w-full h-full object-cover" />}
+            {series.thumbnail && <img loading="lazy" decoding="async" src={assetUrl(series.thumbnail)} alt="" className="w-full h-full object-cover" />}
           </div>
           <div className="flex items-center gap-2 mb-3">
             {series.is_free

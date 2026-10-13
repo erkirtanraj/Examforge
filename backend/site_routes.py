@@ -271,7 +271,7 @@ def build_site_router(db, require_roles):
         return rows
 
     @r.post("/admin/uploads")
-    async def upload_image(file: UploadFile = File(...), _=admin):
+    async def upload_image(file: UploadFile = File(...), _=Depends(require_roles("admin", "teacher"))):
         ext = IMAGE_TYPES.get(file.content_type)
         if not ext:
             raise HTTPException(400, "Only PNG, JPG, WEBP, GIF, SVG or ICO images are allowed")

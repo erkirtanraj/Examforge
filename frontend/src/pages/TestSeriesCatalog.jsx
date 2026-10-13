@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { api } from "../lib/api";
+import { api, assetUrl } from "../lib/api";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 
@@ -44,7 +44,7 @@ export default function TestSeriesCatalog() {
         {list.map((s) => (
           <Link key={s.id} to={`/test-series/${s.id}`} data-testid={`series-card-${s.id}`} className="card-elev overflow-hidden hover:border-blue-500/40">
             <div className="aspect-video bg-gray-800 overflow-hidden">
-              {s.thumbnail && <img loading="lazy" decoding="async" src={s.thumbnail} alt="" className="w-full h-full object-cover" />}
+              {s.thumbnail && <img loading="lazy" decoding="async" src={assetUrl(s.thumbnail)} alt="" className="w-full h-full object-cover" />}
             </div>
             <div className="p-5">
               <div className="flex items-center gap-2 mb-3">

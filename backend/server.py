@@ -205,6 +205,7 @@ class StudyMaterialIn(BaseModel):
     description: str = ""
     category_id: Optional[str] = None
     file_url: Optional[str] = None
+    thumbnail: Optional[str] = None
     is_free: bool = True
     price: int = 0
 

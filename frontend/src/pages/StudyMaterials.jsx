@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { api } from "../lib/api";
+import { api, assetUrl } from "../lib/api";
 import { FileText, Download, Lock } from "lucide-react";
 
 export default function StudyMaterials() {
@@ -15,10 +15,14 @@ export default function StudyMaterials() {
       </div>
       <div className="grid md:grid-cols-2 gap-4" data-testid="materials-grid">
         {list.map((m) => (
-          <div key={m.id} className="card-elev p-5 flex items-start gap-4">
-            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 flex items-center justify-center shrink-0">
-              <FileText className="w-6 h-6 text-cyan-300" />
-            </div>
+          <div key={m.id} className="card-elev p-5 flex flex-col sm:flex-row items-start gap-4" data-testid={`material-card-${m.id}`}>
+            {m.thumbnail ? (
+              <img loading="lazy" decoding="async" src={assetUrl(m.thumbnail)} alt="" className="w-full sm:w-32 aspect-video rounded-lg object-cover border border-gray-800 shrink-0" data-testid={`material-thumb-${m.id}`} />
+            ) : (
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 flex items-center justify-center shrink-0">
+                <FileText className="w-6 h-6 text-cyan-300" />
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <div className="heading-font text-base font-semibold text-white">{m.title}</div>
               <div className="text-sm text-gray-400 mt-1">{m.description}</div>

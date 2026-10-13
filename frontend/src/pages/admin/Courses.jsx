@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import ImageField from "../../components/admin/ImageField";
 import { PageHeader, Pill, RowActions, NewButton, FormDialog, Field, inputCls, CategorySelect, rupees, useResource, useEditor, useCategories } from "../../components/admin/kit";
 import CourseEditor from "./CourseEditor";
 
@@ -50,7 +51,7 @@ export default function Courses() {
         <Field label="Title"><input required value={f.title} onChange={(e) => ed.set("title", e.target.value)} className={inputCls} data-testid="course-title-input" /></Field>
         <Field label="Description"><textarea rows={3} value={f.description} onChange={(e) => ed.set("description", e.target.value)} className={inputCls} data-testid="course-description-input" /></Field>
         <Field label="Category"><CategorySelect value={f.category_id} onChange={(v) => ed.set("category_id", v)} categories={cats} testid="course-category-input" /></Field>
-        <Field label="Thumbnail URL"><input value={f.thumbnail} onChange={(e) => ed.set("thumbnail", e.target.value)} className={inputCls} data-testid="course-thumbnail-input" /></Field>
+        <ImageField label="Thumbnail" wide value={f.thumbnail} onChange={(v) => ed.set("thumbnail", v)} testid="course-thumbnail" hint="Recommended 16:9, e.g. 1280×720. PNG, JPG or WEBP up to 2 MB." />
         <label className="flex items-center gap-2 text-sm text-gray-300">
           <input type="checkbox" checked={f.is_free} onChange={(e) => ed.set("is_free", e.target.checked)} data-testid="course-free-input" /> Free course
         </label>

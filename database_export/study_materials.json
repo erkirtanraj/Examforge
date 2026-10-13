@@ -11,7 +11,9 @@
     "is_free": true,
     "price": 0,
     "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
-    "created_at": "2026-10-13T13:20:35.239466+00:00"
+    "created_at": "2026-10-13T13:20:35.239466+00:00",
+    "thumbnail": null,
+    "updated_at": "2026-10-13T17:36:02.206681+00:00"
   },
   {
     "_id": {

@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import ImageField from "../../components/admin/ImageField";
 import { PageHeader, DataTable, Pill, RowActions, NewButton, FormDialog, Field, inputCls, CategorySelect, rupees, useResource, useEditor, useCategories } from "../../components/admin/kit";
 
 const BLANK = { title: "", description: "", category_id: "", thumbnail: "", language: "en", is_free: true, price_rupees: 0, validity_days: 365 };
@@ -47,7 +48,7 @@ export default function Series() {
             </select>
           </Field>
         </div>
-        <Field label="Thumbnail URL"><input value={f.thumbnail} onChange={(e) => ed.set("thumbnail", e.target.value)} className={inputCls} data-testid="series-thumbnail-input" /></Field>
+        <ImageField label="Thumbnail" wide value={f.thumbnail} onChange={(v) => ed.set("thumbnail", v)} testid="series-thumbnail" hint="Recommended 16:9, e.g. 1280×720. PNG, JPG or WEBP up to 2 MB." />
         <label className="flex items-center gap-2 text-sm text-gray-300">
           <input type="checkbox" checked={f.is_free} onChange={(e) => ed.set("is_free", e.target.checked)} data-testid="series-free-input" /> Free series
         </label>

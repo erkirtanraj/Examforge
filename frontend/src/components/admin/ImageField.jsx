@@ -5,7 +5,7 @@ import { api, assetUrl } from "../../lib/api";
 import { Field, inputCls, errMsg } from "./kit";
 
 // Image setting: upload to the server or paste a URL, with live preview.
-export default function ImageField({ label, value, onChange, testid, hint }) {
+export default function ImageField({ label, value, onChange, testid, hint, wide = false }) {
   const ref = useRef(null);
   const [busy, setBusy] = useState(false);
   const upload = async (file) => {
@@ -24,8 +24,8 @@ export default function ImageField({ label, value, onChange, testid, hint }) {
   return (
     <Field label={label}>
       <div className="mt-1.5 flex flex-col sm:flex-row gap-3 sm:items-center">
-        <div className="w-20 h-20 shrink-0 rounded-md border border-gray-800 bg-[#0b1120] flex items-center justify-center overflow-hidden" data-testid={`${testid}-preview`}>
-          {value ? <img src={assetUrl(value)} alt="" className="max-w-full max-h-full object-contain" /> : <ImageIcon className="w-6 h-6 text-gray-600" />}
+        <div className={`${wide ? "w-40 h-[90px]" : "w-20 h-20"} shrink-0 rounded-md border border-gray-800 bg-[#0b1120] flex items-center justify-center overflow-hidden`} data-testid={`${testid}-preview`}>
+          {value ? <img src={assetUrl(value)} alt="" className={wide ? "w-full h-full object-cover" : "max-w-full max-h-full object-contain"} /> : <ImageIcon className="w-6 h-6 text-gray-600" />}
         </div>
         <div className="flex-1 min-w-0 space-y-2">
           <input value={value} onChange={(e) => onChange(e.target.value)} placeholder="https://… or upload a file" className={`${inputCls} mt-0 mono-font text-xs`} data-testid={`${testid}-url`} />

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../lib/api";
+import { api, assetUrl } from "../lib/api";
 import { Button } from "../components/ui/button";
 import LiveMockBanner from "../components/LiveMockBanner";
 import SmartLink from "../components/SmartLink";
@@ -145,7 +145,7 @@ export default function Home() {
           {featured.map((s) => (
             <Link key={s.id} to={`/test-series/${s.id}`} data-testid={`featured-series-${s.id}`} className="card-elev overflow-hidden hover:border-blue-500/40">
               <div className="aspect-video overflow-hidden bg-gray-800">
-                {s.thumbnail && <img loading="lazy" decoding="async" src={s.thumbnail} alt="" className="w-full h-full object-cover" />}
+                {s.thumbnail && <img loading="lazy" decoding="async" src={assetUrl(s.thumbnail)} alt="" className="w-full h-full object-cover" />}
               </div>
               <div className="p-4">
                 <div className="flex items-center gap-2 mb-2">
