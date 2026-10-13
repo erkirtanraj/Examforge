@@ -56,7 +56,8 @@ export default function Register() {
           </div>
           <div>
             <Label className="text-gray-300">Password</Label>
-            <Input data-testid="register-password" type="password" required minLength={6} value={form.password}
+            <p className="text-xs text-gray-500 mt-1">Use at least 10 characters (72 UTF-8 bytes maximum).</p>
+            <Input data-testid="register-password" type="password" required minLength={10} maxLength={72} value={form.password}
                    onChange={(e) => setForm({ ...form, password: e.target.value })}
                    className="mt-1 bg-[#0b1120] border-gray-800 text-white" />
           </div>
