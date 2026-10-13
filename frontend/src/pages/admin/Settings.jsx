@@ -16,7 +16,7 @@ export default function Settings() {
 
   const apply = (d) => {
     setS(d);
-    setForm({ razorpay_key_id: d.razorpay_key_id || "", razorpay_key_secret: "", razorpay_webhook_secret: d.razorpay_webhook_secret || "" });
+    setForm({ razorpay_key_id: d.razorpay_key_id || "", razorpay_key_secret: "", razorpay_webhook_secret: "" });
   };
   useEffect(() => { api.get("/admin/settings/payment").then((r) => apply(r.data)); }, []);
 
@@ -61,9 +61,9 @@ export default function Settings() {
               <button type="button" onClick={() => copy(webhookUrl)} className="px-3 rounded-md border border-gray-800 text-gray-300 hover:bg-gray-800" data-testid="copy-webhook-url"><Copy className="w-4 h-4" /></button>
             </div>
           </Field>
-          <Field label="Webhook secret">
+          <Field label={s.has_webhook_secret ? "Webhook secret (saved — leave blank to keep)" : "Webhook secret"}>
             <div className="flex gap-2 mt-1.5">
-              <input value={form.razorpay_webhook_secret} onChange={(e) => setForm({ ...form, razorpay_webhook_secret: e.target.value })} placeholder="Generate one or paste your own" className={`${inputCls} mt-0 mono-font text-xs`} data-testid="webhook-secret-input" />
+              <input value={form.razorpay_webhook_secret} onChange={(e) => setForm({ ...form, razorpay_webhook_secret: e.target.value })} placeholder={s.has_webhook_secret ? "A secret is saved. Leave blank to keep or generate a replacement." : "Generate one or paste your own"} className={`${inputCls} mt-0 mono-font text-xs`} data-testid="webhook-secret-input" />
               <button type="button" onClick={() => form.razorpay_webhook_secret && copy(form.razorpay_webhook_secret)} className="px-3 rounded-md border border-gray-800 text-gray-300 hover:bg-gray-800" data-testid="copy-webhook-secret"><Copy className="w-4 h-4" /></button>
               <Button type="button" onClick={generate} disabled={busy === "gen"} variant="outline" className="border-gray-700 bg-transparent text-gray-200 hover:bg-gray-800 whitespace-nowrap" data-testid="generate-webhook-secret">
                 {busy === "gen" ? <Loader2 className="w-4 h-4 animate-spin" /> : <><RefreshCw className="w-4 h-4 mr-1" />Generate</>}
