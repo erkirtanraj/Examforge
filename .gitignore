@@ -89,3 +89,7 @@ android-sdk/
 credentials.json
 *.key
 .credentials
+
+# Never commit database exports, backups, user records or secret-bearing dumps
+database_export/*
+!database_export/README.md
