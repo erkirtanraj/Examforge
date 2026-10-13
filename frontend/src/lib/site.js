@@ -1,8 +1,15 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { api, assetUrl } from "./api";
+import { applyTheme } from "./theme";
 
 const KEY = "site_cache_v1";
-const cached = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } };
+const cached = () => {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (s?.theme) applyTheme(s.theme);
+    return s;
+  } catch { return null; }
+};
 
 function setFavicon(url) {
   let link = document.querySelector("link[rel='icon']");
@@ -20,6 +27,7 @@ export function SiteProvider({ children }) {
     if (!site?.header) return;
     document.title = site.header.brand_name;
     setFavicon(site.header.favicon_url);
+    applyTheme(site.theme);
   }, [site]);
   return <SiteCtx.Provider value={{ site, reload }}>{children}</SiteCtx.Provider>;
 }

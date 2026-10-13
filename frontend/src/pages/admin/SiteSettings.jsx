@@ -3,6 +3,7 @@ import { Loader2, PanelTop, PanelBottom, Palette, Megaphone, ArrowRight } from "
 import { Link } from "react-router-dom";
 import { useSite } from "../../lib/site";
 import ImageField from "../../components/admin/ImageField";
+import BrandColors from "../../components/admin/BrandColors";
 import { Switch } from "../../components/ui/switch";
 import { PageHeader, Field, inputCls } from "../../components/admin/kit";
 import ListEditor from "../../components/admin/ListEditor";
@@ -16,13 +17,13 @@ const Input = ({ label, value, onChange, testid }) => (
 
 export default function SiteSettings() {
   const { site } = useSite();
-  const { form, set, save, saving } = useSiteForm("/admin/site/layout", ["header", "footer"]);
+  const { form, set, save, saving } = useSiteForm("/admin/site/layout", ["header", "footer", "theme"]);
   if (!form) return <div className="text-gray-400 text-sm">Loading…</div>;
   const { header, footer } = form;
   const ann = site?.announcement;
   return (
     <div className="max-w-3xl">
-      <PageHeader eyebrow="System" title="Site Settings" desc="Logo, header and footer shown on every page. Use /page/<slug> to link legal pages." />
+      <PageHeader eyebrow="System" title="Site Settings" desc="Logo, colours, header and footer shown on every page. Use /page/<slug> to link legal pages." />
       <form onSubmit={save} className="space-y-6">
         <section className="card-elev p-6 space-y-5" data-testid="branding-settings">
           <div className="flex items-center gap-2 heading-font font-semibold text-white"><Palette className="w-5 h-5 text-cyan-300" />Logo &amp; branding</div>
@@ -37,6 +38,8 @@ export default function SiteSettings() {
             <Switch checked={header.show_brand_name} onCheckedChange={(v) => set("header", { show_brand_name: v })} data-testid="show-brand-name-switch" />
           </div>
         </section>
+
+        <BrandColors theme={form.theme} onChange={(v) => set("theme", v)} />
 
         <section className="card-elev p-6 space-y-4" data-testid="header-settings">
           <div className="flex items-center gap-2 heading-font font-semibold text-white"><PanelTop className="w-5 h-5 text-cyan-300" />Header</div>

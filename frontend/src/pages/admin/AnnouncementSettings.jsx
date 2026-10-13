@@ -5,6 +5,7 @@ import { api } from "../../lib/api";
 import { useSite } from "../../lib/site";
 import { PageHeader, Field, Pill, inputCls, errMsg } from "../../components/admin/kit";
 import { AnnouncementView } from "../../components/AnnouncementBar";
+import AnnouncementStats from "../../components/admin/AnnouncementStats";
 import { Switch } from "../../components/ui/switch";
 import { Button } from "../../components/ui/button";
 
@@ -85,6 +86,7 @@ export default function AnnouncementSettings() {
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save announcement"}
         </Button>
       </form>
+      <div className="mt-10"><AnnouncementStats refreshKey={f.version} /></div>
     </div>
   );
 }

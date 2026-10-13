@@ -5,7 +5,7 @@ from starlette.responses import Response
 
 CACHE_TTL = 60
 CACHEABLE = {"/api/site", "/api/categories", "/api/subjects", "/api/test-series", "/api/courses", "/api/study-materials"}
-NO_INVALIDATE = ("/api/auth", "/api/attempts", "/api/payments", "/api/webhooks", "/api/my", "/api/coupons", "/api/tests/")
+NO_INVALIDATE = ("/api/auth", "/api/attempts", "/api/payments", "/api/webhooks", "/api/my", "/api/coupons", "/api/tests/", "/api/announcement/")
 
 
 class PublicCacheMiddleware(BaseHTTPMiddleware):

@@ -4,6 +4,7 @@ import { api } from "../lib/api";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { useAuth } from "../lib/auth";
+import { useSite } from "../lib/site";
 import { Clock, FileText, Lock, Play, ShieldCheck, Trophy, Layers } from "lucide-react";
 import { toast } from "sonner";
 import CouponBox from "../components/CouponBox";
@@ -11,6 +12,7 @@ import TestStartButton from "../components/TestStartButton";
 import { fmtDateTime } from "../components/Countdown";
 
 export default function TestSeriesDetail() {
+  const { site } = useSite();
   const { id } = useParams();
   const [series, setSeries] = useState(null);
   const [entitlements, setEntitlements] = useState([]);
@@ -65,7 +67,7 @@ export default function TestSeriesDetail() {
             setEntitlements(r.data);
           },
           prefill: { email: user.email, name: user.name },
-          theme: { color: "#2563EB" },
+          theme: { color: site?.theme?.primary || "#2563EB" },
         };
         const rzp = new window.Razorpay(options);
         rzp.open();

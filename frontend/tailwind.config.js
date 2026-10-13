@@ -1,4 +1,7 @@
 /** @type {import('tailwindcss').Config} */
+const shades = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
+const themed = (name) => Object.fromEntries(shades.map((s) => [s, `rgb(var(--c-${name}-${s}) / <alpha-value>)`]));
+
 module.exports = {
     // `overline` is a Tailwind utility; without this an app's own eyebrow-label class draws a line above the text.
     blocklist: ["overline"],
@@ -15,6 +18,8 @@ module.exports = {
         sm: 'calc(var(--radius) - 4px)'
       },
       colors: {
+        blue: themed("blue"),
+        cyan: themed("cyan"),
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {
