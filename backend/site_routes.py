@@ -64,6 +64,17 @@ class LayoutIn(BaseModel):
     footer: FooterIn
 
 
+class AnnouncementIn(BaseModel):
+    enabled: bool = False
+    message: str = ""
+    style: Literal["info", "offer", "live", "warning"] = "offer"
+    cta_label: str = ""
+    cta_url: str = ""
+    coupon_code: str = ""
+    starts_at: Optional[str] = None
+    ends_at: Optional[str] = None
+
+
 class PageIn(BaseModel):
     title: str = Field(min_length=1)
     slug: str = Field(min_length=1)
@@ -94,6 +105,8 @@ DEFAULTS = {
         {"icon": "TrendingUp", "title": "Deep Analytics", "desc": "Topic-wise accuracy, time per question, strengths & weaknesses — know where to focus."},
         {"icon": "Award", "title": "Verified Content", "desc": "Questions crafted and reviewed by top faculty for SSC, UPSC, Banking, Railways and NEET/JEE."},
     ],
+    "announcement": {"enabled": False, "message": "", "style": "offer", "cta_label": "", "cta_url": "",
+                     "coupon_code": "", "starts_at": None, "ends_at": None, "version": ""},
     "footer": {
         "tagline": "Precision test series and courses for India's competitive exams.",
         "copyright": "© 2026 ExamForge · All rights reserved.",
@@ -127,6 +140,18 @@ def _compact(n: int) -> str:
     if n >= 1_000:
         return f"{n / 1_000:.1f}".rstrip("0").rstrip(".") + "K+"
     return str(n)
+
+
+def _dt(v: str) -> datetime:
+    d = datetime.fromisoformat(v.replace("Z", "+00:00"))
+    return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
+
+
+def _ann_active(a: dict) -> bool:
+    if not a.get("enabled") or not a.get("message"):
+        return False
+    now = datetime.now(timezone.utc)
+    return not ((a.get("starts_at") and _dt(a["starts_at"]) > now) or (a.get("ends_at") and _dt(a["ends_at"]) <= now))
 
 
 def _slugify(s: str) -> str:
@@ -168,6 +193,7 @@ def build_site_router(db, require_roles):
         c, m = await content(), await metrics()
         for s in c["stats"]:
             s["display"] = s["override"] or (_compact(m.get(s["source"], 0)) if s["source"] != "manual" else "")
+        c["announcement"] = c["announcement"] if _ann_active(c["announcement"]) else None
         c["hero"] = {**c["hero"], "badge_text": c["hero"]["badge_text"].replace("{live}", f"{m['live']:,}")}
         return {**c, "metrics": m}
 
@@ -182,6 +208,15 @@ def build_site_router(db, require_roles):
     @r.put("/admin/site/home")
     async def save_home(data: HomeIn, user=admin):
         return await save(data.model_dump(), user)
+
+    @r.put("/admin/site/announcement")
+    async def save_announcement(data: AnnouncementIn, user=admin):
+        if data.enabled and not data.message.strip():
+            raise HTTPException(400, "Message is required to show the announcement")
+        if data.starts_at and data.ends_at and _dt(data.ends_at) <= _dt(data.starts_at):
+            raise HTTPException(400, "End time must be after start time")
+        ann = {**data.model_dump(), "coupon_code": data.coupon_code.strip().upper(), "version": uuid.uuid4().hex[:12]}
+        return await save({"announcement": ann}, user)
 
     @r.post("/admin/uploads")
     async def upload_image(file: UploadFile = File(...), _=admin):

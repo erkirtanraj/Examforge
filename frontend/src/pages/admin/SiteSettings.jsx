@@ -1,5 +1,7 @@
 import React from "react";
-import { Loader2, PanelTop, PanelBottom, Palette } from "lucide-react";
+import { Loader2, PanelTop, PanelBottom, Palette, Megaphone, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useSite } from "../../lib/site";
 import ImageField from "../../components/admin/ImageField";
 import { Switch } from "../../components/ui/switch";
 import { PageHeader, Field, inputCls } from "../../components/admin/kit";
@@ -13,9 +15,11 @@ const Input = ({ label, value, onChange, testid }) => (
 );
 
 export default function SiteSettings() {
+  const { site } = useSite();
   const { form, set, save, saving } = useSiteForm("/admin/site/layout", ["header", "footer"]);
   if (!form) return <div className="text-gray-400 text-sm">Loading…</div>;
   const { header, footer } = form;
+  const ann = site?.announcement;
   return (
     <div className="max-w-3xl">
       <PageHeader eyebrow="System" title="Site Settings" desc="Logo, header and footer shown on every page. Use /page/<slug> to link legal pages." />
@@ -51,6 +55,17 @@ export default function SiteSettings() {
           <Field label="Footer links" />
           <ListEditor items={footer.links} onChange={(v) => set("footer", { links: v })} fields={LINK_FIELDS} blank={{ label: "", url: "/page/" }} testid="footer-links-editor" max={12} addLabel="Add footer link" />
         </section>
+
+        <Link to="/admin/announcement" className="card-elev p-5 flex items-center justify-between gap-4 hover:border-blue-500/40 transition-colors" data-testid="announcement-shortcut">
+          <div className="flex items-center gap-3 min-w-0">
+            <Megaphone className="w-5 h-5 text-cyan-300 shrink-0" />
+            <div className="min-w-0">
+              <div className="heading-font font-semibold text-white">Announcement Bar</div>
+              <div className="text-xs text-gray-400 truncate">{ann ? `Live: ${ann.message}` : "Not showing — set up a banner for mocks or coupons"}</div>
+            </div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-gray-400 shrink-0" />
+        </Link>
 
         <Button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700" data-testid="save-site-settings">
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save site settings"}

@@ -6,12 +6,14 @@ import { Toaster } from "./components/ui/sonner";
 import { SiteProvider } from "./lib/site";
 import Footer from "./components/Footer";
 import Navbar from "./components/Navbar";
+import AnnouncementBar from "./components/AnnouncementBar";
 import Home from "./pages/Home";
 import AuthCallback from "./pages/AuthCallback";
 const LegalPage = lazy(() => import("./pages/LegalPage"));
 const SiteSettings = lazy(() => import("./pages/admin/SiteSettings"));
 const HomeSettings = lazy(() => import("./pages/admin/HomeSettings"));
 const LegalPages = lazy(() => import("./pages/admin/LegalPages"));
+const AnnouncementSettings = lazy(() => import("./pages/admin/AnnouncementSettings"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
 const TestSeriesCatalog = lazy(() => import("./pages/TestSeriesCatalog"));
@@ -61,6 +63,7 @@ function AppRouter() {
   if (location.hash?.includes("session_id=")) return <AuthCallback />;
   return (
     <>
+      {location.pathname === "/" && <AnnouncementBar />}
       <Navbar />
       <Suspense fallback={<PageLoader />}>
       <Routes>
@@ -93,6 +96,7 @@ function AppRouter() {
           <Route path="site" element={adminOnly(<SiteSettings />)} />
           <Route path="home" element={adminOnly(<HomeSettings />)} />
           <Route path="pages" element={adminOnly(<LegalPages />)} />
+          <Route path="announcement" element={adminOnly(<AnnouncementSettings />)} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

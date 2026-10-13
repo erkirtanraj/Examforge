@@ -4,7 +4,7 @@ import { useAuth } from "../../lib/auth";
 import BrandLogo from "../BrandLogo";
 import {
   LayoutDashboard, FileQuestion, Layers, PlayCircle, BookOpen, FileText, Tags, Users,
-  ShoppingBag, Settings, LogOut, ExternalLink, Menu, X, Ticket, PanelTop, Home, ScrollText,
+  ShoppingBag, Settings, LogOut, ExternalLink, Menu, X, Ticket, PanelTop, Home, ScrollText, Megaphone,
 } from "lucide-react";
 
 const MENU = [
@@ -35,6 +35,7 @@ const MENU = [
     items: [
       { to: "/admin/site", label: "Site Settings", icon: PanelTop },
       { to: "/admin/home", label: "Home Page", icon: Home },
+      { to: "/admin/announcement", label: "Announcement Bar", icon: Megaphone },
       { to: "/admin/pages", label: "Legal Pages", icon: ScrollText },
       { to: "/admin/settings", label: "Payment Settings", icon: Settings },
     ],
