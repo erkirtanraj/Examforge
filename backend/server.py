@@ -1292,7 +1292,7 @@ async def complete_lesson(lesson_id: str, user=Depends(get_current_user)):
     section = await db.course_sections.find_one({"id": lesson["section_id"]}, {"_id": 0, "course_id": 1})
     if not section:
         raise HTTPException(404, "Lesson not found")
-    if not await has_access(user["id"], "course", section["course_id"]):
+    if user.get("role") not in ("admin", "super_admin", "teacher") and not await has_access(user["id"], "course", section["course_id"]):
         raise HTTPException(403, "Enrollment required")
     await db.lesson_progress.update_one(
         {"user_id": user["id"], "lesson_id": lesson_id},
@@ -1306,7 +1306,7 @@ async def course_progress(course_id: str, user=Depends(get_current_user)):
     course = await db.courses.find_one({"id": course_id}, {"_id": 0, "id": 1})
     if not course:
         raise HTTPException(404, "Course not found")
-    if not await has_access(user["id"], "course", course_id):
+    if user.get("role") not in ("admin", "super_admin", "teacher") and not await has_access(user["id"], "course", course_id):
         raise HTTPException(403, "Enrollment required")
     sections = await db.course_sections.find({"course_id": course_id}, {"_id": 0, "id": 1}).to_list(500)
     sec_ids = [s["id"] for s in sections]
@@ -1333,7 +1333,7 @@ async def save_position(lesson_id: str, data: PositionIn, user=Depends(get_curre
     section = await db.course_sections.find_one({"id": lesson["section_id"]}, {"_id": 0, "course_id": 1})
     if not section:
         raise HTTPException(404, "Lesson not found")
-    if not await has_access(user["id"], "course", section["course_id"]):
+    if user.get("role") not in ("admin", "super_admin", "teacher") and not await has_access(user["id"], "course", section["course_id"]):
         raise HTTPException(403, "Enrollment required")
     if data.duration and data.position > data.duration:
         raise HTTPException(422, "Position cannot exceed duration")
