@@ -52,7 +52,7 @@
       "cta_label": "Get Started",
       "cta_url": "/register"
     },
-    "updated_at": "2026-10-13T16:22:02.738289+00:00",
+    "updated_at": "2026-10-13T16:30:57.238387+00:00",
     "updated_by": "62b27c5c-912e-49db-a1e4-e37839d700eb",
     "features": [
       {
@@ -97,6 +97,17 @@
         "source": "tests",
         "override": ""
       }
-    ]
+    ],
+    "announcement": {
+      "enabled": true,
+      "message": "Get 20% off your first test series",
+      "style": "offer",
+      "cta_label": "Explore",
+      "cta_url": "/test-series",
+      "coupon_code": "WELCOME20",
+      "starts_at": null,
+      "ends_at": null,
+      "version": "986f68cfa669"
+    }
   }
 ]
