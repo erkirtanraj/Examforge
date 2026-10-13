@@ -33,7 +33,7 @@ def main() -> int:
     parser.add_argument(
         "--reset-existing",
         action="store_true",
-        help="Rotate the password of an existing admin/super_admin and invalidate existing sessions",
+        help="Rotate the password of an existing account and invalidate its sessions",
     )
     args = parser.parse_args()
 
@@ -73,10 +73,7 @@ def main() -> int:
             existing = users.find_one({"email": email}, {"id": 1, "role": 1})
             if existing:
                 if not args.reset_existing:
-                    print("ERROR: This email already exists. Pass --reset-existing only for an existing admin.", file=sys.stderr)
-                    return 2
-                if existing.get("role") not in ("admin", "super_admin"):
-                    print("ERROR: --reset-existing only works for an admin/super_admin account.", file=sys.stderr)
+                    print("ERROR: This email already exists. Use --reset-existing to rotate its password.", file=sys.stderr)
                     return 2
                 users.update_one(
                     {"id": existing["id"]},
@@ -87,7 +84,7 @@ def main() -> int:
                         "updated_at": now,
                     }},
                 )
-                print("Administrator password rotated. Existing sessions have been invalidated.")
+                print("Account password rotated. Existing sessions have been invalidated.")
                 return 0
 
             if args.reset_existing:
