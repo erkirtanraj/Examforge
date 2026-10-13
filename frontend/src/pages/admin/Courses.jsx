@@ -3,7 +3,7 @@ import ImageField from "../../components/admin/ImageField";
 import { PageHeader, Pill, RowActions, NewButton, FormDialog, Field, inputCls, CategorySelect, rupees, useResource, useEditor, useCategories } from "../../components/admin/kit";
 import CourseEditor from "./CourseEditor";
 
-const BLANK = { title: "", description: "", category_id: "", thumbnail: "", is_free: true, price_rupees: 0 };
+const BLANK = { title: "", description: "", category_id: "", thumbnail: "", is_free: true, price_rupees: 0, certificate_enabled: false };
 
 export default function Courses() {
   const { items, loading, save, remove } = useResource("/courses", "courses");
@@ -18,7 +18,7 @@ export default function Courses() {
 
   const submit = () => ed.run(() => save(ed.editingId, {
     title: f.title, description: f.description, category_id: f.category_id || null, thumbnail: f.thumbnail || null,
-    is_free: f.is_free, price: f.is_free ? 0 : Math.round(Number(f.price_rupees) * 100),
+    certificate_enabled: !!f.certificate_enabled, is_free: f.is_free, price: f.is_free ? 0 : Math.round(Number(f.price_rupees) * 100),
   }, "/courses"));
 
   return (
@@ -33,7 +33,7 @@ export default function Courses() {
               <div className="flex items-start gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white font-medium truncate">{c.title}</div>
-                  <div className="mt-1.5">{c.is_free ? <Pill tone="emerald">FREE</Pill> : <Pill tone="amber">{rupees(c.price)}</Pill>}</div>
+                  <div className="mt-1.5 flex gap-1">{c.is_free ? <Pill tone="emerald">FREE</Pill> : <Pill tone="amber">{rupees(c.price)}</Pill>}{c.certificate_enabled && <Pill tone="blue">CERTIFICATE</Pill>}</div>
                 </div>
                 <div onClick={(e) => e.stopPropagation()}>
                   <RowActions id={c.id} onDelete={() => remove(c.id)}
@@ -54,6 +54,10 @@ export default function Courses() {
         <ImageField label="Thumbnail" wide value={f.thumbnail} onChange={(v) => ed.set("thumbnail", v)} testid="course-thumbnail" hint="Recommended 16:9, e.g. 1280×720. PNG, JPG or WEBP up to 2 MB." />
         <label className="flex items-center gap-2 text-sm text-gray-300">
           <input type="checkbox" checked={f.is_free} onChange={(e) => ed.set("is_free", e.target.checked)} data-testid="course-free-input" /> Free course
+        </label>
+        <label className="flex items-start gap-2 text-sm text-gray-300">
+          <input type="checkbox" className="mt-0.5" checked={!!f.certificate_enabled} onChange={(e) => ed.set("certificate_enabled", e.target.checked)} data-testid="course-certificate-input" />
+          <span>Offer completion certificate <span className="block text-xs text-gray-500">Students who finish every lesson can download a PDF certificate with a verifiable ID.</span></span>
         </label>
         <Field label="Price (₹)"><input type="number" min="0" disabled={f.is_free} value={f.price_rupees} onChange={(e) => ed.set("price_rupees", e.target.value)} className={`${inputCls} disabled:opacity-40`} data-testid="course-price-input" /></Field>
       </FormDialog>

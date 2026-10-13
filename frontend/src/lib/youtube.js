@@ -22,11 +22,13 @@ export function youtubeId(url = "") {
 }
 
 // Chrome-less YouTube player: exposes state + play/pause/seek, polls current time.
-export function useYouTube(videoId, { onEnded } = {}) {
+export function useYouTube(videoId, { onEnded, rate = 1 } = {}) {
   const host = useRef(null);
   const player = useRef(null);
   const endedRef = useRef(onEnded);
   endedRef.current = onEnded;
+  const rateRef = useRef(rate);
+  rateRef.current = rate;
   const [state, setState] = useState({ ready: false, playing: false, started: false, ended: false, time: 0, duration: 0 });
 
   useEffect(() => {
@@ -41,7 +43,7 @@ export function useYouTube(videoId, { onEnded } = {}) {
         videoId, host: "https://www.youtube-nocookie.com", width: "100%", height: "100%",
         playerVars: { controls: 0, modestbranding: 1, rel: 0, disablekb: 1, fs: 0, iv_load_policy: 3, playsinline: 1, cc_load_policy: 0 },
         events: {
-          onReady: (e) => setState((s) => ({ ...s, ready: true, duration: e.target.getDuration() || 0 })),
+          onReady: (e) => { e.target.setPlaybackRate(rateRef.current); setState((s) => ({ ...s, ready: true, duration: e.target.getDuration() || 0 })); },
           onStateChange: (e) => {
             const S = YT.PlayerState;
             if (e.data === S.PLAYING) setState((s) => ({ ...s, playing: true, started: true, ended: false, duration: player.current.getDuration() }));
@@ -64,6 +66,8 @@ export function useYouTube(videoId, { onEnded } = {}) {
     play: () => player.current?.playVideo(),
     pause: () => player.current?.pauseVideo(),
     toggle: () => (state.playing ? player.current?.pauseVideo() : player.current?.playVideo()),
+    setRate: (r) => player.current?.setPlaybackRate?.(r),
+    current: () => ({ time: player.current?.getCurrentTime?.() || 0, duration: player.current?.getDuration?.() || 0 }),
     seek: (sec) => { player.current?.seekTo(sec, true); setState((s) => ({ ...s, time: sec, ended: false })); },
   };
   return { host, state, controls };

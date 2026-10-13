@@ -13,6 +13,7 @@ const LegalPage = lazy(() => import("./pages/LegalPage"));
 const SiteSettings = lazy(() => import("./pages/admin/SiteSettings"));
 const HomeSettings = lazy(() => import("./pages/admin/HomeSettings"));
 const LegalPages = lazy(() => import("./pages/admin/LegalPages"));
+const VerifyCertificate = lazy(() => import("./pages/VerifyCertificate"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const EmailSettings = lazy(() => import("./pages/admin/EmailSettings"));
@@ -80,6 +81,8 @@ function AppRouter() {
         <Route path="/courses/:id" element={<Protected><CourseDetail /></Protected>} />
         <Route path="/study-materials" element={<StudyMaterials />} />
         <Route path="/page/:slug" element={<LegalPage />} />
+        <Route path="/verify" element={<VerifyCertificate />} />
+        <Route path="/verify/:code" element={<VerifyCertificate />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/leaderboard" element={<Leaderboards />} />

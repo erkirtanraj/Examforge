@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Play, Pause, SkipBack, SkipForward, RotateCcw, Loader2 } from "lucide-react";
 import { useYouTube, youtubeId } from "../lib/youtube";
 
@@ -18,9 +18,28 @@ function Cover({ img, children, dim }) {
   );
 }
 
-export default function LessonPlayer({ url, cover, onPrev, onNext, hasPrev, hasNext, onEnded }) {
+const RATES = [0.5, 0.75, 1, 1.25, 1.5, 2];
+const RATE_KEY = "player_rate";
+
+export default function LessonPlayer({ url, cover, onPrev, onNext, hasPrev, hasNext, onEnded, resumeAt = 0, onSavePosition }) {
   const vid = youtubeId(url);
-  const { host, state, controls } = useYouTube(vid, { onEnded });
+  const [rate, setRate] = useState(() => Number(localStorage.getItem(RATE_KEY)) || 1);
+  const { host, state, controls } = useYouTube(vid, { onEnded, rate });
+  const ctl = useRef(controls);
+  ctl.current = controls;
+  const saver = useRef(onSavePosition);
+  saver.current = onSavePosition;
+  const save = () => { const c = ctl.current.current(); if (c.duration) saver.current?.(c.time, c.duration); };
+
+  useEffect(() => {
+    if (!state.playing) return undefined;
+    const t = setInterval(save, 5000);
+    return () => { clearInterval(t); save(); };
+  }, [state.playing]);
+  useEffect(() => () => save(), []);
+  const changeRate = (r) => { setRate(r); localStorage.setItem(RATE_KEY, String(r)); controls.setRate(r); };
+  const canResume = resumeAt > 5 && (!state.duration || resumeAt < state.duration * 0.95);
+  const resume = () => { controls.play(); controls.seek(resumeAt); };
   if (!vid) {
     return <div className="aspect-video bg-black"><iframe title="Lesson video" src={url} className="w-full h-full" allowFullScreen /></div>;
   }
@@ -34,9 +53,20 @@ export default function LessonPlayer({ url, cover, onPrev, onNext, hasPrev, hasN
         <button type="button" onClick={controls.toggle} className="absolute inset-0 z-10 cursor-pointer" aria-label={state.playing ? "Pause" : "Play"} data-testid="player-surface" />
         {!state.started && (
           <Cover img={poster} dim="bg-black/40">
-            <button type="button" onClick={controls.play} disabled={!state.ready} className={big} aria-label="Play" data-testid="player-start">
-              {state.ready ? <Play className="w-7 h-7 text-white ml-1" fill="currentColor" /> : <Loader2 className="w-7 h-7 text-white animate-spin" />}
-            </button>
+            {canResume && state.ready ? (
+              <div className="flex flex-col sm:flex-row gap-3" data-testid="resume-prompt">
+                <button type="button" onClick={resume} className="px-5 py-2.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium flex items-center gap-2 shadow-xl" data-testid="player-resume-from">
+                  <Play className="w-4 h-4" fill="currentColor" />Resume from {fmt(resumeAt)}
+                </button>
+                <button type="button" onClick={controls.play} className="px-5 py-2.5 rounded-md border border-white/40 bg-black/40 text-white text-sm flex items-center gap-2 hover:bg-white/10" data-testid="player-start-over">
+                  <RotateCcw className="w-4 h-4" />Start over
+                </button>
+              </div>
+            ) : (
+              <button type="button" onClick={controls.play} disabled={!state.ready} className={big} aria-label="Play" data-testid="player-start">
+                {state.ready ? <Play className="w-7 h-7 text-white ml-1" fill="currentColor" /> : <Loader2 className="w-7 h-7 text-white animate-spin" />}
+              </button>
+            )}
           </Cover>
         )}
         {state.started && !state.playing && !state.ended && (
@@ -64,6 +94,10 @@ export default function LessonPlayer({ url, cover, onPrev, onNext, hasPrev, hasN
                onChange={(e) => controls.seek(Number(e.target.value))} aria-label="Seek" data-testid="player-seek"
                className="flex-1 mx-2 h-1.5 accent-blue-500 cursor-pointer disabled:cursor-default" />
         <span className="text-xs mono-font text-gray-400 whitespace-nowrap" data-testid="player-time">{fmt(state.time)} / {fmt(state.duration)}</span>
+        <select value={rate} onChange={(e) => changeRate(Number(e.target.value))} aria-label="Playback speed" data-testid="player-speed"
+                className="ml-1 bg-transparent border border-gray-700 rounded px-1.5 py-1 text-xs mono-font text-gray-200 focus:outline-none focus:border-blue-500 cursor-pointer">
+          {RATES.map((r) => <option key={r} value={r} className="bg-[#0b1120]">{r}×</option>)}
+        </select>
       </div>
     </div>
   );

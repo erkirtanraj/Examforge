@@ -185,6 +185,7 @@ class CourseIn(BaseModel):
     thumbnail: Optional[str] = None
     is_free: bool = True
     price: int = 0
+    certificate_enabled: bool = False
 
 class SectionIn(BaseModel):
     course_id: str
@@ -1148,7 +1149,53 @@ async def course_progress(course_id: str, user=Depends(get_current_user)):
     lesson_ids = [l["id"] for l in lessons]
     done_ids = await db.lesson_progress.distinct("lesson_id", {"user_id": user["id"], "lesson_id": {"$in": lesson_ids}})
     done = len(done_ids)
-    return {"total": total, "completed": done, "percent": round((done / total * 100) if total else 0, 1), "completed_ids": done_ids}
+    positions = {p["lesson_id"]: {"position": p["position"], "duration": p.get("duration", 0)}
+                 async for p in db.lesson_positions.find({"user_id": user["id"], "lesson_id": {"$in": lesson_ids}}, {"_id": 0})}
+    cert = await db.certificates.find_one({"user_id": user["id"], "course_id": course_id}, {"_id": 0})
+    return {"total": total, "completed": done, "percent": round((done / total * 100) if total else 0, 1),
+            "completed_ids": done_ids, "positions": positions, "certificate": cert}
+
+class PositionIn(BaseModel):
+    position: float = Field(ge=0)
+    duration: float = Field(0, ge=0)
+
+@api.put("/lessons/{lesson_id}/position")
+async def save_position(lesson_id: str, data: PositionIn, user=Depends(get_current_user)):
+    await db.lesson_positions.update_one(
+        {"user_id": user["id"], "lesson_id": lesson_id},
+        {"$set": {"position": round(data.position, 1), "duration": round(data.duration, 1), "updated_at": now_iso()}}, upsert=True)
+    return {"ok": True}
+
+def _cert_code() -> str:
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    return "EF-" + "-".join("".join(secrets.choice(alphabet) for _ in range(4)) for _ in range(3))
+
+@api.post("/courses/{course_id}/certificate")
+async def issue_certificate(course_id: str, user=Depends(get_current_user)):
+    course = await db.courses.find_one({"id": course_id}, {"_id": 0})
+    if not course:
+        raise HTTPException(404, "Course not found")
+    if not course.get("certificate_enabled"):
+        raise HTTPException(400, "This course doesn't offer a certificate")
+    existing = await db.certificates.find_one({"user_id": user["id"], "course_id": course_id}, {"_id": 0})
+    if existing:
+        return existing
+    sec_ids = await db.course_sections.distinct("id", {"course_id": course_id})
+    lesson_ids = await db.lessons.distinct("id", {"section_id": {"$in": sec_ids}})
+    done = await db.lesson_progress.count_documents({"user_id": user["id"], "lesson_id": {"$in": lesson_ids}})
+    if not lesson_ids or done < len(lesson_ids):
+        raise HTTPException(400, "Complete every lesson to unlock your certificate")
+    cert = {"id": _cert_code(), "user_id": user["id"], "course_id": course_id, "name": user["name"],
+            "course_title": course["title"], "lessons": len(lesson_ids), "issued_at": now_iso()}
+    await db.certificates.insert_one(dict(cert))
+    return cert
+
+@api.get("/certificates/{code}")
+async def verify_certificate(code: str):
+    c = await db.certificates.find_one({"id": code.strip().upper()}, {"_id": 0, "user_id": 0})
+    if not c:
+        raise HTTPException(404, "No certificate found with this ID")
+    return c
 
 # ========== Study Materials ==========
 @api.get("/study-materials")

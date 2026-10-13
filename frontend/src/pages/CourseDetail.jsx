@@ -6,6 +6,7 @@ import { api, assetUrl } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { Button } from "../components/ui/button";
 import LessonPlayer from "../components/LessonPlayer";
+import CertificateCard from "../components/CertificateCard";
 
 function LessonList({ sections, active, done, onPick, numberOf }) {
   return (
@@ -37,12 +38,16 @@ export default function CourseDetail() {
   const [active, setActive] = useState(null);
   const [progress, setProgress] = useState({ completed: 0, total: 0, percent: 0 });
   const [done, setDone] = useState(new Set());
+  const [positions, setPositions] = useState({});
+  const [cert, setCert] = useState(null);
 
   const loadProgress = async () => {
     if (!user) return;
     const { data } = await api.get(`/my/progress/${id}`);
     setProgress(data);
     setDone(new Set(data.completed_ids || []));
+    setPositions(data.positions || {});
+    setCert(data.certificate || null);
   };
 
   useEffect(() => {
@@ -63,6 +68,15 @@ export default function CourseDetail() {
     loadProgress();
   };
   const next = async () => { await complete(true); if (idx < flat.length - 1) pick(flat[idx + 1]); };
+  const savePosition = (lessonId) => (time, duration) => {
+    localStorage.setItem(`lesson_pos_${lessonId}`, JSON.stringify({ time, duration }));
+    setPositions((p) => ({ ...p, [lessonId]: { position: time, duration } }));
+    if (user) api.put(`/lessons/${lessonId}/position`, { position: time, duration }).catch(() => {});
+  };
+  const resumeFor = (lessonId) => {
+    if (positions[lessonId]) return positions[lessonId].position;
+    try { return JSON.parse(localStorage.getItem(`lesson_pos_${lessonId}`))?.time || 0; } catch { return 0; }
+  };
   const prev = () => idx > 0 && pick(flat[idx - 1]);
 
   if (!course) return <div className="max-w-7xl mx-auto p-8 text-gray-400">Loading…</div>;
@@ -88,7 +102,8 @@ export default function CourseDetail() {
           <div className="card-elev p-0 overflow-hidden">
             {isVideo ? (
               <LessonPlayer key={active.id} url={active.content_url} cover={assetUrl(course.thumbnail)} hasPrev={idx > 0} hasNext={idx < flat.length - 1}
-                            onPrev={prev} onNext={next} onEnded={() => complete(true)} />
+                            onPrev={prev} onNext={next} onEnded={() => complete(true)}
+                            resumeAt={resumeFor(active.id)} onSavePosition={savePosition(active.id)} />
             ) : (
               <div className="aspect-video bg-black flex items-center justify-center text-gray-500"><FileText className="w-16 h-16" /></div>
             )}
@@ -110,7 +125,10 @@ export default function CourseDetail() {
             </div>
           </div>
         </div>
-        <LessonList sections={course.sections || []} active={active} done={done} onPick={pick} numberOf={numberOf} />
+        <div className="space-y-4">
+          {course.certificate_enabled && user && <CertificateCard course={course} progress={progress} cert={cert} onIssued={setCert} user={user} />}
+          <LessonList sections={course.sections || []} active={active} done={done} onPick={pick} numberOf={numberOf} />
+        </div>
       </div>
     </div>
   );
