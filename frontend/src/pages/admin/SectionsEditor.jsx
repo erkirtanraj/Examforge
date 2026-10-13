@@ -45,12 +45,12 @@ export default function SectionsEditor({ sections, onChange, sectional, question
             </div>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-2 pb-2 pl-9 text-xs text-gray-400" data-testid={`section-rules-${i}`}>
               <label className="flex items-center gap-1.5 normal-case tracking-normal">
-                <span className="text-emerald-300 mono-font">+</span> Marks / correct
+                <span className="text-emerald-300 mono-font">+</span><span className="whitespace-nowrap">Marks / correct</span>
                 <input type="number" step="0.25" min="0" placeholder="Q's own" value={s.positive_marks ?? ""} onChange={(e) => update(i, { positive_marks: num(e.target.value) })}
                        className={`${inputCls} mt-0 w-24 py-1`} data-testid={`section-positive-${i}`} />
               </label>
               <label className="flex items-center gap-1.5 normal-case tracking-normal">
-                <span className="text-rose-300 mono-font">−</span> Negative / wrong
+                <span className="text-rose-300 mono-font">−</span><span className="whitespace-nowrap">Negative / wrong</span>
                 <input type="number" step="0.25" min="0" placeholder="Q's own" value={s.negative_marks ?? ""} onChange={(e) => update(i, { negative_marks: num(e.target.value) })}
                        className={`${inputCls} mt-0 w-24 py-1`} data-testid={`section-negative-${i}`} />
               </label>

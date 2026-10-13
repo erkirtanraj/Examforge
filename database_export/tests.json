@@ -326,7 +326,10 @@
           "2499e641-ce10-4d4b-9bf7-c73bdf7834fb",
           "bb3b8362-a07e-4d69-b8f9-c022e3353cfd",
           "6fd33f05-7df9-4018-a5c3-7bd5590b9eab"
-        ]
+        ],
+        "positive_marks": null,
+        "negative_marks": null,
+        "language": "bilingual"
       },
       {
         "name": "Quantitative Aptitude",
@@ -336,7 +339,10 @@
           "0861b7b5-749e-418b-a9a4-612d9cc6df51",
           "2a551f96-b52a-43e9-8abc-7d7ae859d76b",
           "205c663d-d3d0-4569-8887-0f7ed81578e4"
-        ]
+        ],
+        "positive_marks": null,
+        "negative_marks": null,
+        "language": "bilingual"
       },
       {
         "name": "Reasoning Ability",
@@ -346,10 +352,16 @@
           "3df68edf-ff19-4471-82ae-55f5f65ee6a9",
           "40b4c457-de4c-417d-be48-0f27e7df37e3",
           "f7bdad35-7c5d-4a39-ac7c-8f8a7f613ed2"
-        ]
+        ],
+        "positive_marks": null,
+        "negative_marks": null,
+        "language": "bilingual"
       }
     ],
-    "created_at": "2026-10-13T14:12:56.513413+00:00"
+    "created_at": "2026-10-13T14:12:56.513413+00:00",
+    "live_start_at": null,
+    "live_window_minutes": 120,
+    "updated_at": "2026-10-13T17:13:10.190186+00:00"
   },
   {
     "_id": {

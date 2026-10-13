@@ -18,6 +18,7 @@ from fastapi import UploadFile, File, Form
 import razorpay
 from site_routes import build_site_router, seed_pages, UPLOAD_DIR
 from admin_routes import build_admin_router
+from email_routes import build_email_router, ensure_indexes as ensure_email_indexes
 from perf import PublicCacheMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.gzip import GZipMiddleware
@@ -1613,6 +1614,7 @@ async def startup():
     await _seed_extras()
     await seed_pages(db)
     await _seed_subjects()
+    await ensure_email_indexes(db)
 
 async def _seed_data():
     log.info("Seeding sample data...")
@@ -1854,6 +1856,12 @@ async def _seed_subjects():
 app.include_router(api)
 app.include_router(build_site_router(db, require_roles))
 app.include_router(build_admin_router(db, require_roles, hash_pw, _detach_questions))
+
+async def _brand_name() -> str:
+    doc = await db.settings.find_one({"key": "site"}, {"_id": 0, "header.brand_name": 1}) or {}
+    return (doc.get("header") or {}).get("brand_name") or "ExamForge"
+
+app.include_router(build_email_router(db, require_roles, _brand_name, hash_pw))
 app.mount("/api/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 app.add_middleware(PublicCacheMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=800)

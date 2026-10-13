@@ -53,7 +53,10 @@ export default function Login() {
                    className="mt-1 bg-[#0b1120] border-gray-800 text-white" placeholder="you@example.com" />
           </div>
           <div>
-            <Label className="text-gray-300">Password</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-gray-300">Password</Label>
+              <Link to="/forgot-password" className="text-xs text-blue-400 hover:text-blue-300" data-testid="forgot-password-link">Forgot password?</Link>
+            </div>
             <Input data-testid="login-password" type="password" required value={form.password}
                    onChange={(e) => setForm({ ...form, password: e.target.value })}
                    className="mt-1 bg-[#0b1120] border-gray-800 text-white" placeholder="••••••••" />
@@ -64,11 +67,6 @@ export default function Login() {
         </form>
         <div className="mt-5 text-sm text-gray-400 text-center">
           New here? <Link to="/register" className="text-blue-400 hover:text-blue-300">Create account</Link>
-        </div>
-        <div className="mt-6 rounded-md border border-gray-800 bg-[#0b1120] p-3 text-xs text-gray-400">
-          <div className="font-semibold text-gray-300 mb-1">Demo credentials</div>
-          <div>Admin: admin@lms.com / admin123</div>
-          <div>Student: student@lms.com / student123</div>
         </div>
       </div>
     </div>

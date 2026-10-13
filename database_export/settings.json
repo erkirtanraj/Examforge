@@ -5,8 +5,8 @@
     },
     "key": "site",
     "footer": {
-      "tagline": "Precision test series and courses for India's competitive exams.",
-      "copyright": "\u00a9 2026 ExamForge \u00b7 All rights reserved.",
+      "tagline": "x",
+      "copyright": "y",
       "links": [
         {
           "label": "Privacy",
@@ -52,7 +52,7 @@
       "cta_label": "Get Started",
       "cta_url": "/register"
     },
-    "updated_at": "2026-10-13T16:30:57.238387+00:00",
+    "updated_at": "2026-10-13T17:06:43.350017+00:00",
     "updated_by": "62b27c5c-912e-49db-a1e4-e37839d700eb",
     "features": [
       {
@@ -107,7 +107,12 @@
       "coupon_code": "WELCOME20",
       "starts_at": null,
       "ends_at": null,
-      "version": "986f68cfa669"
+      "version": "ee2113717f5e"
+    },
+    "theme": {
+      "preset": "ocean",
+      "primary": "#2563eb",
+      "accent": "#06b6d4"
     }
   }
 ]

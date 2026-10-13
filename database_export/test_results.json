@@ -523,5 +523,65 @@
     "sections": [],
     "time_taken_sec": 3600,
     "created_at": "2026-10-13T16:17:14.444392+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6ace6528b1a9a8eedfaf4741"
+    },
+    "id": "d5fd3dec-2b85-4c0e-897b-87f8d69b6d1b",
+    "attempt_id": "9f1486fb-75db-40da-b025-bee3af9082e5",
+    "user_id": "9eb90a2e-5e73-4ac9-9add-3873a80975ec",
+    "test_id": "fe8c4ccf-4381-4113-b812-fcb99bce5d3f",
+    "series_id": "5c415501-4681-477d-920a-2050f88284bf",
+    "score": 4.0,
+    "total_marks": 6.0,
+    "correct": 2,
+    "wrong": 2,
+    "unattempted": 0,
+    "accuracy": 50.0,
+    "details": [
+      {
+        "qid": "751d3601-cbb9-44ab-911a-7899bf7da413",
+        "status": "correct",
+        "awarded": 2.0
+      },
+      {
+        "qid": "2dd0b723-88e8-49e6-bfd7-c3fa1de4ff24",
+        "status": "correct",
+        "awarded": 2.0
+      },
+      {
+        "qid": "f563e88c-3478-4fbc-bf57-755cbfc8191a",
+        "status": "wrong",
+        "awarded": -0.0
+      },
+      {
+        "qid": "6b19920f-b059-43d5-8db3-0dba84cfeec3",
+        "status": "wrong",
+        "awarded": -0.0
+      }
+    ],
+    "sections": [
+      {
+        "name": "S1",
+        "score": 4.0,
+        "total_marks": 4.0,
+        "correct": 2,
+        "wrong": 0,
+        "unattempted": 0,
+        "accuracy": 100.0
+      },
+      {
+        "name": "S2",
+        "score": 0.0,
+        "total_marks": 2.0,
+        "correct": 0,
+        "wrong": 2,
+        "unattempted": 0,
+        "accuracy": 0.0
+      }
+    ],
+    "time_taken_sec": 0,
+    "created_at": "2026-10-13T17:06:48.518381+00:00"
   }
 ]

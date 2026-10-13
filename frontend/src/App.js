@@ -13,6 +13,9 @@ const LegalPage = lazy(() => import("./pages/LegalPage"));
 const SiteSettings = lazy(() => import("./pages/admin/SiteSettings"));
 const HomeSettings = lazy(() => import("./pages/admin/HomeSettings"));
 const LegalPages = lazy(() => import("./pages/admin/LegalPages"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const EmailSettings = lazy(() => import("./pages/admin/EmailSettings"));
 const AnnouncementSettings = lazy(() => import("./pages/admin/AnnouncementSettings"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
@@ -77,6 +80,8 @@ function AppRouter() {
         <Route path="/courses/:id" element={<Protected><CourseDetail /></Protected>} />
         <Route path="/study-materials" element={<StudyMaterials />} />
         <Route path="/page/:slug" element={<LegalPage />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/leaderboard" element={<Leaderboards />} />
         <Route path="/leaderboard/:testId" element={<Leaderboard />} />
         <Route path="/dashboard" element={<Protected><StudentDashboard /></Protected>} />
@@ -99,6 +104,7 @@ function AppRouter() {
           <Route path="home" element={adminOnly(<HomeSettings />)} />
           <Route path="pages" element={adminOnly(<LegalPages />)} />
           <Route path="announcement" element={adminOnly(<AnnouncementSettings />)} />
+          <Route path="email" element={adminOnly(<EmailSettings />)} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
