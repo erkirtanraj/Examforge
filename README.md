@@ -1,174 +1,217 @@
-# ExamForge — Test Series + LMS Platform
+# ExamForge — Test Series & Learning Management Platform
 
-Online test series, exam engine and learning platform for competitive exams (SSC, UPSC, Banking, Railways, NEET/JEE).
+ExamForge is an online examination and learning platform for competitive-exam preparation, including SSC, UPSC, Banking, Railways, NEET/JEE, and other test series.
 
-**Stack:** React 19 + Tailwind + shadcn/ui (frontend) · FastAPI (Python) (backend) · MongoDB (database) · Razorpay (payments) · Emergent Google Auth + JWT (sign-in)
+This README distinguishes the **current checked-in implementation** from the **intended cPanel deployment target**. The application has not yet been converted to Laravel/MySQL; do not assume the MySQL migration or cPanel deployment is complete.
 
----
+## Architecture and migration status
+
+| Layer | Current repository implementation | Intended cPanel deployment |
+|---|---|---|
+| Frontend | React 19, Tailwind CSS, shadcn/ui, Axios | Keep the React UI and serve its production build as static files |
+| API | FastAPI (Python), split across `server.py` and supporting routers | Laravel/PHP REST API; conversion is pending |
+| Database | MongoDB accessed with Motor | MySQL; schema and data migration are pending |
+| Authentication | JWT; email/password and Google sign-in integration | Preserve existing flows and roles during API conversion |
+| Payments | Razorpay integration; demo mode when keys are not configured | Reconfigure and test using Razorpay test keys before live mode |
+| API hostname | Configured through `REACT_APP_BACKEND_URL` | Planned hostname: `https://api.jssc.online`, subject to DNS, TLS, and hosting configuration |
+
+**Important:** The current backend source imports `AsyncIOMotorClient` and uses MongoDB-specific query/update operations. Setting a MySQL connection string alone will not convert it. The current Python backend also requires a compatible Python runtime and a persistent application process; the documented shared cPanel environment may not provide these. The planned cPanel-only route is to port the API to Laravel/PHP and MySQL before production cutover.
 
 ## Features
 
-**Students**
-- Test series & course catalogs with exam-category filters, study materials library
-- Exam engine: server-side timer, autosave every 15s, question palette, mark for review, negative marking, auto-submit
-- Exam sections — free navigation (SSC style) or separate timer per section (SBI PO style, locked once finished)
-- EN / हिंदी language switch during the exam and on results
-- Results with answer review, explanations, section-wise breakdown, All-India rank & percentile
-- Public leaderboards with podium and live refresh
-- Scheduled All-India live mocks with a home-page countdown
-- Weak-topic report with suggested practice tests
-- Coupons at checkout, Razorpay payments, free enrollments
-- Sign in with email/password or Google
+### Students
+- Browse test series, exam categories, courses, and study materials.
+- Take timed exams with a server-authoritative timer, autosave, question palette, mark-for-review, negative marking, and timeout submission.
+- Take exams with either free section navigation or separately timed, locked sections.
+- Switch between English and Hindi question content where translations are available.
+- Review scores, explanations, section-wise results, ranks, and percentiles.
+- View public leaderboards and scheduled live-mock countdowns.
+- See weak-topic suggestions and course progress.
+- Enroll in free content, apply coupons, and purchase eligible items through Razorpay.
+- Sign in with email/password or the configured Google sign-in integration.
 
-**Admins & teachers** (`/admin`, sidebar menu)
-- Question bank (MCQ single/multi, True/False, numerical, Hindi versions) + bulk CSV/Excel import with preview & undo
-- Test builder (sections, per-section timers, live start time), test series, courses → sections → lessons, study materials, categories
-- Users & roles, orders, coupons (admin only)
-- Settings → Razorpay keys, auto-generated webhook secret, connection test (admin only)
+### Admins and teachers
+- Manage the question bank, including bilingual questions and bulk CSV/XLSX import with preview and batch undo.
+- Create and manage test series, tests, sections, timers, courses, course sections, lessons, categories, subjects, and study materials.
+- Manage users and roles; admin-only operations include user administration, orders, coupons, and payment settings.
+- Configure site branding, homepage content, legal pages, announcement bars, and SMTP/password-reset settings.
+- Configure Razorpay credentials and webhook settings.
 
-Roles: `super_admin`, `admin`, `teacher`, `student`, `support`. Teachers see content sections only.
+Roles used by the current application include `super_admin`, `admin`, `teacher`, `student`, and `support`. Verify role enforcement during any backend port.
 
----
+## Repository layout
 
-## Project structure
-
-```
+```text
 backend/
-  server.py            FastAPI app — all /api routes, exam engine, payments, seed data
-  requirements.txt
-  .env                 MONGO_URL, DB_NAME, JWT_SECRET, ... (not committed)
-  tests/               pytest suites
+  server.py             FastAPI app, exam engine, authentication, payments, seeding
+  admin_routes.py       Admin APIs
+  site_routes.py        Site settings, pages, uploads, announcement APIs
+  email_routes.py       SMTP settings and password-reset APIs
+  perf.py               Public-response caching middleware
+  requirements.txt      Python dependencies
+  tests/                Backend test suites
+  uploads/              Local upload directory used by the current backend
 frontend/
-  src/App.js           routes
-  src/lib/             api client (axios) + auth context
-  src/pages/           public & student pages
-  src/pages/exam/      exam engine UI (timer, sections, palette, dialogs)
-  src/pages/admin/     admin panel pages
-  src/components/      shared components (admin kit, banners, coupon box, rank card ...)
-database_export/       JSON export of every collection + import_db.py
-memory/PRD.md          product requirements & progress log
+  src/App.js             Application routes
+  src/lib/api.js         Axios API client and auth-token handling
+  src/pages/             Public, student, exam, and admin screens
+  src/components/        Shared UI components
+database_export/
+  JSON collection exports and import_db.py (MongoDB-specific; destructive to target collections)
+memory/PRD.md             Product requirements, implementation history, and backlog
+tests/
+  Additional repository tests, if present
 ```
 
----
+## Run the current implementation locally
 
-## Running locally
+These instructions run the **current FastAPI + MongoDB implementation**, not the future Laravel/MySQL target.
 
 ### Requirements
-Python 3.11+, Node 18+ with Yarn, MongoDB 6+
+- Python 3.11 or newer
+- Node.js 18 or newer
+- Yarn Classic (the package metadata specifies Yarn 1.22.22)
+- MongoDB 6 or newer
+- A separate development/test database for tests
 
-### Backend
+### Backend setup
+
 ```bash
 cd backend
-python -m venv venv && source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
-Create `backend/.env`:
-```
-MONGO_URL="mongodb://localhost:27017"
-DB_NAME="examforge"
-CORS_ORIGINS="http://localhost:3000"
-JWT_SECRET="replace-with-a-long-random-string"
-JWT_ALGORITHM="HS256"
+
+Create `backend/.env` locally (do not commit it):
+
+```dotenv
+MONGO_URL=mongodb://127.0.0.1:27017
+DB_NAME=examforge_dev
+CORS_ORIGINS=http://localhost:3000
+JWT_SECRET=replace-with-a-long-random-secret
+JWT_ALGORITHM=HS256
 JWT_EXPIRE_HOURS=168
-RAZORPAY_KEY_ID=""
-RAZORPAY_KEY_SECRET=""
-RAZORPAY_WEBHOOK_SECRET=""
+RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=
+RAZORPAY_WEBHOOK_SECRET=
 ```
+
+Use a unique, randomly generated JWT secret outside development. Configure Google sign-in and other optional integrations according to the relevant code and provider setup.
+
+Start the API:
+
 ```bash
-uvicorn server:app --host 0.0.0.0 --port 8001 --reload
+cd backend
+source .venv/bin/activate
+uvicorn server:app --host 127.0.0.1 --port 8001 --reload
 ```
-On first start, an empty database is filled with sample data automatically (demo accounts, categories, test series, sectional & live mocks, courses, the WELCOME20 coupon).
 
-> `requirements.txt` includes `emergentintegrations`, which is only on Emergent's package index. If it fails to install locally, remove that line; the app doesn't import it.
+The API routes are prefixed with `/api`. Use `http://127.0.0.1:8001/docs` to inspect the FastAPI OpenAPI documentation while the development server is running.
 
-### Frontend
+### Frontend setup
+
 Create `frontend/.env`:
+
+```dotenv
+REACT_APP_BACKEND_URL=http://127.0.0.1:8001
 ```
-REACT_APP_BACKEND_URL=http://localhost:8001
-```
+
+Then install and start the React app:
+
 ```bash
 cd frontend
 yarn install
-yarn start        # http://localhost:3000
+yarn start
 ```
 
-### Restore the exported database (optional)
+The development frontend normally runs at `http://localhost:3000`. The API client in `frontend/src/lib/api.js` builds its base URL from `REACT_APP_BACKEND_URL`; the same variable must point to the deployed API when producing a production build.
+
+### Production frontend build
+
+Build only after the target API URL is decided and reachable:
+
 ```bash
-cd database_export
-MONGO_URL="mongodb://localhost:27017" DB_NAME="examforge" python import_db.py
+cd frontend
+REACT_APP_BACKEND_URL=https://api.jssc.online yarn build
 ```
-This replaces the contents of each collection. Payment settings are not exported — re-enter Razorpay keys in Admin → Settings.
 
----
+On Windows PowerShell, set the environment variable with `$env:REACT_APP_BACKEND_URL="https://api.jssc.online"` before running `yarn build`. Replace the example hostname if deployment uses another API URL. A build does not deploy the API, configure DNS, or enable HTTPS by itself.
 
-## Demo accounts
+## API areas
 
-| Role    | Email            | Password    |
-|---------|------------------|-------------|
-| Admin   | admin@lms.com    | admin123    |
-| Teacher | teacher@lms.com  | teacher123  |
-| Student | student@lms.com  | student123  |
+The current FastAPI application exposes API routes under `/api`. Main functional areas include:
 
-**Change these passwords before going live.**
+- **Authentication:** registration, login, Google sign-in, current-user lookup, forgot/reset password.
+- **Catalog:** categories, subjects, test series, tests, courses, lessons, study materials, and live mocks.
+- **Exam engine:** start attempt, fetch attempt, autosave answers, pause/resume where allowed, section transitions, submit, result review, and ranking.
+- **Student:** dashboard, attempts, orders, entitlements, weak topics, lesson progress, certificates.
+- **Content management:** question CRUD/import/undo, test builder and bulk operations, series, courses, sections, lessons, materials, and generic content updates.
+- **Admin/site:** users and roles, statistics, orders, coupons, payment configuration, site layout/home content, legal pages, uploads, announcements, and SMTP settings.
+- **Payments:** coupon validation, order creation and verification, Razorpay webhook.
 
----
-
-## Payments (Razorpay)
-
-Until keys are set, paid checkout runs in **demo mode** (free items and 100% coupons still work).
-
-1. Razorpay Dashboard → Account & Settings → API Keys → copy Key ID and Key Secret (use `rzp_test_` keys first).
-2. Admin → Settings → paste the keys → **Save settings** → **Test connection**.
-3. Optional webhook: click **Generate** for a webhook secret, then in Razorpay → Webhooks add
-   `<your-backend-url>/api/webhooks/razorpay` with the `payment.captured` event and the same secret.
-
----
-
-## Bulk question import
-
-Admin → Question Bank → **Import CSV / Excel** (download the template there).
-
-| Column | Notes |
-|---|---|
-| `question` | required |
-| `type` | `mcq`, `multi`, `true_false`, `numerical` (blank = auto-detect) |
-| `option_a` … `option_h` | fill in order, at least 2 for MCQ |
-| `correct` | letter (`B`), several (`A,C`), option text, `True`/`False`, or a number |
-| `explanation`, `category` (name or slug), `difficulty` (easy/medium/hard), `positive_marks`, `negative_marks`, `image_url` | optional |
-| `question_hi`, `option_a_hi` …, `explanation_hi` | optional Hindi versions |
-
-Up to 2,000 rows / 5 MB per file. Rows with errors are skipped and listed by row number.
-
----
-
-## Main API routes (all prefixed with `/api`)
-
-| Area | Routes |
-|---|---|
-| Auth | `POST /auth/register`, `POST /auth/login`, `POST /auth/google`, `GET /auth/me` |
-| Catalog | `GET /categories`, `GET /test-series`, `GET /test-series/{id}`, `GET /courses`, `GET /courses/{id}`, `GET /study-materials`, `GET /live-mocks` |
-| Exam | `POST /tests/{id}/start`, `GET /attempts/{id}`, `POST /attempts/{id}/autosave`, `POST /attempts/{id}/next-section`, `POST /attempts/{id}/submit`, `GET /attempts/{id}/result` |
-| Rankings | `GET /leaderboards`, `GET /tests/{id}/leaderboard` |
-| Student | `GET /my/dashboard`, `GET /my/attempts`, `GET /my/orders`, `GET /my/entitlements`, `GET /my/weak-topics`, `GET /my/progress/{courseId}` |
-| Payments | `POST /coupons/validate`, `POST /orders`, `POST /orders/verify`, `POST /webhooks/razorpay` |
-| Content (admin/teacher) | `POST /questions`, `POST /questions/import`, `DELETE /questions/import/{batch}`, `POST /tests`, `POST /test-series`, `POST /courses`, `POST /sections`, `POST /lessons`, `POST /study-materials`, `PUT/DELETE /content/{kind}/{id}` |
-| Admin | `GET /admin/stats`, `GET /admin/users`, `PUT /admin/users/{id}/role`, `GET /admin/orders`, `GET/POST/PUT/DELETE /admin/coupons`, `GET/PUT /admin/settings/payment`, `POST /admin/settings/payment/webhook-secret`, `POST /admin/settings/payment/test` |
-
----
+Use the route decorators in `backend/server.py`, `backend/admin_routes.py`, `backend/site_routes.py`, and `backend/email_routes.py` as the source of truth. Keep the frontend API contract compatible when porting the backend.
 
 ## Tests
+
+Run tests only against a dedicated disposable test database. The test suites perform database writes and deletes; do not point them at production data.
+
 ```bash
 cd backend
 python -m pytest tests/ -v -o addopts=''
 ```
 
----
+Confirm the required MongoDB service and test environment variables are configured before running the current backend tests. A passing test run for the current MongoDB implementation does not prove that a future MySQL/Laravel port works; ported endpoints need equivalent regression tests.
 
-## Production checklist
-- New strong `JWT_SECRET`; restrict `CORS_ORIGINS` to your domain
-- Change or remove the demo accounts
-- Add live Razorpay keys and the webhook in Admin → Settings
-- Keep the GitHub repo private if `database_export/users.json` is included
-- Note: the original PRD targeted Laravel 12 + MySQL on cPanel; this build uses React + FastAPI + MongoDB and would need porting for cPanel shared hosting
+## MySQL and cPanel migration plan
 
-See `PRD.md` (or `memory/PRD.md` in the repo) for the full requirements and change log.
+The intended target is **React static frontend + Laravel/PHP API + MySQL**, suitable for cPanel capabilities that include PHP and MySQL but do not include a Python application manager.
+
+Migration work is not complete. Use this checklist to track it:
+
+- [ ] Inventory all API routes, request/response shapes, authorization rules, and side effects.
+- [ ] Design and review normalized MySQL tables, foreign keys, unique constraints, and indexes.
+- [ ] Port authentication, password reset, Google sign-in, JWT/session behavior, roles, and suspended-user handling.
+- [ ] Port question bank, CSV/XLSX import, preview, batch undo, and bulk deletion.
+- [ ] Port exam attempts, server-side timing, autosave/version checks, section locking, pause/resume, timeout submission, scoring, and idempotent result creation.
+- [ ] Port catalogs, courses, lessons, progress, certificates, leaderboards, and weak-topic reporting.
+- [ ] Port orders, entitlements, coupon validation/usage limits, Razorpay order verification, and webhook signature verification.
+- [ ] Port admin, site content, uploads, SMTP settings, and password reset.
+- [ ] Transform the exported records into MySQL-compatible data; validate counts and relationships before cutover.
+- [ ] Add automated regression, authorization, payment, migration, concurrency, and load tests.
+- [ ] Build React against the deployed API URL and verify CORS, HTTPS, upload URLs, and deep-link routing.
+- [ ] Back up the current deployment and database, perform a staging cutover, validate, and document rollback steps.
+
+Do not use `database_export/import_db.py` against production: the script is MongoDB-specific and replaces collection contents. It is not a MySQL migration tool. Create and test a separate migration process that targets an empty staging database first.
+
+### Planned cPanel deployment
+
+1. Create a staging MySQL database and a dedicated database user through cPanel.
+2. Implement the Laravel API and migrations in a separate staging application path.
+3. Configure environment variables and secrets outside version control; disable debug mode in production.
+4. Configure `api.jssc.online` only after the API hosting, DNS, document root, and TLS setup are verified.
+5. Build and upload the React static files only after the API contract and hostname are ready.
+6. Verify health, authentication, test start/autosave/submit, results, admin access, file uploads, email, and Razorpay test-mode flows.
+7. Take verified backups and perform a controlled cutover with a rollback plan.
+
+The existing FastAPI application cannot run on ordinary PHP-only shared hosting simply by uploading its source. If the API has not been ported to PHP, keep the frontend in staging and do not announce the cPanel deployment as production-ready.
+
+## Security and production checklist
+
+- Keep all `.env` files, database exports containing user data, credentials, JWT secrets, and payment secrets out of version control.
+- Use a strong unique JWT secret; do not use a development fallback in production.
+- Change/remove all seeded demo accounts and passwords before public launch.
+- Restrict CORS to the actual frontend origin; require HTTPS for the website and API.
+- Keep database credentials least-privileged and do not expose database ports publicly.
+- Verify role-based authorization server-side for every admin/teacher operation.
+- Validate and size-limit uploads; store uploads outside executable paths where practical.
+- Verify Razorpay signatures and make payment/webhook processing idempotent. Start with test keys.
+- Configure database and upload backups and test restoration.
+- Use rate limits and abuse protection for login, registration, password reset, uploads, and payment endpoints.
+- Load-test exam start, autosave bursts, submission bursts, and result generation before large live exams.
+- Do not treat a successful frontend build or a running server as proof that the full application is production-ready.
+
+## Product requirements and progress
+
+See [`memory/PRD.md`](memory/PRD.md) for the implementation history, iteration notes, and remaining backlog. Update that document when a migration task is implemented and tested so that the README, source code, and deployment instructions remain consistent.
