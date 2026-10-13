@@ -53,3 +53,4 @@ Secure cPanel-based Test Series + LMS (PRD specified Laravel 12/PHP/MySQL). User
 
 ## Changelog (Jun 2026)
 - Packaged downloadable zips: ExamForge_Full.zip, ExamForge_Code.zip, ExamForge_Database.zip (JSON + mongodump BSON archive, restore via import_db.py or mongorestore). .env files excluded.
+- Jun 2026: Admin-managed site content — Site Settings (header/footer), Home Page (hero, live/override stats, features), Legal Pages (markdown CRUD at /page/<slug>). Endpoints: GET /api/site, PUT /api/admin/site/layout|home, /api/pages/{slug}, /api/admin/pages CRUD. Tested iteration_5 (100%).

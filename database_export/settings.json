@@ -1,1 +1,99 @@
-[]
+[
+  {
+    "_id": {
+      "$oid": "6ace54fe2774107e49127dc0"
+    },
+    "key": "site",
+    "footer": {
+      "tagline": "Precision test series and courses for India's competitive exams.",
+      "copyright": "\u00a9 2026 ExamForge \u00b7 All rights reserved.",
+      "links": [
+        {
+          "label": "Privacy",
+          "url": "/page/privacy"
+        },
+        {
+          "label": "Terms",
+          "url": "/page/terms"
+        },
+        {
+          "label": "Refund Policy",
+          "url": "/page/refund-policy"
+        },
+        {
+          "label": "Contact",
+          "url": "/page/contact"
+        }
+      ]
+    },
+    "header": {
+      "brand_name": "ExamForge",
+      "nav_links": [
+        {
+          "label": "Test Series",
+          "url": "/test-series"
+        },
+        {
+          "label": "Courses",
+          "url": "/courses"
+        },
+        {
+          "label": "Study Materials",
+          "url": "/study-materials"
+        },
+        {
+          "label": "Leaderboard",
+          "url": "/leaderboard"
+        }
+      ],
+      "cta_label": "Get Started",
+      "cta_url": "/register"
+    },
+    "updated_at": "2026-10-13T15:57:51.471203+00:00",
+    "updated_by": "62b27c5c-912e-49db-a1e4-e37839d700eb",
+    "features": [
+      {
+        "icon": "Target",
+        "title": "Real Exam Simulation",
+        "desc": "Server-authoritative timer, question palette, mark-for-review \u2014 a replica of actual exam portals."
+      },
+      {
+        "icon": "TrendingUp",
+        "title": "Deep Analytics",
+        "desc": "Topic-wise accuracy, time per question, strengths & weaknesses \u2014 know where to focus."
+      },
+      {
+        "icon": "Award",
+        "title": "Verified Content",
+        "desc": "Questions crafted and reviewed by top faculty for SSC, UPSC, Banking, Railways and NEET/JEE."
+      }
+    ],
+    "hero": {
+      "badge_text": "LIVE \u00b7 {live} ASPIRANTS NOW ATTEMPTING",
+      "title": "Crack competitive exams with a",
+      "highlight": "precision test engine",
+      "subtitle": "Full-length mocks for SSC, UPSC, Banking, Railways, NEET & JEE \u2014 real exam timers, detailed answer analytics, and courses by top faculty.",
+      "primary_cta_label": "Explore Test Series",
+      "primary_cta_url": "/test-series",
+      "secondary_cta_label": "Create Free Account",
+      "secondary_cta_url": "/register"
+    },
+    "stats": [
+      {
+        "label": "Students",
+        "source": "students",
+        "override": ""
+      },
+      {
+        "label": "Questions",
+        "source": "questions",
+        "override": ""
+      },
+      {
+        "label": "Mock Tests",
+        "source": "tests",
+        "override": ""
+      }
+    ]
+  }
+]

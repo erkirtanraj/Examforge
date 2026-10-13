@@ -1,0 +1,50 @@
+[
+  {
+    "_id": {
+      "$oid": "6ace53f134e017feb40c2f8f"
+    },
+    "id": "41baa10c-13ef-4ee2-9bce-3934edf16d1e",
+    "title": "Privacy Policy",
+    "slug": "privacy",
+    "content": "## Information we collect\nWe collect your name, email and exam activity to run your account and show your results.\n\n## How we use it\nYour data is used only to provide tests, rankings and course access. We never sell it.\n\n## Contact\nWrite to us from the Contact page for any privacy request.",
+    "published": true,
+    "created_at": "2026-10-13T15:53:21.675341+00:00",
+    "updated_at": "2026-10-13T15:53:21.675351+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6ace53f134e017feb40c2f90"
+    },
+    "id": "9d315502-ef5b-4ce9-9e9b-30c20c435581",
+    "title": "Terms of Service",
+    "slug": "terms",
+    "content": "## Using ExamForge\nBy creating an account you agree to use the platform for personal exam preparation only.\n\n## Content\nAll questions, tests and course material are the property of ExamForge and may not be copied or redistributed.\n\n## Accounts\nWe may suspend accounts that share logins or attempt to tamper with exams.",
+    "published": true,
+    "created_at": "2026-10-13T15:53:21.687419+00:00",
+    "updated_at": "2026-10-13T15:53:21.687426+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6ace53f134e017feb40c2f91"
+    },
+    "id": "91bcaea1-6816-432b-85be-38dbe7f9aab9",
+    "title": "Refund Policy",
+    "slug": "refund-policy",
+    "content": "## Eligibility\nRefunds can be requested within 7 days of purchase if you have not attempted more than one test of the purchased series.\n\n## Process\nContact support with your order ID. Approved refunds are returned to the original payment method within 5\u20137 working days.",
+    "published": true,
+    "created_at": "2026-10-13T15:53:21.688216+00:00",
+    "updated_at": "2026-10-13T15:53:21.688231+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6ace53f134e017feb40c2f92"
+    },
+    "id": "22eab3a2-8a67-4f80-8ffd-f80add79bd45",
+    "title": "Contact Us",
+    "slug": "contact",
+    "content": "## Get in touch\n**Email:** support@examforge.in\n\n**Hours:** Monday to Saturday, 10 AM \u2013 6 PM IST",
+    "published": true,
+    "created_at": "2026-10-13T15:53:21.689024+00:00",
+    "updated_at": "2026-10-13T15:53:21.689029+00:00"
+  }
+]

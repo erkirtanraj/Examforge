@@ -83,7 +83,7 @@ export const RowActions = ({ onEdit, onDelete, id }) => (
 
 export const FormDialog = ({ open, onOpenChange, title, onSubmit, saving, children, testid, wide }) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent data-testid={testid}
+    <DialogContent data-testid={testid} aria-describedby={undefined}
       className={`bg-[#0b1120] border-gray-800 text-white max-h-[90vh] overflow-y-auto ${wide ? "sm:max-w-3xl" : "sm:max-w-lg"}`}>
       <DialogHeader><DialogTitle className="heading-font">{title}</DialogTitle></DialogHeader>
       <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }} className="space-y-4">
