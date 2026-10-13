@@ -1,0 +1,42 @@
+[
+  {
+    "id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "name": "SSC CGL",
+    "slug": "ssc-cgl",
+    "description": "Staff Selection Commission CGL Exam",
+    "icon": "FileText",
+    "created_at": "2026-10-13T13:20:35.175591+00:00"
+  },
+  {
+    "id": "c845c6fc-375c-4039-93b9-94da9bda3080",
+    "name": "UPSC Civil Services",
+    "slug": "upsc",
+    "description": "Union Public Service Commission",
+    "icon": "Scale",
+    "created_at": "2026-10-13T13:20:35.175599+00:00"
+  },
+  {
+    "id": "118d79b2-0a41-4477-a8f2-d0df605fa3ec",
+    "name": "Banking (SBI/IBPS PO)",
+    "slug": "banking",
+    "description": "Banking Probationary Officer",
+    "icon": "Landmark",
+    "created_at": "2026-10-13T13:20:35.175604+00:00"
+  },
+  {
+    "id": "a71ffc8e-51cf-478f-b199-9abe5a75856b",
+    "name": "Railways RRB NTPC",
+    "slug": "rrb-ntpc",
+    "description": "Railways Recruitment",
+    "icon": "Train",
+    "created_at": "2026-10-13T13:20:35.175610+00:00"
+  },
+  {
+    "id": "3ee52085-dc46-46a2-b665-a4b257c7ed88",
+    "name": "NEET / JEE",
+    "slug": "neet-jee",
+    "description": "Medical & Engineering Entrance",
+    "icon": "Atom",
+    "created_at": "2026-10-13T13:20:35.175616+00:00"
+  }
+]

@@ -1,0 +1,24 @@
+[
+  {
+    "id": "7b9f8123-fd48-4cbf-9c40-9746caf38c97",
+    "title": "Complete Quantitative Aptitude",
+    "description": "Master Quant for SSC, Banking & Railways in 40 structured lessons.",
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "thumbnail": "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=800",
+    "is_free": true,
+    "price": 0,
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.213960+00:00"
+  },
+  {
+    "id": "554fb29e-0b7c-4ba8-9cb8-71d38bf5a3ea",
+    "title": "English Grammar Masterclass",
+    "description": "Comprehensive grammar + comprehension course for all competitive exams.",
+    "category_id": "118d79b2-0a41-4477-a8f2-d0df605fa3ec",
+    "thumbnail": "https://images.unsplash.com/photo-1457369804613-52c61a468e7d?w=800",
+    "is_free": false,
+    "price": 149900,
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.213965+00:00"
+  }
+]

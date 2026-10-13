@@ -1,0 +1,918 @@
+[
+  {
+    "id": "0e696606-aa0c-4e41-81dd-90713acc5a85",
+    "text": "What is 15% of 200?",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "30"
+      },
+      {
+        "key": "B",
+        "text": "25"
+      },
+      {
+        "key": "C",
+        "text": "20"
+      },
+      {
+        "key": "D",
+        "text": "35"
+      }
+    ],
+    "correct": [
+      "A"
+    ],
+    "explanation": "15% × 200 = 30",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 2.0,
+    "negative_marks": 0.5,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.184319+00:00"
+  },
+  {
+    "id": "055bcca1-b7c7-406c-a347-8d4e2419405b",
+    "text": "If a train travels 60 km in 1.5 hours, what is its speed?",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "35 km/h"
+      },
+      {
+        "key": "B",
+        "text": "40 km/h"
+      },
+      {
+        "key": "C",
+        "text": "45 km/h"
+      },
+      {
+        "key": "D",
+        "text": "50 km/h"
+      }
+    ],
+    "correct": [
+      "B"
+    ],
+    "explanation": "Speed = Distance/Time = 60/1.5 = 40 km/h",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 2.0,
+    "negative_marks": 0.5,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.184327+00:00"
+  },
+  {
+    "id": "7030cade-6092-44b9-9a5b-111a5daa8117",
+    "text": "The square root of 144 is:",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "10"
+      },
+      {
+        "key": "B",
+        "text": "11"
+      },
+      {
+        "key": "C",
+        "text": "12"
+      },
+      {
+        "key": "D",
+        "text": "13"
+      }
+    ],
+    "correct": [
+      "C"
+    ],
+    "explanation": "12 × 12 = 144",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 2.0,
+    "negative_marks": 0.5,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.184333+00:00"
+  },
+  {
+    "id": "fc85f443-21d4-407b-b701-12d972909ba9",
+    "text": "What is 7 × 8?",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "54"
+      },
+      {
+        "key": "B",
+        "text": "56"
+      },
+      {
+        "key": "C",
+        "text": "58"
+      },
+      {
+        "key": "D",
+        "text": "60"
+      }
+    ],
+    "correct": [
+      "B"
+    ],
+    "explanation": "7 × 8 = 56",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 2.0,
+    "negative_marks": 0.5,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.184338+00:00"
+  },
+  {
+    "id": "957c9dd2-ca4e-49b7-ab39-454a76a0437e",
+    "text": "Compound interest on ₹1000 at 10% for 2 years is:",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "₹200"
+      },
+      {
+        "key": "B",
+        "text": "₹210"
+      },
+      {
+        "key": "C",
+        "text": "₹220"
+      },
+      {
+        "key": "D",
+        "text": "₹231"
+      }
+    ],
+    "correct": [
+      "B"
+    ],
+    "explanation": "CI = P(1+r/100)^n - P = 1000 × 1.21 - 1000 = 210",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 2.0,
+    "negative_marks": 0.5,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.184343+00:00"
+  },
+  {
+    "id": "5d97b719-a18b-4ef7-b3b4-278e4ed41f84",
+    "text": "The ratio 3:4 is equal to:",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "0.65"
+      },
+      {
+        "key": "B",
+        "text": "0.70"
+      },
+      {
+        "key": "C",
+        "text": "0.75"
+      },
+      {
+        "key": "D",
+        "text": "0.80"
+      }
+    ],
+    "correct": [
+      "C"
+    ],
+    "explanation": "3÷4 = 0.75",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 2.0,
+    "negative_marks": 0.5,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.184353+00:00"
+  },
+  {
+    "id": "3f041d26-8e51-4204-900a-126e245cfe8c",
+    "text": "If x + 5 = 12, then x =",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "5"
+      },
+      {
+        "key": "B",
+        "text": "6"
+      },
+      {
+        "key": "C",
+        "text": "7"
+      },
+      {
+        "key": "D",
+        "text": "8"
+      }
+    ],
+    "correct": [
+      "C"
+    ],
+    "explanation": "x = 12 - 5 = 7",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 2.0,
+    "negative_marks": 0.5,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.184366+00:00"
+  },
+  {
+    "id": "7d1bb3e7-28e8-4838-a2b8-24c00102004d",
+    "text": "Which is a prime number?",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "15"
+      },
+      {
+        "key": "B",
+        "text": "17"
+      },
+      {
+        "key": "C",
+        "text": "21"
+      },
+      {
+        "key": "D",
+        "text": "25"
+      }
+    ],
+    "correct": [
+      "B"
+    ],
+    "explanation": "17 has only 1 and 17 as factors",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 2.0,
+    "negative_marks": 0.5,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.184370+00:00"
+  },
+  {
+    "id": "3eca8bb0-32a1-4edd-9ac2-3f6631b559c9",
+    "text": "Area of circle with radius 7 (π=22/7):",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "154"
+      },
+      {
+        "key": "B",
+        "text": "144"
+      },
+      {
+        "key": "C",
+        "text": "164"
+      },
+      {
+        "key": "D",
+        "text": "174"
+      }
+    ],
+    "correct": [
+      "A"
+    ],
+    "explanation": "πr² = 22/7 × 49 = 154",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 2.0,
+    "negative_marks": 0.5,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.184374+00:00"
+  },
+  {
+    "id": "8ccfa3e6-6485-48aa-9ecc-4a809332478a",
+    "text": "20% of 150 is:",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "25"
+      },
+      {
+        "key": "B",
+        "text": "28"
+      },
+      {
+        "key": "C",
+        "text": "30"
+      },
+      {
+        "key": "D",
+        "text": "35"
+      }
+    ],
+    "correct": [
+      "C"
+    ],
+    "explanation": "20% × 150 = 30",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 2.0,
+    "negative_marks": 0.5,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.184379+00:00"
+  },
+  {
+    "id": "53a8320b-6953-4e41-9f92-9bff485e2543",
+    "text": "A shopkeeper sells an item for ₹550 at 10% profit. What is the cost price?",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "₹480",
+        "text_hi": null
+      },
+      {
+        "key": "B",
+        "text": "₹495",
+        "text_hi": null
+      },
+      {
+        "key": "C",
+        "text": "₹500",
+        "text_hi": null
+      },
+      {
+        "key": "D",
+        "text": "₹505",
+        "text_hi": null
+      }
+    ],
+    "correct": [
+      "C"
+    ],
+    "explanation": "CP = 550 / 1.1 = 500",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 1.0,
+    "negative_marks": 0.25,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_at": "2026-10-13T14:12:56.510276+00:00",
+    "explanation_hi": "क्रय मूल्य = 550 / 1.1 = 500",
+    "text_hi": "एक दुकानदार 10% लाभ पर एक वस्तु ₹550 में बेचता है। क्रय मूल्य क्या है?"
+  },
+  {
+    "id": "0861b7b5-749e-418b-a9a4-612d9cc6df51",
+    "text": "The average of 5 numbers is 24. If one number is removed, the average becomes 25. The removed number is:",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "18",
+        "text_hi": null
+      },
+      {
+        "key": "B",
+        "text": "20",
+        "text_hi": null
+      },
+      {
+        "key": "C",
+        "text": "22",
+        "text_hi": null
+      },
+      {
+        "key": "D",
+        "text": "24",
+        "text_hi": null
+      }
+    ],
+    "correct": [
+      "B"
+    ],
+    "explanation": "Total 120 − (4 × 25) = 20",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 1.0,
+    "negative_marks": 0.25,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_at": "2026-10-13T14:12:56.510296+00:00",
+    "explanation_hi": "कुल 120 − (4 × 25) = 20",
+    "text_hi": "5 संख्याओं का औसत 24 है। एक संख्या हटाने पर औसत 25 हो जाता है। हटाई गई संख्या है:"
+  },
+  {
+    "id": "2a551f96-b52a-43e9-8abc-7d7ae859d76b",
+    "text": "A can finish a work in 12 days and B in 18 days. Together they finish it in:",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "6.8 days",
+        "text_hi": "6.8 दिन"
+      },
+      {
+        "key": "B",
+        "text": "7.2 days",
+        "text_hi": "7.2 दिन"
+      },
+      {
+        "key": "C",
+        "text": "7.5 days",
+        "text_hi": "7.5 दिन"
+      },
+      {
+        "key": "D",
+        "text": "8 days",
+        "text_hi": "8 दिन"
+      }
+    ],
+    "correct": [
+      "B"
+    ],
+    "explanation": "1/12 + 1/18 = 5/36 → 36/5 = 7.2 days",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 1.0,
+    "negative_marks": 0.25,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_at": "2026-10-13T14:12:56.510314+00:00",
+    "explanation_hi": "1/12 + 1/18 = 5/36 → 36/5 = 7.2 दिन",
+    "text_hi": "A किसी काम को 12 दिनों में और B 18 दिनों में पूरा कर सकता है। दोनों मिलकर इसे कितने दिनों में पूरा करेंगे?"
+  },
+  {
+    "id": "205c663d-d3d0-4569-8887-0f7ed81578e4",
+    "text": "Simple interest on ₹4000 at 5% per annum for 3 years is:",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "₹500",
+        "text_hi": null
+      },
+      {
+        "key": "B",
+        "text": "₹550",
+        "text_hi": null
+      },
+      {
+        "key": "C",
+        "text": "₹600",
+        "text_hi": null
+      },
+      {
+        "key": "D",
+        "text": "₹650",
+        "text_hi": null
+      }
+    ],
+    "correct": [
+      "C"
+    ],
+    "explanation": "SI = 4000 × 5 × 3 / 100 = 600",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 1.0,
+    "negative_marks": 0.25,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_at": "2026-10-13T14:12:56.510321+00:00",
+    "explanation_hi": "साधारण ब्याज = 4000 × 5 × 3 / 100 = 600",
+    "text_hi": "₹4000 पर 5% वार्षिक दर से 3 वर्ष का साधारण ब्याज है:"
+  },
+  {
+    "id": "40c1f748-2fd1-4d3d-ab7a-c79522f4ec59",
+    "text": "Find the next term: 2, 6, 12, 20, 30, ?",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "40"
+      },
+      {
+        "key": "B",
+        "text": "42"
+      },
+      {
+        "key": "C",
+        "text": "44"
+      },
+      {
+        "key": "D",
+        "text": "46"
+      }
+    ],
+    "correct": [
+      "B"
+    ],
+    "explanation": "Differences 4, 6, 8, 10, 12 → 42",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 1.0,
+    "negative_marks": 0.25,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_at": "2026-10-13T14:12:56.510980+00:00"
+  },
+  {
+    "id": "3df68edf-ff19-4471-82ae-55f5f65ee6a9",
+    "text": "If CAT is coded as DBU, how is DOG coded?",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "EPH"
+      },
+      {
+        "key": "B",
+        "text": "EOH"
+      },
+      {
+        "key": "C",
+        "text": "FPH"
+      },
+      {
+        "key": "D",
+        "text": "EPG"
+      }
+    ],
+    "correct": [
+      "A"
+    ],
+    "explanation": "Each letter shifts +1",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 1.0,
+    "negative_marks": 0.25,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_at": "2026-10-13T14:12:56.510988+00:00"
+  },
+  {
+    "id": "40b4c457-de4c-417d-be48-0f27e7df37e3",
+    "text": "Pointing to a man, Riya says 'He is the son of my grandfather's only son.' The man is Riya's:",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "Cousin"
+      },
+      {
+        "key": "B",
+        "text": "Uncle"
+      },
+      {
+        "key": "C",
+        "text": "Brother"
+      },
+      {
+        "key": "D",
+        "text": "Father"
+      }
+    ],
+    "correct": [
+      "C"
+    ],
+    "explanation": "Grandfather's only son is her father; his son is her brother",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 1.0,
+    "negative_marks": 0.25,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_at": "2026-10-13T14:12:56.510996+00:00"
+  },
+  {
+    "id": "f7bdad35-7c5d-4a39-ac7c-8f8a7f613ed2",
+    "text": "Which one is the odd one out?",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "Square"
+      },
+      {
+        "key": "B",
+        "text": "Triangle"
+      },
+      {
+        "key": "C",
+        "text": "Circle"
+      },
+      {
+        "key": "D",
+        "text": "Rectangle"
+      }
+    ],
+    "correct": [
+      "C"
+    ],
+    "explanation": "Circle has no straight sides",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 1.0,
+    "negative_marks": 0.25,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_at": "2026-10-13T14:12:56.511004+00:00"
+  },
+  {
+    "id": "5fd6d5fe-1e84-4d9f-a359-607724c46e15",
+    "text": "Choose the synonym of 'ABUNDANT':",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "Scarce"
+      },
+      {
+        "key": "B",
+        "text": "Plentiful"
+      },
+      {
+        "key": "C",
+        "text": "Rare"
+      },
+      {
+        "key": "D",
+        "text": "Meagre"
+      }
+    ],
+    "correct": [
+      "B"
+    ],
+    "explanation": "Abundant means existing in large quantities",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 1.0,
+    "negative_marks": 0.25,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_at": "2026-10-13T14:12:56.511382+00:00"
+  },
+  {
+    "id": "2499e641-ce10-4d4b-9bf7-c73bdf7834fb",
+    "text": "Choose the antonym of 'OBSCURE':",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "Vague"
+      },
+      {
+        "key": "B",
+        "text": "Hidden"
+      },
+      {
+        "key": "C",
+        "text": "Clear"
+      },
+      {
+        "key": "D",
+        "text": "Dim"
+      }
+    ],
+    "correct": [
+      "C"
+    ],
+    "explanation": "Obscure means unclear; the opposite is clear",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 1.0,
+    "negative_marks": 0.25,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_at": "2026-10-13T14:12:56.511388+00:00"
+  },
+  {
+    "id": "bb3b8362-a07e-4d69-b8f9-c022e3353cfd",
+    "text": "Fill in the blank: She has been working here ___ 2019.",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "for"
+      },
+      {
+        "key": "B",
+        "text": "since"
+      },
+      {
+        "key": "C",
+        "text": "from"
+      },
+      {
+        "key": "D",
+        "text": "by"
+      }
+    ],
+    "correct": [
+      "B"
+    ],
+    "explanation": "'Since' is used with a point in time",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 1.0,
+    "negative_marks": 0.25,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_at": "2026-10-13T14:12:56.511395+00:00"
+  },
+  {
+    "id": "6fd33f05-7df9-4018-a5c3-7bd5590b9eab",
+    "text": "Identify the correctly spelt word:",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "Accomodate"
+      },
+      {
+        "key": "B",
+        "text": "Acommodate"
+      },
+      {
+        "key": "C",
+        "text": "Accommodate"
+      },
+      {
+        "key": "D",
+        "text": "Acomodate"
+      }
+    ],
+    "correct": [
+      "C"
+    ],
+    "explanation": "Accommodate has double c and double m",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 1.0,
+    "negative_marks": 0.25,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_at": "2026-10-13T14:12:56.511400+00:00"
+  },
+  {
+    "id": "69716a17-ccea-4e81-8378-506eea6194b0",
+    "text": "Who is known as the 'Father of the Indian Constitution'?",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "Mahatma Gandhi",
+        "text_hi": "महात्मा गांधी"
+      },
+      {
+        "key": "B",
+        "text": "B. R. Ambedkar",
+        "text_hi": "बी. आर. अम्बेडकर"
+      },
+      {
+        "key": "C",
+        "text": "Jawaharlal Nehru",
+        "text_hi": "जवाहरलाल नेहरू"
+      },
+      {
+        "key": "D",
+        "text": "Sardar Patel",
+        "text_hi": "सरदार पटेल"
+      }
+    ],
+    "correct": [
+      "B"
+    ],
+    "explanation": "Dr. B. R. Ambedkar chaired the Drafting Committee",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 1.0,
+    "negative_marks": 0.25,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_at": "2026-10-13T14:12:56.511698+00:00",
+    "explanation_hi": "डॉ. बी. आर. अम्बेडकर प्रारूप समिति के अध्यक्ष थे",
+    "text_hi": "'भारतीय संविधान के जनक' के रूप में किसे जाना जाता है?"
+  },
+  {
+    "id": "cb490957-cce7-4189-bb16-3051d800c8b8",
+    "text": "The Reserve Bank of India was established in:",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "1935",
+        "text_hi": null
+      },
+      {
+        "key": "B",
+        "text": "1947",
+        "text_hi": null
+      },
+      {
+        "key": "C",
+        "text": "1950",
+        "text_hi": null
+      },
+      {
+        "key": "D",
+        "text": "1969",
+        "text_hi": null
+      }
+    ],
+    "correct": [
+      "A"
+    ],
+    "explanation": "RBI was established on 1 April 1935",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 1.0,
+    "negative_marks": 0.25,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_at": "2026-10-13T14:12:56.511705+00:00",
+    "explanation_hi": "RBI की स्थापना 1 अप्रैल 1935 को हुई",
+    "text_hi": "भारतीय रिज़र्व बैंक की स्थापना किस वर्ष हुई थी?"
+  },
+  {
+    "id": "d161eefb-7664-4c8b-9d67-1864f13b60f3",
+    "text": "Which planet is known as the Red Planet?",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "Venus",
+        "text_hi": "शुक्र"
+      },
+      {
+        "key": "B",
+        "text": "Jupiter",
+        "text_hi": "बृहस्पति"
+      },
+      {
+        "key": "C",
+        "text": "Mars",
+        "text_hi": "मंगल"
+      },
+      {
+        "key": "D",
+        "text": "Saturn",
+        "text_hi": "शनि"
+      }
+    ],
+    "correct": [
+      "C"
+    ],
+    "explanation": "Iron oxide gives Mars its red colour",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 1.0,
+    "negative_marks": 0.25,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_at": "2026-10-13T14:12:56.511710+00:00",
+    "explanation_hi": "आयरन ऑक्साइड के कारण मंगल लाल दिखाई देता है",
+    "text_hi": "किस ग्रह को लाल ग्रह कहा जाता है?"
+  },
+  {
+    "id": "1560fc0a-0f60-48c3-81b0-b6c1cb547f08",
+    "text": "The headquarters of the International Monetary Fund is in:",
+    "type": "mcq_single",
+    "options": [
+      {
+        "key": "A",
+        "text": "Geneva",
+        "text_hi": "जिनेवा"
+      },
+      {
+        "key": "B",
+        "text": "New York",
+        "text_hi": "न्यूयॉर्क"
+      },
+      {
+        "key": "C",
+        "text": "Paris",
+        "text_hi": "पेरिस"
+      },
+      {
+        "key": "D",
+        "text": "Washington, D.C.",
+        "text_hi": "वाशिंगटन, डी.सी."
+      }
+    ],
+    "correct": [
+      "D"
+    ],
+    "explanation": "IMF is headquartered in Washington, D.C.",
+    "difficulty": "medium",
+    "language": "en",
+    "positive_marks": 1.0,
+    "negative_marks": 0.25,
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "created_at": "2026-10-13T14:12:56.511715+00:00",
+    "explanation_hi": "IMF का मुख्यालय वाशिंगटन, डी.सी. में है",
+    "text_hi": "अंतर्राष्ट्रीय मुद्रा कोष (IMF) का मुख्यालय कहाँ है?"
+  }
+]

@@ -1,0 +1,27 @@
+[
+  {
+    "id": "a15b87c5-1cf6-437c-b84c-50d4a8850764",
+    "user_id": "9eb90a2e-5e73-4ac9-9add-3873a80975ec",
+    "item_type": "test_series",
+    "item_id": "5c415501-4681-477d-920a-2050f88284bf",
+    "amount": 0,
+    "currency": "INR",
+    "status": "paid",
+    "created_at": "2026-10-13T13:35:42.417361+00:00",
+    "razorpay_order_id": null,
+    "receipt": "a15b87c5-1cf6-437c-b84c-50d4a8850764"
+  },
+  {
+    "id": "0e0a85f0-48a9-4422-85bb-ac7960f5b0c7",
+    "user_id": "9eb90a2e-5e73-4ac9-9add-3873a80975ec",
+    "item_type": "test_series",
+    "item_id": "77e6453f-7cbc-4742-9221-48ded8af3958",
+    "amount": 99900,
+    "currency": "INR",
+    "status": "created",
+    "created_at": "2026-10-13T13:35:42.514172+00:00",
+    "razorpay_order_id": null,
+    "receipt": "0e0a85f0-48a9-4422-85bb-ac7960f5b0c7",
+    "item_title": "UPSC Prelims Test Series"
+  }
+]

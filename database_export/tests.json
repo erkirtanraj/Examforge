@@ -1,0 +1,399 @@
+[
+  {
+    "id": "9f13631e-df0c-4e5c-bf03-1e1f207d6365",
+    "series_id": "5c415501-4681-477d-920a-2050f88284bf",
+    "title": "SSC CGL 2026 Full Mock Series - Mock 1",
+    "duration_minutes": 60,
+    "total_marks": 20.0,
+    "passing_marks": 10,
+    "instructions": "Read all questions carefully. Negative marking applicable.",
+    "question_ids": [
+      "0e696606-aa0c-4e41-81dd-90713acc5a85",
+      "055bcca1-b7c7-406c-a347-8d4e2419405b",
+      "7030cade-6092-44b9-9a5b-111a5daa8117",
+      "fc85f443-21d4-407b-b701-12d972909ba9",
+      "957c9dd2-ca4e-49b7-ab39-454a76a0437e",
+      "5d97b719-a18b-4ef7-b3b4-278e4ed41f84",
+      "3f041d26-8e51-4204-900a-126e245cfe8c",
+      "7d1bb3e7-28e8-4838-a2b8-24c00102004d",
+      "3eca8bb0-32a1-4edd-9ac2-3f6631b559c9",
+      "8ccfa3e6-6485-48aa-9ecc-4a809332478a"
+    ],
+    "is_published": true,
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.205208+00:00"
+  },
+  {
+    "id": "5a8ebb4f-2da8-42f1-b29a-e026aa4dd2dd",
+    "series_id": "5c415501-4681-477d-920a-2050f88284bf",
+    "title": "SSC CGL 2026 Full Mock Series - Mock 2",
+    "duration_minutes": 60,
+    "total_marks": 20.0,
+    "passing_marks": 10,
+    "instructions": "Read all questions carefully. Negative marking applicable.",
+    "question_ids": [
+      "0e696606-aa0c-4e41-81dd-90713acc5a85",
+      "055bcca1-b7c7-406c-a347-8d4e2419405b",
+      "7030cade-6092-44b9-9a5b-111a5daa8117",
+      "fc85f443-21d4-407b-b701-12d972909ba9",
+      "957c9dd2-ca4e-49b7-ab39-454a76a0437e",
+      "5d97b719-a18b-4ef7-b3b4-278e4ed41f84",
+      "3f041d26-8e51-4204-900a-126e245cfe8c",
+      "7d1bb3e7-28e8-4838-a2b8-24c00102004d",
+      "3eca8bb0-32a1-4edd-9ac2-3f6631b559c9",
+      "8ccfa3e6-6485-48aa-9ecc-4a809332478a"
+    ],
+    "is_published": true,
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.205218+00:00"
+  },
+  {
+    "id": "54ad827a-bc6f-46d7-926e-807e68894b79",
+    "series_id": "77e6453f-7cbc-4742-9221-48ded8af3958",
+    "title": "UPSC Prelims Test Series - Mock 1",
+    "duration_minutes": 60,
+    "total_marks": 20.0,
+    "passing_marks": 10,
+    "instructions": "Read all questions carefully. Negative marking applicable.",
+    "question_ids": [
+      "0e696606-aa0c-4e41-81dd-90713acc5a85",
+      "055bcca1-b7c7-406c-a347-8d4e2419405b",
+      "7030cade-6092-44b9-9a5b-111a5daa8117",
+      "fc85f443-21d4-407b-b701-12d972909ba9",
+      "957c9dd2-ca4e-49b7-ab39-454a76a0437e",
+      "5d97b719-a18b-4ef7-b3b4-278e4ed41f84",
+      "3f041d26-8e51-4204-900a-126e245cfe8c",
+      "7d1bb3e7-28e8-4838-a2b8-24c00102004d",
+      "3eca8bb0-32a1-4edd-9ac2-3f6631b559c9",
+      "8ccfa3e6-6485-48aa-9ecc-4a809332478a"
+    ],
+    "is_published": true,
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.205225+00:00"
+  },
+  {
+    "id": "8d160a7e-f99c-40d3-87a8-88b80378ec60",
+    "series_id": "77e6453f-7cbc-4742-9221-48ded8af3958",
+    "title": "UPSC Prelims Test Series - Mock 2",
+    "duration_minutes": 60,
+    "total_marks": 20.0,
+    "passing_marks": 10,
+    "instructions": "Read all questions carefully. Negative marking applicable.",
+    "question_ids": [
+      "0e696606-aa0c-4e41-81dd-90713acc5a85",
+      "055bcca1-b7c7-406c-a347-8d4e2419405b",
+      "7030cade-6092-44b9-9a5b-111a5daa8117",
+      "fc85f443-21d4-407b-b701-12d972909ba9",
+      "957c9dd2-ca4e-49b7-ab39-454a76a0437e",
+      "5d97b719-a18b-4ef7-b3b4-278e4ed41f84",
+      "3f041d26-8e51-4204-900a-126e245cfe8c",
+      "7d1bb3e7-28e8-4838-a2b8-24c00102004d",
+      "3eca8bb0-32a1-4edd-9ac2-3f6631b559c9",
+      "8ccfa3e6-6485-48aa-9ecc-4a809332478a"
+    ],
+    "is_published": true,
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.205230+00:00"
+  },
+  {
+    "id": "a63dd468-71e2-4e79-93e5-19f4c2d56ce7",
+    "series_id": "5a879965-3efd-4dc9-8a16-974123a7a5b2",
+    "title": "SBI PO Prelims Sprint - Mock 1",
+    "duration_minutes": 60,
+    "total_marks": 20.0,
+    "passing_marks": 10,
+    "instructions": "Read all questions carefully. Negative marking applicable.",
+    "question_ids": [
+      "0e696606-aa0c-4e41-81dd-90713acc5a85",
+      "055bcca1-b7c7-406c-a347-8d4e2419405b",
+      "7030cade-6092-44b9-9a5b-111a5daa8117",
+      "fc85f443-21d4-407b-b701-12d972909ba9",
+      "957c9dd2-ca4e-49b7-ab39-454a76a0437e",
+      "5d97b719-a18b-4ef7-b3b4-278e4ed41f84",
+      "3f041d26-8e51-4204-900a-126e245cfe8c",
+      "7d1bb3e7-28e8-4838-a2b8-24c00102004d",
+      "3eca8bb0-32a1-4edd-9ac2-3f6631b559c9",
+      "8ccfa3e6-6485-48aa-9ecc-4a809332478a"
+    ],
+    "is_published": true,
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.205236+00:00"
+  },
+  {
+    "id": "80540ef2-7531-4403-8182-46a9954592c7",
+    "series_id": "5a879965-3efd-4dc9-8a16-974123a7a5b2",
+    "title": "SBI PO Prelims Sprint - Mock 2",
+    "duration_minutes": 60,
+    "total_marks": 20.0,
+    "passing_marks": 10,
+    "instructions": "Read all questions carefully. Negative marking applicable.",
+    "question_ids": [
+      "0e696606-aa0c-4e41-81dd-90713acc5a85",
+      "055bcca1-b7c7-406c-a347-8d4e2419405b",
+      "7030cade-6092-44b9-9a5b-111a5daa8117",
+      "fc85f443-21d4-407b-b701-12d972909ba9",
+      "957c9dd2-ca4e-49b7-ab39-454a76a0437e",
+      "5d97b719-a18b-4ef7-b3b4-278e4ed41f84",
+      "3f041d26-8e51-4204-900a-126e245cfe8c",
+      "7d1bb3e7-28e8-4838-a2b8-24c00102004d",
+      "3eca8bb0-32a1-4edd-9ac2-3f6631b559c9",
+      "8ccfa3e6-6485-48aa-9ecc-4a809332478a"
+    ],
+    "is_published": true,
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.205240+00:00"
+  },
+  {
+    "id": "529a2e52-1cd6-4686-bff8-d0120a9d451a",
+    "series_id": "0a639a56-fdb3-42ef-b462-3c6aa34f92ee",
+    "title": "NEET Biology Mastery - Mock 1",
+    "duration_minutes": 60,
+    "total_marks": 20.0,
+    "passing_marks": 10,
+    "instructions": "Read all questions carefully. Negative marking applicable.",
+    "question_ids": [
+      "0e696606-aa0c-4e41-81dd-90713acc5a85",
+      "055bcca1-b7c7-406c-a347-8d4e2419405b",
+      "7030cade-6092-44b9-9a5b-111a5daa8117",
+      "fc85f443-21d4-407b-b701-12d972909ba9",
+      "957c9dd2-ca4e-49b7-ab39-454a76a0437e",
+      "5d97b719-a18b-4ef7-b3b4-278e4ed41f84",
+      "3f041d26-8e51-4204-900a-126e245cfe8c",
+      "7d1bb3e7-28e8-4838-a2b8-24c00102004d",
+      "3eca8bb0-32a1-4edd-9ac2-3f6631b559c9",
+      "8ccfa3e6-6485-48aa-9ecc-4a809332478a"
+    ],
+    "is_published": true,
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.205246+00:00"
+  },
+  {
+    "id": "4a1edec5-8d9b-4e7b-b84d-dc9711fdd598",
+    "series_id": "0a639a56-fdb3-42ef-b462-3c6aa34f92ee",
+    "title": "NEET Biology Mastery - Mock 2",
+    "duration_minutes": 60,
+    "total_marks": 20.0,
+    "passing_marks": 10,
+    "instructions": "Read all questions carefully. Negative marking applicable.",
+    "question_ids": [
+      "0e696606-aa0c-4e41-81dd-90713acc5a85",
+      "055bcca1-b7c7-406c-a347-8d4e2419405b",
+      "7030cade-6092-44b9-9a5b-111a5daa8117",
+      "fc85f443-21d4-407b-b701-12d972909ba9",
+      "957c9dd2-ca4e-49b7-ab39-454a76a0437e",
+      "5d97b719-a18b-4ef7-b3b4-278e4ed41f84",
+      "3f041d26-8e51-4204-900a-126e245cfe8c",
+      "7d1bb3e7-28e8-4838-a2b8-24c00102004d",
+      "3eca8bb0-32a1-4edd-9ac2-3f6631b559c9",
+      "8ccfa3e6-6485-48aa-9ecc-4a809332478a"
+    ],
+    "is_published": true,
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.205254+00:00"
+  },
+  {
+    "id": "d1cdf657-2d3d-424d-8d53-c2665f135f25",
+    "series_id": "5c415501-4681-477d-920a-2050f88284bf",
+    "title": "SSC CGL Tier I · Sectional Mock 1",
+    "duration_minutes": 60,
+    "total_marks": 16.0,
+    "passing_marks": null,
+    "instructions": "Move freely between sections within the overall time.",
+    "question_ids": [
+      "53a8320b-6953-4e41-9f92-9bff485e2543",
+      "0861b7b5-749e-418b-a9a4-612d9cc6df51",
+      "2a551f96-b52a-43e9-8abc-7d7ae859d76b",
+      "205c663d-d3d0-4569-8887-0f7ed81578e4",
+      "40c1f748-2fd1-4d3d-ab7a-c79522f4ec59",
+      "3df68edf-ff19-4471-82ae-55f5f65ee6a9",
+      "40b4c457-de4c-417d-be48-0f27e7df37e3",
+      "f7bdad35-7c5d-4a39-ac7c-8f8a7f613ed2",
+      "5fd6d5fe-1e84-4d9f-a359-607724c46e15",
+      "2499e641-ce10-4d4b-9bf7-c73bdf7834fb",
+      "bb3b8362-a07e-4d69-b8f9-c022e3353cfd",
+      "6fd33f05-7df9-4018-a5c3-7bd5590b9eab",
+      "69716a17-ccea-4e81-8378-506eea6194b0",
+      "cb490957-cce7-4189-bb16-3051d800c8b8",
+      "d161eefb-7664-4c8b-9d67-1864f13b60f3",
+      "1560fc0a-0f60-48c3-81b0-b6c1cb547f08"
+    ],
+    "is_published": true,
+    "sectional_timing": false,
+    "sections": [
+      {
+        "name": "Quantitative Aptitude",
+        "duration_minutes": null,
+        "question_ids": [
+          "53a8320b-6953-4e41-9f92-9bff485e2543",
+          "0861b7b5-749e-418b-a9a4-612d9cc6df51",
+          "2a551f96-b52a-43e9-8abc-7d7ae859d76b",
+          "205c663d-d3d0-4569-8887-0f7ed81578e4"
+        ]
+      },
+      {
+        "name": "Reasoning Ability",
+        "duration_minutes": null,
+        "question_ids": [
+          "40c1f748-2fd1-4d3d-ab7a-c79522f4ec59",
+          "3df68edf-ff19-4471-82ae-55f5f65ee6a9",
+          "40b4c457-de4c-417d-be48-0f27e7df37e3",
+          "f7bdad35-7c5d-4a39-ac7c-8f8a7f613ed2"
+        ]
+      },
+      {
+        "name": "English Language",
+        "duration_minutes": null,
+        "question_ids": [
+          "5fd6d5fe-1e84-4d9f-a359-607724c46e15",
+          "2499e641-ce10-4d4b-9bf7-c73bdf7834fb",
+          "bb3b8362-a07e-4d69-b8f9-c022e3353cfd",
+          "6fd33f05-7df9-4018-a5c3-7bd5590b9eab"
+        ]
+      },
+      {
+        "name": "General Awareness",
+        "duration_minutes": null,
+        "question_ids": [
+          "69716a17-ccea-4e81-8378-506eea6194b0",
+          "cb490957-cce7-4189-bb16-3051d800c8b8",
+          "d161eefb-7664-4c8b-9d67-1864f13b60f3",
+          "1560fc0a-0f60-48c3-81b0-b6c1cb547f08"
+        ]
+      }
+    ],
+    "created_at": "2026-10-13T14:12:56.512492+00:00"
+  },
+  {
+    "id": "cabc26f0-9c25-4a05-aa6d-52ec28362527",
+    "series_id": "5a879965-3efd-4dc9-8a16-974123a7a5b2",
+    "title": "SBI PO Prelims · Sectional Mock 1",
+    "duration_minutes": 15,
+    "total_marks": 12.0,
+    "passing_marks": null,
+    "instructions": "Sections have their own timer. You cannot return to a section once it ends.",
+    "question_ids": [
+      "5fd6d5fe-1e84-4d9f-a359-607724c46e15",
+      "2499e641-ce10-4d4b-9bf7-c73bdf7834fb",
+      "bb3b8362-a07e-4d69-b8f9-c022e3353cfd",
+      "6fd33f05-7df9-4018-a5c3-7bd5590b9eab",
+      "53a8320b-6953-4e41-9f92-9bff485e2543",
+      "0861b7b5-749e-418b-a9a4-612d9cc6df51",
+      "2a551f96-b52a-43e9-8abc-7d7ae859d76b",
+      "205c663d-d3d0-4569-8887-0f7ed81578e4",
+      "40c1f748-2fd1-4d3d-ab7a-c79522f4ec59",
+      "3df68edf-ff19-4471-82ae-55f5f65ee6a9",
+      "40b4c457-de4c-417d-be48-0f27e7df37e3",
+      "f7bdad35-7c5d-4a39-ac7c-8f8a7f613ed2"
+    ],
+    "is_published": true,
+    "sectional_timing": true,
+    "sections": [
+      {
+        "name": "English Language",
+        "duration_minutes": 5,
+        "question_ids": [
+          "5fd6d5fe-1e84-4d9f-a359-607724c46e15",
+          "2499e641-ce10-4d4b-9bf7-c73bdf7834fb",
+          "bb3b8362-a07e-4d69-b8f9-c022e3353cfd",
+          "6fd33f05-7df9-4018-a5c3-7bd5590b9eab"
+        ]
+      },
+      {
+        "name": "Quantitative Aptitude",
+        "duration_minutes": 5,
+        "question_ids": [
+          "53a8320b-6953-4e41-9f92-9bff485e2543",
+          "0861b7b5-749e-418b-a9a4-612d9cc6df51",
+          "2a551f96-b52a-43e9-8abc-7d7ae859d76b",
+          "205c663d-d3d0-4569-8887-0f7ed81578e4"
+        ]
+      },
+      {
+        "name": "Reasoning Ability",
+        "duration_minutes": 5,
+        "question_ids": [
+          "40c1f748-2fd1-4d3d-ab7a-c79522f4ec59",
+          "3df68edf-ff19-4471-82ae-55f5f65ee6a9",
+          "40b4c457-de4c-417d-be48-0f27e7df37e3",
+          "f7bdad35-7c5d-4a39-ac7c-8f8a7f613ed2"
+        ]
+      }
+    ],
+    "created_at": "2026-10-13T14:12:56.513413+00:00"
+  },
+  {
+    "id": "d6000aaf-943c-467a-9494-0a0b2a8dad22",
+    "series_id": "5c415501-4681-477d-920a-2050f88284bf",
+    "title": "All-India Live Mock · SSC CGL #1",
+    "duration_minutes": 60,
+    "total_marks": 16.0,
+    "passing_marks": null,
+    "instructions": "All-India live mock. Opens for everyone at the scheduled time.",
+    "question_ids": [
+      "53a8320b-6953-4e41-9f92-9bff485e2543",
+      "0861b7b5-749e-418b-a9a4-612d9cc6df51",
+      "2a551f96-b52a-43e9-8abc-7d7ae859d76b",
+      "205c663d-d3d0-4569-8887-0f7ed81578e4",
+      "40c1f748-2fd1-4d3d-ab7a-c79522f4ec59",
+      "3df68edf-ff19-4471-82ae-55f5f65ee6a9",
+      "40b4c457-de4c-417d-be48-0f27e7df37e3",
+      "f7bdad35-7c5d-4a39-ac7c-8f8a7f613ed2",
+      "5fd6d5fe-1e84-4d9f-a359-607724c46e15",
+      "2499e641-ce10-4d4b-9bf7-c73bdf7834fb",
+      "bb3b8362-a07e-4d69-b8f9-c022e3353cfd",
+      "6fd33f05-7df9-4018-a5c3-7bd5590b9eab",
+      "69716a17-ccea-4e81-8378-506eea6194b0",
+      "cb490957-cce7-4189-bb16-3051d800c8b8",
+      "d161eefb-7664-4c8b-9d67-1864f13b60f3",
+      "1560fc0a-0f60-48c3-81b0-b6c1cb547f08"
+    ],
+    "is_published": true,
+    "sectional_timing": false,
+    "sections": [
+      {
+        "name": "Quantitative Aptitude",
+        "duration_minutes": null,
+        "question_ids": [
+          "53a8320b-6953-4e41-9f92-9bff485e2543",
+          "0861b7b5-749e-418b-a9a4-612d9cc6df51",
+          "2a551f96-b52a-43e9-8abc-7d7ae859d76b",
+          "205c663d-d3d0-4569-8887-0f7ed81578e4"
+        ]
+      },
+      {
+        "name": "Reasoning Ability",
+        "duration_minutes": null,
+        "question_ids": [
+          "40c1f748-2fd1-4d3d-ab7a-c79522f4ec59",
+          "3df68edf-ff19-4471-82ae-55f5f65ee6a9",
+          "40b4c457-de4c-417d-be48-0f27e7df37e3",
+          "f7bdad35-7c5d-4a39-ac7c-8f8a7f613ed2"
+        ]
+      },
+      {
+        "name": "English Language",
+        "duration_minutes": null,
+        "question_ids": [
+          "5fd6d5fe-1e84-4d9f-a359-607724c46e15",
+          "2499e641-ce10-4d4b-9bf7-c73bdf7834fb",
+          "bb3b8362-a07e-4d69-b8f9-c022e3353cfd",
+          "6fd33f05-7df9-4018-a5c3-7bd5590b9eab"
+        ]
+      },
+      {
+        "name": "General Awareness",
+        "duration_minutes": null,
+        "question_ids": [
+          "69716a17-ccea-4e81-8378-506eea6194b0",
+          "cb490957-cce7-4189-bb16-3051d800c8b8",
+          "d161eefb-7664-4c8b-9d67-1864f13b60f3",
+          "1560fc0a-0f60-48c3-81b0-b6c1cb547f08"
+        ]
+      }
+    ],
+    "created_at": "2026-10-13T15:06:21.181812+00:00",
+    "live_start_at": "2026-10-15T15:00:00+00:00",
+    "live_window_minutes": 120,
+    "updated_at": "2026-10-13T15:14:48.761824+00:00"
+  }
+]

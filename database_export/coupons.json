@@ -1,0 +1,15 @@
+[
+  {
+    "id": "47592e9c-87fb-4c93-9718-f227453df72e",
+    "code": "WELCOME20",
+    "discount_type": "percent",
+    "value": 20,
+    "max_uses": null,
+    "valid_until": null,
+    "item_ids": [],
+    "active": true,
+    "used_count": 0,
+    "description": "20% off your first purchase",
+    "created_at": "2026-10-13T15:06:21.182670+00:00"
+  }
+]

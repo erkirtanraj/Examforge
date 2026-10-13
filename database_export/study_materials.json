@@ -1,0 +1,35 @@
+[
+  {
+    "id": "ad472b7a-a9d5-413b-ab45-7b652ef98a79",
+    "title": "SSC CGL Previous Year Papers (2020-2024)",
+    "description": "All PYQs with answer keys.",
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "file_url": "https://example.com/ssc-pyq.pdf",
+    "is_free": true,
+    "price": 0,
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.239466+00:00"
+  },
+  {
+    "id": "1a65f96f-7b06-458a-bd56-c8f8c6257144",
+    "title": "UPSC Current Affairs Compendium",
+    "description": "Monthly current affairs for Prelims & Mains.",
+    "category_id": "c845c6fc-375c-4039-93b9-94da9bda3080",
+    "file_url": "https://example.com/upsc-ca.pdf",
+    "is_free": false,
+    "price": 29900,
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.239474+00:00"
+  },
+  {
+    "id": "393c7e2a-1ade-4d44-8aa1-deefb245b1af",
+    "title": "Banking Awareness Handbook",
+    "description": "RBI, SEBI, insurance & current banking developments.",
+    "category_id": "118d79b2-0a41-4477-a8f2-d0df605fa3ec",
+    "file_url": "https://example.com/banking.pdf",
+    "is_free": true,
+    "price": 0,
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.239480+00:00"
+  }
+]

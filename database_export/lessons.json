@@ -1,0 +1,68 @@
+[
+  {
+    "id": "ad198867-bc08-47a6-a7a5-3e3adc7bf447",
+    "section_id": "766d1be2-2ee5-4f85-8c10-9e798b48d57e",
+    "title": "Lesson 1: Number System - Part 1",
+    "content_type": "video",
+    "content_url": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    "text_content": "Detailed lesson notes available.",
+    "position": 1,
+    "duration_minutes": 15,
+    "created_at": "2026-10-13T13:20:35.230003+00:00"
+  },
+  {
+    "id": "822a180e-3c1c-42d0-9071-bbaf33fa3e0a",
+    "section_id": "766d1be2-2ee5-4f85-8c10-9e798b48d57e",
+    "title": "Lesson 2: Number System - Part 2",
+    "content_type": "video",
+    "content_url": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    "text_content": "Detailed lesson notes available.",
+    "position": 2,
+    "duration_minutes": 15,
+    "created_at": "2026-10-13T13:20:35.230009+00:00"
+  },
+  {
+    "id": "14f24e17-0684-4780-8453-79cacf024286",
+    "section_id": "766d1be2-2ee5-4f85-8c10-9e798b48d57e",
+    "title": "Lesson 3: Number System - Part 3",
+    "content_type": "video",
+    "content_url": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    "text_content": "Detailed lesson notes available.",
+    "position": 3,
+    "duration_minutes": 15,
+    "created_at": "2026-10-13T13:20:35.230014+00:00"
+  },
+  {
+    "id": "0ed1ea89-8d21-426d-9613-8bebd41d7926",
+    "section_id": "bc167679-7ba4-4d89-8bea-66da1ede7b45",
+    "title": "Lesson 1: Percentage & Ratio - Part 1",
+    "content_type": "video",
+    "content_url": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    "text_content": "Detailed lesson notes available.",
+    "position": 1,
+    "duration_minutes": 15,
+    "created_at": "2026-10-13T13:20:35.230019+00:00"
+  },
+  {
+    "id": "6b69f5c8-464b-49d7-b6b1-e302d20d181b",
+    "section_id": "bc167679-7ba4-4d89-8bea-66da1ede7b45",
+    "title": "Lesson 2: Percentage & Ratio - Part 2",
+    "content_type": "video",
+    "content_url": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    "text_content": "Detailed lesson notes available.",
+    "position": 2,
+    "duration_minutes": 15,
+    "created_at": "2026-10-13T13:20:35.230023+00:00"
+  },
+  {
+    "id": "f666a302-baed-4b50-b9d7-a827ee3cecf6",
+    "section_id": "bc167679-7ba4-4d89-8bea-66da1ede7b45",
+    "title": "Lesson 3: Percentage & Ratio - Part 3",
+    "content_type": "video",
+    "content_url": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    "text_content": "Detailed lesson notes available.",
+    "position": 3,
+    "duration_minutes": 15,
+    "created_at": "2026-10-13T13:20:35.230027+00:00"
+  }
+]

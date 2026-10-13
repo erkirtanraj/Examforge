@@ -1,0 +1,58 @@
+[
+  {
+    "id": "5c415501-4681-477d-920a-2050f88284bf",
+    "title": "SSC CGL 2026 Full Mock Series",
+    "description": "20 full-length mocks matching latest exam pattern. Covers Quant, Reasoning, English, GA.",
+    "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
+    "thumbnail": "https://images.unsplash.com/photo-1551836022-deb4988cc6c0?w=800",
+    "language": "en",
+    "is_free": true,
+    "price": 0,
+    "validity_days": 365,
+    "is_published": true,
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.195757+00:00"
+  },
+  {
+    "id": "77e6453f-7cbc-4742-9221-48ded8af3958",
+    "title": "UPSC Prelims Test Series",
+    "description": "Full-length prelims mocks with detailed solutions and all-India ranking.",
+    "category_id": "c845c6fc-375c-4039-93b9-94da9bda3080",
+    "thumbnail": "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800",
+    "language": "en",
+    "is_free": false,
+    "price": 99900,
+    "validity_days": 365,
+    "is_published": true,
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.195763+00:00"
+  },
+  {
+    "id": "5a879965-3efd-4dc9-8a16-974123a7a5b2",
+    "title": "SBI PO Prelims Sprint",
+    "description": "Sectional + full-length mocks tailored for SBI PO Prelims.",
+    "category_id": "118d79b2-0a41-4477-a8f2-d0df605fa3ec",
+    "thumbnail": "https://images.unsplash.com/photo-1554224154-26032fced8bd?w=800",
+    "language": "en",
+    "is_free": true,
+    "price": 0,
+    "validity_days": 365,
+    "is_published": true,
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.195767+00:00"
+  },
+  {
+    "id": "0a639a56-fdb3-42ef-b462-3c6aa34f92ee",
+    "title": "NEET Biology Mastery",
+    "description": "Topic-wise mocks covering Botany & Zoology with NCERT-aligned explanations.",
+    "category_id": "3ee52085-dc46-46a2-b665-a4b257c7ed88",
+    "thumbnail": "https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=800",
+    "language": "en",
+    "is_free": false,
+    "price": 49900,
+    "validity_days": 180,
+    "is_published": true,
+    "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
+    "created_at": "2026-10-13T13:20:35.195772+00:00"
+  }
+]
