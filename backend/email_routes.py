@@ -5,13 +5,37 @@ from typing import Literal, Optional
 from datetime import datetime, timezone, timedelta
 from email.message import EmailMessage
 from email.utils import formataddr
-import asyncio, hashlib, secrets, smtplib, ssl, time, logging
+from html import escape
+from urllib.parse import urlparse
+from fastapi import Request
+import asyncio, hashlib, secrets, smtplib, ssl, time, logging, os
 
 log = logging.getLogger("lms.email")
 RESET_TTL = timedelta(hours=1)
 MAX_REQUESTS = 3
 WINDOW = timedelta(minutes=15)
 GENERIC = {"ok": True, "message": "If an account exists for this email, a reset link has been sent."}
+_FORGOT_REQUESTS: dict[str, list[float]] = {}
+
+
+def _limit_forgot_requests(request: Request) -> None:
+    now = time.monotonic()
+    ip = request.client.host if request.client else "unknown"
+    key = hashlib.sha256(ip.encode("utf-8")).hexdigest()
+    hits = [t for t in _FORGOT_REQUESTS.get(key, []) if now - t < 900]
+    if len(hits) >= 20:
+        retry = max(1, int(900 - (now - hits[0])))
+        raise HTTPException(status_code=429, detail="Too many requests. Please try again later.",
+                            headers={"Retry-After": str(retry)})
+    _FORGOT_REQUESTS[key] = hits + [now]
+    if len(_FORGOT_REQUESTS) > 10000:
+        cutoff = now - 900
+        for bucket in list(_FORGOT_REQUESTS):
+            fresh = [t for t in _FORGOT_REQUESTS[bucket] if t >= cutoff]
+            if fresh:
+                _FORGOT_REQUESTS[bucket] = fresh
+            else:
+                _FORGOT_REQUESTS.pop(bucket, None)
 
 
 class SmtpIn(BaseModel):
@@ -35,7 +59,7 @@ class ForgotIn(BaseModel):
 
 class ResetIn(BaseModel):
     token: str = Field(min_length=20)
-    password: str = Field(min_length=6, max_length=128)
+    password: str = Field(min_length=10, max_length=72)
 
 
 def _hash(token: str) -> str:
@@ -89,8 +113,16 @@ def build_email_router(db, require_roles, get_brand, hash_pw):
     async def save_email_settings(data: SmtpIn, _=admin):
         upd = data.model_dump(exclude={"password"})
         upd["site_url"] = upd["site_url"].rstrip("/")
-        if not upd["site_url"].startswith(("http://", "https://")):
-            raise HTTPException(400, "Website URL must start with http:// or https://")
+        parsed_url = urlparse(upd["site_url"])
+        if parsed_url.scheme not in ("http", "https") or not parsed_url.hostname or parsed_url.username or parsed_url.password:
+            raise HTTPException(400, "Enter a valid website URL")
+        if parsed_url.query or parsed_url.fragment:
+            raise HTTPException(400, "Website URL must not contain a query or fragment")
+        app_env = os.environ.get("APP_ENV", os.environ.get("ENVIRONMENT", "production")).strip().lower()
+        if app_env in ("prod", "production") and parsed_url.scheme != "https":
+            raise HTTPException(400, "Production website URL must use HTTPS")
+        if data.security == "none" and (data.username or data.password):
+            raise HTTPException(400, "SMTP authentication requires SSL or STARTTLS")
         if data.password:
             upd["password"] = data.password
         upd["updated_at"] = datetime.now(timezone.utc).isoformat()
@@ -105,7 +137,8 @@ def build_email_router(db, require_roles, get_brand, hash_pw):
         return {"ok": True}
 
     @r.post("/auth/forgot-password")
-    async def forgot_password(data: ForgotIn):
+    async def forgot_password(request: Request, data: ForgotIn):
+        _limit_forgot_requests(request)
         email = data.email.lower()
         user = await db.users.find_one({"email": email}, {"_id": 0, "id": 1, "name": 1, "status": 1})
         if not user or user.get("status") == "suspended":
@@ -123,9 +156,12 @@ def build_email_router(db, require_roles, get_brand, hash_pw):
         link = f"{c['site_url']}/reset-password?token={token}"
         brand = await get_brand()
         text = f"Hi {user['name']},\n\nReset your {brand} password using this link (valid for 1 hour):\n{link}\n\nIf you didn't request this, ignore this email."
-        html = (f"<div style='font-family:Arial,sans-serif;max-width:520px'><p>Hi {user['name']},</p>"
-                f"<p>We received a request to reset your <b>{brand}</b> password.</p>"
-                f"<p><a href='{link}' style='display:inline-block;background:#2563eb;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none'>Reset password</a></p>"
+        html_name = escape(user["name"])
+        html_brand = escape(brand)
+        html_link = escape(link, quote=True)
+        html = (f"<div style='font-family:Arial,sans-serif;max-width:520px'><p>Hi {html_name},</p>"
+                f"<p>We received a request to reset your <b>{html_brand}</b> password.</p>"
+                f"<p><a href='{html_link}' style='display:inline-block;background:#2563eb;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none'>Reset password</a></p>"
                 f"<p style='color:#666;font-size:13px'>This link expires in 1 hour and can be used once. If you didn't request it, you can ignore this email.</p></div>")
         try:
             await send(email, f"Reset your {brand} password", text, html)
@@ -142,6 +178,8 @@ def build_email_router(db, require_roles, get_brand, hash_pw):
 
     @r.post("/auth/reset-password")
     async def reset_password(data: ResetIn):
+        if len(data.password.encode("utf-8")) > 72:
+            raise HTTPException(422, "Password must be 72 UTF-8 bytes or fewer")
         now = datetime.now(timezone.utc)
         t = await db.password_reset_tokens.find_one_and_update(
             {"token_hash": _hash(data.token), "used": False, "expires_at": {"$gt": now}},
