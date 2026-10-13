@@ -25,7 +25,8 @@ export default function ResetPassword() {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (pw.length < 6) return toast.error("Password must be at least 6 characters");
+    if (pw.length < 10) return toast.error("Password must be at least 10 characters");
+    if (new TextEncoder().encode(pw).length > 72) return toast.error("Password must be 72 UTF-8 bytes or fewer");
     if (pw !== pw2) return toast.error("Passwords don't match");
     setLoading(true);
     try {
@@ -46,12 +47,12 @@ export default function ResetPassword() {
   }
   const type = show ? "text" : "password";
   return (
-    <AuthCard title="Set a new password" subtitle="Choose a password with at least 6 characters." testid="reset-password-page">
+    <AuthCard title="Set a new password" subtitle="Choose at least 10 characters (72 UTF-8 bytes maximum)." testid="reset-password-page">
       <form onSubmit={submit} className="space-y-4">
         <div>
           <Label className="text-gray-300">New password</Label>
           <div className="relative mt-1">
-            <Input type={type} required value={pw} onChange={(e) => setPw(e.target.value)} className="bg-[#0b1120] border-gray-800 text-white pr-10" data-testid="reset-password-new" autoComplete="new-password" />
+            <Input type={type} required minLength={10} maxLength={72} value={pw} onChange={(e) => setPw(e.target.value)} className="bg-[#0b1120] border-gray-800 text-white pr-10" data-testid="reset-password-new" autoComplete="new-password" />
             <button type="button" onClick={() => setShow(!show)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white" aria-label="Show password">
               {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
@@ -59,7 +60,7 @@ export default function ResetPassword() {
         </div>
         <div>
           <Label className="text-gray-300">Confirm password</Label>
-          <Input type={type} required value={pw2} onChange={(e) => setPw2(e.target.value)} className="mt-1 bg-[#0b1120] border-gray-800 text-white" data-testid="reset-password-confirm" autoComplete="new-password" />
+          <Input type={type} required minLength={10} maxLength={72} value={pw2} onChange={(e) => setPw2(e.target.value)} className="mt-1 bg-[#0b1120] border-gray-800 text-white" data-testid="reset-password-confirm" autoComplete="new-password" />
         </div>
         <Button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700" data-testid="reset-password-submit">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Update password"}
