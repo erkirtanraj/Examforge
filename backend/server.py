@@ -2,7 +2,7 @@
 Test Series + LMS Platform - FastAPI Backend
 Secure, server-authoritative examination engine with autosave, scoring, Razorpay payments.
 """
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, status, Request, Query
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, Request, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -12,7 +12,9 @@ from typing import List, Optional, Literal, Dict, Any
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 import os, uuid, logging, hashlib, hmac, jwt as pyjwt
-import bcrypt, secrets, asyncio, requests
+import bcrypt, secrets, asyncio, requests, bisect, csv, io, re
+import openpyxl
+from fastapi import UploadFile, File, Form
 import razorpay
 
 ROOT_DIR = Path(__file__).parent
@@ -141,6 +143,11 @@ class TestSeriesIn(BaseModel):
     price: int = 0  # in paise
     validity_days: int = 365
 
+class TestSection(BaseModel):
+    name: str
+    duration_minutes: Optional[int] = None
+    question_ids: List[str] = []
+
 class TestIn(BaseModel):
     series_id: str
     title: str
@@ -149,6 +156,8 @@ class TestIn(BaseModel):
     passing_marks: Optional[float] = None
     instructions: Optional[str] = ""
     question_ids: List[str] = []
+    sections: List[TestSection] = []
+    sectional_timing: bool = False
     is_published: bool = True
 
 class CourseIn(BaseModel):
@@ -304,6 +313,191 @@ async def create_question(data: QuestionIn, user=Depends(require_roles("admin", 
     doc.pop("_id", None)
     return doc
 
+async def _detach_questions(ids: list):
+    await db.tests.update_many({"question_ids": {"$in": ids}}, {"$pull": {"question_ids": {"$in": ids}}})
+    await db.tests.update_many({"sections.question_ids": {"$in": ids}}, {"$pull": {"sections.$[].question_ids": {"$in": ids}}})
+
+# ---- Bulk import (CSV / Excel) ----
+IMPORT_TYPES = {"": None, "mcq": "mcq_single", "single": "mcq_single", "mcq_single": "mcq_single", "multi": "mcq_multi",
+                "multiple": "mcq_multi", "mcq_multi": "mcq_multi", "tf": "true_false", "true_false": "true_false",
+                "true/false": "true_false", "truefalse": "true_false", "numerical": "numerical", "num": "numerical",
+                "numeric": "numerical", "integer": "numerical"}
+HEADER_ALIASES = {"question_text": "question", "text": "question", "q": "question", "answer": "correct",
+                  "correct_answer": "correct", "correct_option": "correct", "answer_key": "correct", "key": "correct",
+                  "marks": "positive_marks", "positive": "positive_marks", "negative": "negative_marks",
+                  "negative_mark": "negative_marks", "level": "difficulty", "solution": "explanation",
+                  "image": "image_url", "subject": "category", "exam": "category", "question_type": "type"}
+OPT_KEYS = "ABCDEFGH"
+DIFFS = {"easy": "easy", "e": "easy", "medium": "medium", "m": "medium", "moderate": "medium", "hard": "hard", "h": "hard", "difficult": "hard"}
+MAX_IMPORT_ROWS = 2000
+
+def _cell(v) -> str:
+    if v is None:
+        return ""
+    if isinstance(v, float) and v.is_integer():
+        return str(int(v))
+    if isinstance(v, bool):
+        return "True" if v else "False"
+    return str(v).strip()
+
+def _norm_header(h) -> str:
+    h = re.sub(r"[^a-z0-9_/]", "", _cell(h).lower().replace(" ", "_").replace("-", "_"))
+    m = re.fullmatch(r"(?:option_?|opt_?)?([a-h])", h)
+    return f"option_{m.group(1)}" if m else HEADER_ALIASES.get(h, h)
+
+def _read_rows(filename: str, content: bytes) -> list:
+    name = filename.lower()
+    if name.endswith((".xlsx", ".xlsm")):
+        try:
+            ws = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True).worksheets[0]
+        except Exception:
+            raise HTTPException(400, "Could not read this Excel file")
+        it = ws.iter_rows(values_only=True)
+        header, rows = next(it, None) or [], [list(r) for r in it]
+    elif name.endswith(".csv"):
+        try:
+            text = content.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            text = content.decode("latin-1")
+        reader = csv.reader(io.StringIO(text))
+        header, rows = next(reader, []), list(reader)
+    else:
+        raise HTTPException(400, "Upload a .csv or .xlsx file")
+    keys = [_norm_header(h) for h in header]
+    if "question" not in keys or "correct" not in keys:
+        raise HTTPException(400, "The first row must contain headers incl. 'question' and 'correct'. Download the template.")
+    out = []
+    for n, r in enumerate(rows, start=2):
+        vals = [_cell(v) for v in r]
+        if any(vals):
+            out.append((n, dict(zip(keys, vals))))
+    return out
+
+def _parse_correct_choice(raw: str, options: list, multi_allowed: bool):
+    keys = {o["key"] for o in options}
+    hit = next((o["key"] for o in options if o["text"].lower() == raw.lower()), None)
+    if hit:
+        return [hit], None
+    out = []
+    for tok in [t for t in re.split(r"[,;/|\s]+", raw) if t]:
+        t = tok.upper().strip("().")
+        if t in keys:
+            out.append(t)
+        elif t.isdigit() and 1 <= int(t) <= len(options):
+            out.append(OPT_KEYS[int(t) - 1])
+        else:
+            return None, f"Correct answer '{tok}' doesn't match any option"
+    out = list(dict.fromkeys(out))
+    if len(out) > 1 and not multi_allowed:
+        return None, "Several correct answers given — set type to 'multi'"
+    return out, None
+
+def _parse_import_row(row: dict, cats: dict, defaults: dict):
+    text = row.get("question", "")
+    if not text:
+        return None, "Question text is empty"
+    raw_type = row.get("type", "").lower().replace(" ", "")
+    if raw_type not in IMPORT_TYPES:
+        return None, f"Unknown type '{row.get('type')}' (use mcq, multi, true_false or numerical)"
+    qtype = IMPORT_TYPES[raw_type]
+    correct_raw = row.get("correct", "")
+    if not correct_raw:
+        return None, "Correct answer is missing"
+    options, gap = [], False
+    for k in OPT_KEYS:
+        v = row.get(f"option_{k.lower()}", "")
+        if v and gap:
+            return None, "Options must be filled in order (no gaps)"
+        if v:
+            options.append({"key": k, "text": v})
+        else:
+            gap = True
+    if qtype is None:
+        if not options and correct_raw.lower() in ("true", "false"):
+            qtype = "true_false"
+        elif not options:
+            qtype = "numerical"
+        else:
+            qtype = "mcq_multi" if len([t for t in re.split(r"[,;/|\s]+", correct_raw) if t]) > 1 and not any(o["text"].lower() == correct_raw.lower() for o in options) else "mcq_single"
+    if qtype == "true_false":
+        v = correct_raw.lower()
+        correct = ["A"] if v in ("true", "t", "a", "1", "yes") else ["B"] if v in ("false", "f", "b", "0", "no") else None
+        if not correct:
+            return None, "True/False answer must be True or False"
+        options = [{"key": "A", "text": "True"}, {"key": "B", "text": "False"}]
+    elif qtype == "numerical":
+        try:
+            float(correct_raw)
+        except ValueError:
+            return None, f"Numerical answer '{correct_raw}' is not a number"
+        options, correct = [], [correct_raw]
+    else:
+        if len(options) < 2:
+            return None, "Needs at least 2 options"
+        correct, err = _parse_correct_choice(correct_raw, options, qtype == "mcq_multi")
+        if err:
+            return None, err
+    cat_name = row.get("category", "")
+    cid = cats.get(cat_name.lower()) if cat_name else defaults["category_id"]
+    if cat_name and not cid:
+        return None, f"Unknown category '{cat_name}'"
+    diff = DIFFS.get(row.get("difficulty", "").lower() or "medium")
+    if not diff:
+        return None, f"Unknown difficulty '{row.get('difficulty')}' (easy, medium, hard)"
+    try:
+        pos = float(row.get("positive_marks") or defaults["positive_marks"])
+        neg = abs(float(row.get("negative_marks") or defaults["negative_marks"]))
+    except ValueError:
+        return None, "Marks must be numbers"
+    try:
+        q = QuestionIn(text=text, type=qtype, options=options, correct=correct, explanation=row.get("explanation", ""),
+                       category_id=cid, difficulty=diff, positive_marks=pos, negative_marks=neg,
+                       image_url=row.get("image_url") or None)
+    except ValidationError as e:
+        return None, e.errors()[0].get("msg", "Invalid row")
+    return q.model_dump(), None
+
+@api.post("/questions/import")
+async def import_questions(file: UploadFile = File(...), commit: bool = Form(False), category_id: str = Form(""),
+                           positive_marks: float = Form(1.0), negative_marks: float = Form(0.0),
+                           user=Depends(require_roles("admin", "teacher"))):
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(400, "File is larger than 5 MB")
+    rows = _read_rows(file.filename or "", content)
+    if not rows:
+        raise HTTPException(400, "The file has no question rows")
+    if len(rows) > MAX_IMPORT_ROWS:
+        raise HTTPException(400, f"Up to {MAX_IMPORT_ROWS} questions per file")
+    cats = {}
+    async for c in db.categories.find({}, {"_id": 0, "id": 1, "name": 1, "slug": 1}):
+        cats[c["name"].lower()] = c["id"]
+        cats[c["slug"].lower()] = c["id"]
+    defaults = {"category_id": category_id or None, "positive_marks": positive_marks, "negative_marks": negative_marks}
+    valid, errors = [], []
+    for n, row in rows:
+        q, err = _parse_import_row(row, cats, defaults)
+        if err:
+            errors.append({"row": n, "message": err})
+        else:
+            valid.append(q)
+    resp = {"total": len(rows), "valid": len(valid), "error_count": len(errors), "errors": errors[:200], "preview": valid[:5]}
+    if commit and valid:
+        batch = gen_id()
+        docs = [{"id": gen_id(), **q, "created_by": user["id"], "created_at": now_iso(), "import_batch": batch} for q in valid]
+        await db.questions.insert_many(docs)
+        resp.update(inserted=len(docs), batch_id=batch)
+    return resp
+
+@api.delete("/questions/import/{batch_id}")
+async def undo_import(batch_id: str, _=Depends(require_roles("admin", "teacher"))):
+    ids = [q["id"] async for q in db.questions.find({"import_batch": batch_id}, {"id": 1})]
+    if not ids:
+        raise HTTPException(404, "Import not found")
+    await db.questions.delete_many({"import_batch": batch_id})
+    await _detach_questions(ids)
+    return {"deleted": len(ids)}
+
 @api.post("/questions/bulk")
 async def bulk_questions(items: List[QuestionIn], user=Depends(require_roles("admin", "teacher"))):
     docs = [{"id": gen_id(), **q.model_dump(), "created_by": user["id"], "created_at": now_iso()} for q in items]
@@ -339,14 +533,32 @@ async def create_series(data: TestSeriesIn, user=Depends(require_roles("admin", 
 
 @api.post("/tests")
 async def create_test(data: TestIn, user=Depends(require_roles("admin", "teacher"))):
-    # Compute total marks from questions
-    questions = await db.questions.find({"id": {"$in": data.question_ids}}, {"_id": 0}).to_list(1000)
-    total = sum(q.get("positive_marks", 1.0) for q in questions)
-    doc = {"id": gen_id(), **data.model_dump(), "total_marks": data.total_marks or total,
-           "created_by": user["id"], "created_at": now_iso()}
+    doc = {"id": gen_id(), **(await _prepare_test(data.model_dump())), "created_by": user["id"], "created_at": now_iso()}
     await db.tests.insert_one(doc)
     doc.pop("_id", None)
     return doc
+
+async def _prepare_test(data: dict) -> dict:
+    """Normalise sections, flatten question_ids, compute duration (sectional) and total marks."""
+    secs = [s for s in data.get("sections") or [] if s["question_ids"]]
+    if secs:
+        seen = set()
+        for s in secs:
+            s["name"] = s["name"].strip() or "Section"
+            s["question_ids"] = [q for q in s["question_ids"] if not (q in seen or seen.add(q))]
+        data["question_ids"] = [q for s in secs for q in s["question_ids"]]
+        if data.get("sectional_timing"):
+            if any(not s.get("duration_minutes") or s["duration_minutes"] <= 0 for s in secs):
+                raise HTTPException(422, "Every section needs a duration when sectional timing is on")
+            data["duration_minutes"] = sum(s["duration_minutes"] for s in secs)
+    else:
+        data["sectional_timing"] = False
+    data["sections"] = secs
+    if not data["question_ids"]:
+        raise HTTPException(422, "Add at least one question")
+    qs = await db.questions.find({"id": {"$in": data["question_ids"]}}, {"_id": 0, "positive_marks": 1}).to_list(5000)
+    data["total_marks"] = data.get("total_marks") or sum(q.get("positive_marks", 1.0) for q in qs)
+    return data
 
 @api.get("/tests/{test_id}")
 async def get_test(test_id: str, user=Depends(get_current_user)):
@@ -410,29 +622,113 @@ async def start_attempt(test_id: str, user=Depends(get_current_user)):
         "marked_for_review": [],
         "version": 0,
         "question_ids": t["question_ids"],
+        "sections": t.get("sections") or [],
+        "sectional_timing": bool(t.get("sectional_timing") and t.get("sections")),
     }
+    if attempt["sectional_timing"]:
+        attempt["current_section"] = 0
+        attempt["section_ends_at"] = (now_dt + timedelta(minutes=attempt["sections"][0]["duration_minutes"])).isoformat()
     await db.test_attempts.insert_one(attempt)
     attempt.pop("_id", None)
     return attempt
 
 @api.get("/attempts/{attempt_id}")
 async def get_attempt(attempt_id: str, user=Depends(get_current_user)):
+    a = await _own_attempt(attempt_id, user)
+    a = await _sync_sections(a)
+    if a["status"] != "in_progress":
+        return {"id": a["id"], "status": a["status"]}
+    # Sectional mode only reveals the current section's questions
+    qids = a["sections"][a["current_section"]]["question_ids"] if a.get("sectional_timing") else a["question_ids"]
+    qs = await db.questions.find({"id": {"$in": qids}}, {"_id": 0, "correct": 0, "explanation": 0}).to_list(5000)
+    qmap = {q["id"]: q for q in qs}
+    a["questions"] = [qmap[qid] for qid in qids if qid in qmap]
+    t = await db.tests.find_one({"id": a["test_id"]}, {"_id": 0, "title": 1})
+    a["test_title"] = t["title"] if t else "Online Examination"
+    a["server_now"] = now_iso()
+    return a
+
+async def _own_attempt(attempt_id: str, user: dict) -> dict:
     a = await db.test_attempts.find_one({"id": attempt_id}, {"_id": 0})
     if not a or a["user_id"] != user["id"]:
         raise HTTPException(404, "Attempt not found")
-    # Load questions (without correct answers)
-    qs = await db.questions.find({"id": {"$in": a["question_ids"]}}, {"_id": 0, "correct": 0, "explanation": 0}).to_list(1000)
-    qmap = {q["id"]: q for q in qs}
-    a["questions"] = [qmap[qid] for qid in a["question_ids"] if qid in qmap]
     return a
+
+SECTION_GRACE = timedelta(seconds=15)
+
+def _merge_section_answers(a: dict, answers: dict, marked: list):
+    """Only the current section's answers may change in sectional mode."""
+    allowed = set(a["sections"][a["current_section"]]["question_ids"])
+    merged = {k: v for k, v in (a.get("answers") or {}).items() if k not in allowed}
+    merged.update({k: v for k, v in answers.items() if k in allowed})
+    mk = [q for q in a.get("marked_for_review") or [] if q not in allowed] + [q for q in marked if q in allowed]
+    return merged, mk
+
+async def _sync_sections(a: dict) -> dict:
+    """Advance expired sections by server time; finalize when the last one expires."""
+    if a["status"] != "in_progress" or not a.get("sectional_timing"):
+        return a
+    now = datetime.now(timezone.utc)
+    cur, end, secs = a["current_section"], datetime.fromisoformat(a["section_ends_at"]), a["sections"]
+    if now <= end:
+        return a
+    while now > end and cur < len(secs) - 1:
+        cur += 1
+        end = end + timedelta(minutes=secs[cur]["duration_minutes"])
+    if now > end:
+        await _finalize_attempt(a, a.get("answers") or {}, a.get("marked_for_review") or [], auto=True)
+        return {**a, "status": "submitted"}
+    await db.test_attempts.update_one(
+        {"id": a["id"], "current_section": a["current_section"]},
+        {"$set": {"current_section": cur, "section_ends_at": end.isoformat()}, "$inc": {"version": 1}},
+    )
+    return await db.test_attempts.find_one({"id": a["id"]}, {"_id": 0})
+
+async def _sectional_save(a: dict, answers: dict, marked: list, advance: bool):
+    """Save current-section answers (with grace), then advance on request or on expiry."""
+    now = datetime.now(timezone.utc)
+    end = datetime.fromisoformat(a["section_ends_at"])
+    if now <= end + SECTION_GRACE:
+        ans, mk = _merge_section_answers(a, answers, marked)
+        await db.test_attempts.update_one(
+            {"id": a["id"], "current_section": a["current_section"]},
+            {"$set": {"answers": ans, "marked_for_review": mk, "last_saved_at": now_iso()}, "$inc": {"version": 1}},
+        )
+        a = {**a, "answers": ans, "marked_for_review": mk, "version": a.get("version", 0) + 1}
+    if not advance and now <= end:
+        return "ok", a
+    if a["current_section"] >= len(a["sections"]) - 1:
+        await _finalize_attempt(a, a.get("answers") or {}, a.get("marked_for_review") or [], auto=not advance)
+        return "submitted", a
+    if advance and now <= end:
+        nxt = a["current_section"] + 1
+        new_end = now + timedelta(minutes=a["sections"][nxt]["duration_minutes"])
+        await db.test_attempts.update_one(
+            {"id": a["id"], "current_section": a["current_section"]},
+            {"$set": {"current_section": nxt, "section_ends_at": new_end.isoformat()}, "$inc": {"version": 1}},
+        )
+        return "section_advanced", a
+    fresh = await _sync_sections(await db.test_attempts.find_one({"id": a["id"]}, {"_id": 0}))
+    return ("submitted" if fresh["status"] == "submitted" else "section_advanced"), fresh
+
+@api.post("/attempts/{attempt_id}/next-section")
+async def next_section(attempt_id: str, data: AutosaveIn, user=Depends(get_current_user)):
+    a = await _own_attempt(attempt_id, user)
+    if a["status"] != "in_progress":
+        return {"status": "submitted"}
+    if not a.get("sectional_timing"):
+        raise HTTPException(400, "This test has no timed sections")
+    status, _a = await _sectional_save(a, data.answers, data.marked_for_review, advance=True)
+    return {"status": status}
 
 @api.post("/attempts/{attempt_id}/autosave")
 async def autosave(attempt_id: str, data: AutosaveIn, user=Depends(get_current_user)):
-    a = await db.test_attempts.find_one({"id": attempt_id})
-    if not a or a["user_id"] != user["id"]:
-        raise HTTPException(404, "Attempt not found")
+    a = await _own_attempt(attempt_id, user)
     if a["status"] != "in_progress":
         raise HTTPException(400, "Attempt not active")
+    if a.get("sectional_timing"):
+        status, a2 = await _sectional_save(a, data.answers, data.marked_for_review, advance=False)
+        return {"status": "auto_submitted" if status == "submitted" else status, "version": a2.get("version", 0)}
     # Server-authoritative time check
     ends = datetime.fromisoformat(a["ends_at"])
     if datetime.now(timezone.utc) > ends:
@@ -492,6 +788,21 @@ async def _finalize_attempt(attempt: dict, answers: dict, marked: list, auto: bo
             score -= neg
             wrong_count += 1
             details.append({"qid": qid, "status": "wrong", "awarded": -neg})
+    dmap = {d["qid"]: d for d in details}
+    qmarks = {q["id"]: q.get("positive_marks", 1.0) for q in qs}
+    section_summary = []
+    for s in attempt.get("sections") or []:
+        ds = [dmap[q] for q in s["question_ids"] if q in dmap]
+        c = sum(d["status"] == "correct" for d in ds)
+        w = sum(d["status"] == "wrong" for d in ds)
+        section_summary.append({
+            "name": s["name"], "score": round(sum(d["awarded"] for d in ds), 2),
+            "total_marks": round(sum(qmarks.get(q, 0) for q in s["question_ids"]), 2),
+            "correct": c, "wrong": w, "unattempted": len(ds) - c - w,
+            "accuracy": round(c / max(1, c + w) * 100, 2),
+        })
+    started = datetime.fromisoformat(attempt["started_at"])
+    time_taken = int(min((datetime.now(timezone.utc) - started).total_seconds(), attempt.get("duration_minutes", 0) * 60 or 10**9))
     submitted_at = now_iso()
     # Update attempt transactionally (unique by id)
     update_res = await db.test_attempts.update_one(
@@ -517,6 +828,8 @@ async def _finalize_attempt(attempt: dict, answers: dict, marked: list, auto: bo
         "unattempted": unattempted,
         "accuracy": round((correct_count / max(1, correct_count + wrong_count)) * 100, 2),
         "details": details,
+        "sections": section_summary,
+        "time_taken_sec": time_taken,
         "created_at": submitted_at,
     }
     try:
@@ -531,13 +844,17 @@ async def _finalize_attempt(attempt: dict, answers: dict, marked: list, auto: bo
 
 @api.post("/attempts/{attempt_id}/submit")
 async def submit_attempt(attempt_id: str, data: SubmitIn, user=Depends(get_current_user)):
-    a = await db.test_attempts.find_one({"id": attempt_id})
-    if not a or a["user_id"] != user["id"]:
-        raise HTTPException(404, "Attempt not found")
+    a = await _own_attempt(attempt_id, user)
     if a["status"] == "submitted":
         res = await db.test_results.find_one({"attempt_id": attempt_id}, {"_id": 0})
         return res
-    result = await _finalize_attempt(a, data.answers, data.marked_for_review)
+    answers, marked = data.answers, data.marked_for_review
+    if a.get("sectional_timing"):
+        status, a = await _sectional_save(a, answers, marked, advance=False)
+        if status == "submitted":
+            return await db.test_results.find_one({"attempt_id": attempt_id}, {"_id": 0})
+        answers, marked = a.get("answers") or {}, a.get("marked_for_review") or []
+    result = await _finalize_attempt(a, answers, marked)
     result.pop("_id", None)
     return result
 
@@ -556,31 +873,88 @@ async def get_result(attempt_id: str, user=Depends(get_current_user)):
     res["rank"] = await _rank_for(res)
     return res
 
-async def _rank_for(result: dict) -> dict:
-    """All-India rank among all students, using each student's first attempt of this test."""
+def _short_name(n: Optional[str]) -> str:
+    parts = (n or "Student").split()
+    return parts[0] + (f" {parts[-1][0]}." if len(parts) > 1 else "")
+
+async def _board(test_id: str) -> list:
+    """Ranked first attempts for a test: score desc, then faster time. Rank ties on equal score."""
     rows = await db.test_results.find(
-        {"test_id": result["test_id"]}, {"_id": 0, "user_id": 1, "score": 1, "attempt_id": 1, "created_at": 1}
+        {"test_id": test_id},
+        {"_id": 0, "user_id": 1, "score": 1, "attempt_id": 1, "created_at": 1, "accuracy": 1, "time_taken_sec": 1},
     ).sort("created_at", 1).to_list(None)
     first = {}
     for r in rows:
         first.setdefault(r["user_id"], r)
-    scores = [r["score"] for r in first.values()]
-    mine_row = first.get(result["user_id"])
-    mine = mine_row["score"] if mine_row else result["score"]
-    total = len(scores)
-    rank = 1 + sum(1 for s in scores if s > mine)
-    below = sum(1 for s in scores if s < mine)
-    percentile = 100.0 if total <= 1 else round(below / (total - 1) * 100, 2)
-    top_rows = sorted(first.values(), key=lambda r: -r["score"])[:5]
-    users = await db.users.find({"id": {"$in": [r["user_id"] for r in top_rows]}}, {"_id": 0, "id": 1, "name": 1}).to_list(10)
-    names = {u["id"]: u["name"] for u in users}
-    def short(n):
-        parts = (n or "Student").split()
-        return parts[0] + (f" {parts[-1][0]}." if len(parts) > 1 else "")
-    top = [{"rank": 1 + sum(1 for s in scores if s > r["score"]), "name": short(names.get(r["user_id"])),
-            "score": r["score"], "is_you": r["user_id"] == result["user_id"]} for r in top_rows]
-    return {"rank": rank, "total": total, "percentile": percentile, "top": top,
-            "is_official": bool(mine_row and mine_row["attempt_id"] == result["attempt_id"])}
+    entries = sorted(first.values(), key=lambda r: (-r["score"], r.get("time_taken_sec") if r.get("time_taken_sec") is not None else 10**9))
+    asc = sorted(e["score"] for e in entries)
+    n = len(entries)
+    for e in entries:
+        e["rank"] = n - bisect.bisect_right(asc, e["score"]) + 1
+        e["percentile"] = 100.0 if n <= 1 else round(bisect.bisect_left(asc, e["score"]) / (n - 1) * 100, 2)
+    return entries
+
+async def _names(user_ids) -> dict:
+    users = await db.users.find({"id": {"$in": list(user_ids)}}, {"_id": 0, "id": 1, "name": 1}).to_list(None)
+    return {u["id"]: _short_name(u["name"]) for u in users}
+
+def _board_entry(e: dict, names: dict, me: Optional[str]) -> dict:
+    return {"rank": e["rank"], "name": names.get(e["user_id"], "Student"), "score": e["score"],
+            "accuracy": e.get("accuracy"), "time_taken_sec": e.get("time_taken_sec"),
+            "percentile": e["percentile"], "is_you": e["user_id"] == me}
+
+async def _rank_for(result: dict) -> dict:
+    """All-India rank among all students, using each student's first attempt of this test."""
+    board = await _board(result["test_id"])
+    mine = next((e for e in board if e["user_id"] == result["user_id"]), None)
+    top = board[:5]
+    names = await _names([e["user_id"] for e in top])
+    return {"rank": mine["rank"] if mine else 1, "total": len(board), "percentile": mine["percentile"] if mine else 100.0,
+            "top": [_board_entry(e, names, result["user_id"]) for e in top],
+            "is_official": bool(mine and mine["attempt_id"] == result["attempt_id"])}
+
+def _optional_user_id(creds: Optional[HTTPAuthorizationCredentials]) -> Optional[str]:
+    if not creds:
+        return None
+    try:
+        return pyjwt.decode(creds.credentials, JWT_SECRET, algorithms=[JWT_ALG])["uid"]
+    except Exception:
+        return None
+
+@api.get("/tests/{test_id}/leaderboard")
+async def test_leaderboard(test_id: str, limit: int = 50, creds: HTTPAuthorizationCredentials = Depends(bearer)):
+    t = await db.tests.find_one({"id": test_id}, {"_id": 0, "id": 1, "title": 1, "series_id": 1, "total_marks": 1, "duration_minutes": 1, "sections": 1})
+    if not t:
+        raise HTTPException(404, "Test not found")
+    s = await db.test_series.find_one({"id": t["series_id"]}, {"_id": 0, "id": 1, "title": 1})
+    me = _optional_user_id(creds)
+    board = await _board(test_id)
+    limit = max(1, min(limit, 200))
+    mine = next((e for e in board if e["user_id"] == me), None) if me else None
+    names = await _names([e["user_id"] for e in board[:limit]] + ([me] if mine else []))
+    scores = [e["score"] for e in board]
+    return {
+        "test": {"id": t["id"], "title": t["title"], "total_marks": t.get("total_marks"), "duration_minutes": t.get("duration_minutes"),
+                 "sections": [x["name"] for x in t.get("sections") or []]},
+        "series": s,
+        "participants": len(board),
+        "top_score": max(scores) if scores else None,
+        "avg_score": round(sum(scores) / len(scores), 2) if scores else None,
+        "entries": [_board_entry(e, names, me) for e in board[:limit]],
+        "me": _board_entry(mine, names, me) if mine else None,
+        "updated_at": now_iso(),
+    }
+
+@api.get("/leaderboards")
+async def leaderboards():
+    tests = await db.tests.find({"is_published": True}, {"_id": 0, "id": 1, "title": 1, "series_id": 1, "total_marks": 1, "sections": 1}).to_list(1000)
+    series = {s["id"]: s["title"] async for s in db.test_series.find({}, {"_id": 0, "id": 1, "title": 1})}
+    agg = db.test_results.aggregate([{"$group": {"_id": "$test_id", "users": {"$addToSet": "$user_id"}, "top": {"$max": "$score"}}}])
+    stats = {g["_id"]: (len(g["users"]), g["top"]) async for g in agg}
+    out = [{"id": t["id"], "title": t["title"], "series_title": series.get(t["series_id"]), "total_marks": t.get("total_marks"),
+            "sections": len(t.get("sections") or []), "participants": stats.get(t["id"], (0, None))[0],
+            "top_score": stats.get(t["id"], (0, None))[1]} for t in tests]
+    return sorted(out, key=lambda x: -x["participants"])
 
 @api.get("/my/attempts")
 async def my_attempts(user=Depends(get_current_user)):
@@ -864,8 +1238,7 @@ async def update_content(kind: str, item_id: str, body: Dict[str, Any], _=Depend
     except ValidationError as e:
         raise HTTPException(422, e.errors()[0].get("msg", "Invalid data"))
     if kind == "tests":
-        qs = await db.questions.find({"id": {"$in": data["question_ids"]}}, {"_id": 0, "positive_marks": 1}).to_list(5000)
-        data["total_marks"] = data.get("total_marks") or sum(q.get("positive_marks", 1.0) for q in qs)
+        data = await _prepare_test(data)
     res = await coll.update_one({"id": item_id}, {"$set": {**data, "updated_at": now_iso()}})
     if not res.matched_count:
         raise HTTPException(404, "Not found")
@@ -886,7 +1259,7 @@ async def delete_content(kind: str, item_id: str, _=Depends(require_roles("admin
     elif kind == "sections":
         await db.lessons.delete_many({"section_id": item_id})
     elif kind == "questions":
-        await db.tests.update_many({"question_ids": item_id}, {"$pull": {"question_ids": item_id}})
+        await _detach_questions([item_id])
     return {"ok": True}
 
 # ---- Payment settings (admin) ----
@@ -951,6 +1324,7 @@ async def startup():
     # Seed admin + sample data if missing
     if not await db.users.find_one({"email": "admin@lms.com"}):
         await _seed_data()
+    await _seed_sectional_mocks()
 
 async def _seed_data():
     log.info("Seeding sample data...")
@@ -1070,6 +1444,61 @@ async def _seed_data():
     ]
     await db.study_materials.insert_many(materials)
     log.info("Seed data complete.")
+
+SECTION_SEED = {
+    "Quantitative Aptitude": [
+        ("A shopkeeper sells an item for ₹550 at 10% profit. What is the cost price?", ["₹480", "₹495", "₹500", "₹505"], "C", "CP = 550 / 1.1 = 500"),
+        ("The average of 5 numbers is 24. If one number is removed, the average becomes 25. The removed number is:", ["18", "20", "22", "24"], "B", "Total 120 − (4 × 25) = 20"),
+        ("A can finish a work in 12 days and B in 18 days. Together they finish it in:", ["6.8 days", "7.2 days", "7.5 days", "8 days"], "B", "1/12 + 1/18 = 5/36 → 36/5 = 7.2 days"),
+        ("Simple interest on ₹4000 at 5% per annum for 3 years is:", ["₹500", "₹550", "₹600", "₹650"], "C", "SI = 4000 × 5 × 3 / 100 = 600"),
+    ],
+    "Reasoning Ability": [
+        ("Find the next term: 2, 6, 12, 20, 30, ?", ["40", "42", "44", "46"], "B", "Differences 4, 6, 8, 10, 12 → 42"),
+        ("If CAT is coded as DBU, how is DOG coded?", ["EPH", "EOH", "FPH", "EPG"], "A", "Each letter shifts +1"),
+        ("Pointing to a man, Riya says 'He is the son of my grandfather's only son.' The man is Riya's:", ["Cousin", "Uncle", "Brother", "Father"], "C", "Grandfather's only son is her father; his son is her brother"),
+        ("Which one is the odd one out?", ["Square", "Triangle", "Circle", "Rectangle"], "C", "Circle has no straight sides"),
+    ],
+    "English Language": [
+        ("Choose the synonym of 'ABUNDANT':", ["Scarce", "Plentiful", "Rare", "Meagre"], "B", "Abundant means existing in large quantities"),
+        ("Choose the antonym of 'OBSCURE':", ["Vague", "Hidden", "Clear", "Dim"], "C", "Obscure means unclear; the opposite is clear"),
+        ("Fill in the blank: She has been working here ___ 2019.", ["for", "since", "from", "by"], "B", "'Since' is used with a point in time"),
+        ("Identify the correctly spelt word:", ["Accomodate", "Acommodate", "Accommodate", "Acomodate"], "C", "Accommodate has double c and double m"),
+    ],
+    "General Awareness": [
+        ("Who is known as the 'Father of the Indian Constitution'?", ["Mahatma Gandhi", "B. R. Ambedkar", "Jawaharlal Nehru", "Sardar Patel"], "B", "Dr. B. R. Ambedkar chaired the Drafting Committee"),
+        ("The Reserve Bank of India was established in:", ["1935", "1947", "1950", "1969"], "A", "RBI was established on 1 April 1935"),
+        ("Which planet is known as the Red Planet?", ["Venus", "Jupiter", "Mars", "Saturn"], "C", "Iron oxide gives Mars its red colour"),
+        ("The headquarters of the International Monetary Fund is in:", ["Geneva", "New York", "Paris", "Washington, D.C."], "D", "IMF is headquartered in Washington, D.C."),
+    ],
+}
+
+async def _seed_sectional_mocks():
+    """Idempotently add two demo mocks that use exam sections."""
+    if await db.tests.find_one({"title": "SBI PO Prelims · Sectional Mock 1"}):
+        return
+    ssc = await db.test_series.find_one({"title": "SSC CGL 2026 Full Mock Series"}, {"_id": 0})
+    sbi = await db.test_series.find_one({"title": "SBI PO Prelims Sprint"}, {"_id": 0})
+    if not ssc or not sbi:
+        return
+    by_section = {}
+    for name, items in SECTION_SEED.items():
+        docs = [{"id": gen_id(), "text": text, "type": "mcq_single",
+                 "options": [{"key": k, "text": o} for k, o in zip("ABCD", opts)], "correct": [ans], "explanation": expl,
+                 "difficulty": "medium", "language": "en", "positive_marks": 1.0, "negative_marks": 0.25,
+                 "category_id": ssc.get("category_id"), "created_at": now_iso()} for text, opts, ans, expl in items]
+        await db.questions.insert_many(docs)
+        by_section[name] = [d["id"] for d in docs]
+    mocks = [
+        (ssc["id"], "SSC CGL Tier I · Sectional Mock 1", False, 60, list(SECTION_SEED)),
+        (sbi["id"], "SBI PO Prelims · Sectional Mock 1", True, None, ["English Language", "Quantitative Aptitude", "Reasoning Ability"]),
+    ]
+    for series_id, title, timed, duration, names in mocks:
+        data = {"series_id": series_id, "title": title, "duration_minutes": duration or 0, "total_marks": None, "passing_marks": None,
+                "instructions": "Sections have their own timer. You cannot return to a section once it ends." if timed else "Move freely between sections within the overall time.",
+                "question_ids": [], "is_published": True, "sectional_timing": timed,
+                "sections": [{"name": n, "duration_minutes": 5 if timed else None, "question_ids": by_section[n]} for n in names]}
+        await db.tests.insert_one({"id": gen_id(), **(await _prepare_test(data)), "created_at": now_iso()})
+    log.info("Seeded sectional mocks")
 
 @app.on_event("shutdown")
 async def shutdown():

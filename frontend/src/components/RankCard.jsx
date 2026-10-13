@@ -1,7 +1,8 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { Medal, Users } from "lucide-react";
 
-export default function RankCard({ rank }) {
+export default function RankCard({ rank, testId }) {
   if (!rank) return null;
   return (
     <div className="card-elev p-6 mt-6 relative overflow-hidden" data-testid="rank-card">
@@ -35,8 +36,9 @@ export default function RankCard({ rank }) {
           </div>
         </div>
       </div>
-      <div className="relative text-[11px] text-gray-500 mt-5 mono-font">
-        {rank.is_official ? "Rank is based on every student's first attempt of this test." : "This was a re-attempt — your rank reflects your first attempt."}
+      <div className="relative text-[11px] text-gray-500 mt-5 mono-font flex flex-wrap justify-between gap-3">
+        <span>{rank.is_official ? "Rank is based on every student's first attempt of this test." : "This was a re-attempt — your rank reflects your first attempt."}</span>
+        {testId && <Link to={`/leaderboard/${testId}`} className="text-cyan-300 hover:text-cyan-200 uppercase" data-testid="view-leaderboard-link">View full leaderboard →</Link>}
       </div>
     </div>
   );

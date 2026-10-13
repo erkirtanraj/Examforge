@@ -4,6 +4,7 @@ import { api } from "../lib/api";
 import { Button } from "../components/ui/button";
 import { Trophy, Target, Clock, CheckCircle2, XCircle, MinusCircle } from "lucide-react";
 import RankCard from "../components/RankCard";
+import SectionBreakdown from "../components/SectionBreakdown";
 
 export default function TestResult() {
   const { attemptId } = useParams();
@@ -53,7 +54,8 @@ export default function TestResult() {
         </div>
       </div>
 
-      <RankCard rank={r.rank} />
+      <SectionBreakdown sections={r.sections} />
+      <RankCard rank={r.rank} testId={r.test_id} />
 
       <h2 className="heading-font text-xl font-semibold text-white mt-10 mb-4">Answer review</h2>
       <div className="space-y-4">

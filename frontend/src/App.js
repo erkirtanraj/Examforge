@@ -9,7 +9,9 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import TestSeriesCatalog from "./pages/TestSeriesCatalog";
 import TestSeriesDetail from "./pages/TestSeriesDetail";
-import ExamAttempt from "./pages/ExamAttempt";
+import ExamAttempt from "./pages/exam/ExamPage";
+import Leaderboards from "./pages/Leaderboards";
+import Leaderboard from "./pages/Leaderboard";
 import TestResult from "./pages/TestResult";
 import StudentDashboard from "./pages/StudentDashboard";
 import CourseCatalog from "./pages/CourseCatalog";
@@ -56,6 +58,8 @@ function AppRouter() {
         <Route path="/courses" element={<CourseCatalog />} />
         <Route path="/courses/:id" element={<Protected><CourseDetail /></Protected>} />
         <Route path="/study-materials" element={<StudyMaterials />} />
+        <Route path="/leaderboard" element={<Leaderboards />} />
+        <Route path="/leaderboard/:testId" element={<Leaderboard />} />
         <Route path="/dashboard" element={<Protected><StudentDashboard /></Protected>} />
         <Route path="/exam/:attemptId" element={<Protected><ExamAttempt /></Protected>} />
         <Route path="/result/:attemptId" element={<Protected><TestResult /></Protected>} />

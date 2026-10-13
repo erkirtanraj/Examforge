@@ -18,6 +18,7 @@ export default function Navbar() {
     { to: "/test-series", label: "Test Series" },
     { to: "/courses", label: "Courses" },
     { to: "/study-materials", label: "Study Materials" },
+    { to: "/leaderboard", label: "Leaderboard" },
   ];
 
   return (

@@ -1,12 +1,16 @@
 import React, { useMemo, useState } from "react";
 import { PageHeader, DataTable, Pill, RowActions, NewButton, inputCls, CategorySelect, useResource, useCategories } from "../../components/admin/kit";
 import QuestionForm from "./QuestionForm";
+import ImportDialog from "./ImportDialog";
+import { Button } from "../../components/ui/button";
+import { Upload } from "lucide-react";
 
 const TYPE_LABEL = { mcq_single: "MCQ", mcq_multi: "MULTI", true_false: "T/F", numerical: "NUM" };
 const DIFF_TONE = { easy: "emerald", medium: "amber", hard: "rose" };
 
 export default function Questions() {
-  const { items, loading, save, remove } = useResource("/questions", "questions");
+  const { items, loading, reload, save, remove } = useResource("/questions", "questions");
+  const [importOpen, setImportOpen] = useState(false);
   const cats = useCategories();
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("");
@@ -23,7 +27,10 @@ export default function Questions() {
   return (
     <div>
       <PageHeader eyebrow="Content" title="Question bank" desc={`${items.length} questions available for tests.`}
-                  action={<NewButton onClick={() => openForm(null)} label="New question" testid="new-question-btn" />} />
+                  action={<div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setImportOpen(true)} data-testid="import-questions-btn" className="border-gray-700 bg-transparent text-gray-200 hover:bg-gray-800"><Upload className="w-4 h-4 mr-1" />Import CSV / Excel</Button>
+                    <NewButton onClick={() => openForm(null)} label="New question" testid="new-question-btn" />
+                  </div>} />
       <div className="grid sm:grid-cols-3 gap-3 mb-4">
         <input placeholder="Search questions…" value={q} onChange={(e) => setQ(e.target.value)} className={inputCls} data-testid="question-search" />
         <CategorySelect value={cat} onChange={setCat} categories={cats} allowAll testid="question-filter-category" />
@@ -46,6 +53,7 @@ export default function Questions() {
       </DataTable>
       <QuestionForm open={open} onOpenChange={setOpen} initial={editing} categories={cats}
                     onSave={(payload) => save(editing?.id, payload, "/questions")} />
+      <ImportDialog open={importOpen} onOpenChange={setImportOpen} categories={cats} onImported={reload} />
     </div>
   );
 }

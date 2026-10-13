@@ -4,7 +4,7 @@ import { api } from "../lib/api";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { useAuth } from "../lib/auth";
-import { Clock, FileText, Lock, Play, ShieldCheck } from "lucide-react";
+import { Clock, FileText, Lock, Play, ShieldCheck, Trophy, Layers } from "lucide-react";
 import { toast } from "sonner";
 
 export default function TestSeriesDetail() {
@@ -100,6 +100,8 @@ export default function TestSeriesDetail() {
                   <div className="text-white font-medium">{t.title}</div>
                   <div className="text-xs text-gray-500 flex gap-4 mt-1">
                     <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {t.duration_minutes} min</span>
+                    {t.sections?.length > 1 && <span className="flex items-center gap-1" data-testid={`test-sections-${t.id}`}><Layers className="w-3 h-3" /> {t.sections.map((s) => s.name).join(" · ")}{t.sectional_timing ? " (timed)" : ""}</span>}
+                    <Link to={`/leaderboard/${t.id}`} className="flex items-center gap-1 text-amber-300 hover:text-amber-200" data-testid={`leaderboard-link-${t.id}`}><Trophy className="w-3 h-3" /> Leaderboard</Link>
                     <span className="flex items-center gap-1"><FileText className="w-3 h-3" /> {t.total_marks} marks</span>
                   </div>
                 </div>
