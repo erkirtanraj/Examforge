@@ -28,6 +28,9 @@
     },
     "header": {
       "brand_name": "ExamForge",
+      "logo_url": "",
+      "favicon_url": "",
+      "show_brand_name": true,
       "nav_links": [
         {
           "label": "Test Series",
@@ -49,7 +52,7 @@
       "cta_label": "Get Started",
       "cta_url": "/register"
     },
-    "updated_at": "2026-10-13T15:57:51.471203+00:00",
+    "updated_at": "2026-10-13T16:22:02.738289+00:00",
     "updated_by": "62b27c5c-912e-49db-a1e4-e37839d700eb",
     "features": [
       {

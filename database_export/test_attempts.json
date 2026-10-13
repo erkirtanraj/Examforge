@@ -326,7 +326,7 @@
     "started_at": "2026-10-13T14:31:57.871977+00:00",
     "ends_at": "2026-10-13T15:31:57.871977+00:00",
     "duration_minutes": 60,
-    "status": "in_progress",
+    "status": "submitted",
     "answers": {
       "0e696606-aa0c-4e41-81dd-90713acc5a85": [
         "A"
@@ -348,7 +348,9 @@
     ],
     "sections": [],
     "sectional_timing": false,
-    "last_saved_at": "2026-10-13T14:31:58.071138+00:00"
+    "last_saved_at": "2026-10-13T14:31:58.071138+00:00",
+    "auto_submitted": false,
+    "submitted_at": "2026-10-13T16:17:14.444392+00:00"
   },
   {
     "_id": {
@@ -534,5 +536,100 @@
       }
     ],
     "sectional_timing": false
+  },
+  {
+    "_id": {
+      "$oid": "6ace5a047396bbf8d178c3dc"
+    },
+    "id": "66738a64-c3bd-46ad-a9c7-6b06bc16e506",
+    "user_id": "9eb90a2e-5e73-4ac9-9add-3873a80975ec",
+    "test_id": "80540ef2-7531-4403-8182-46a9954592c7",
+    "series_id": "5a879965-3efd-4dc9-8a16-974123a7a5b2",
+    "started_at": "2026-10-13T16:19:16.862354+00:00",
+    "ends_at": "2026-10-13T17:19:16.862354+00:00",
+    "duration_minutes": 60,
+    "status": "in_progress",
+    "answers": {},
+    "marked_for_review": [],
+    "version": 0,
+    "question_ids": [
+      "0e696606-aa0c-4e41-81dd-90713acc5a85",
+      "055bcca1-b7c7-406c-a347-8d4e2419405b",
+      "7030cade-6092-44b9-9a5b-111a5daa8117",
+      "fc85f443-21d4-407b-b701-12d972909ba9",
+      "957c9dd2-ca4e-49b7-ab39-454a76a0437e",
+      "5d97b719-a18b-4ef7-b3b4-278e4ed41f84",
+      "3f041d26-8e51-4204-900a-126e245cfe8c",
+      "7d1bb3e7-28e8-4838-a2b8-24c00102004d",
+      "3eca8bb0-32a1-4edd-9ac2-3f6631b559c9",
+      "8ccfa3e6-6485-48aa-9ecc-4a809332478a"
+    ],
+    "sections": [],
+    "sectional_timing": false
+  },
+  {
+    "_id": {
+      "$oid": "6ace5a047396bbf8d178c3dd"
+    },
+    "id": "d36242fb-cc5f-4ce1-b987-fd31141dc7ab",
+    "user_id": "9eb90a2e-5e73-4ac9-9add-3873a80975ec",
+    "test_id": "cabc26f0-9c25-4a05-aa6d-52ec28362527",
+    "series_id": "5a879965-3efd-4dc9-8a16-974123a7a5b2",
+    "started_at": "2026-10-13T16:19:16.989806+00:00",
+    "ends_at": "2026-10-13T16:34:16.989806+00:00",
+    "duration_minutes": 15,
+    "status": "in_progress",
+    "answers": {},
+    "marked_for_review": [],
+    "version": 0,
+    "question_ids": [
+      "5fd6d5fe-1e84-4d9f-a359-607724c46e15",
+      "2499e641-ce10-4d4b-9bf7-c73bdf7834fb",
+      "bb3b8362-a07e-4d69-b8f9-c022e3353cfd",
+      "6fd33f05-7df9-4018-a5c3-7bd5590b9eab",
+      "53a8320b-6953-4e41-9f92-9bff485e2543",
+      "0861b7b5-749e-418b-a9a4-612d9cc6df51",
+      "2a551f96-b52a-43e9-8abc-7d7ae859d76b",
+      "205c663d-d3d0-4569-8887-0f7ed81578e4",
+      "40c1f748-2fd1-4d3d-ab7a-c79522f4ec59",
+      "3df68edf-ff19-4471-82ae-55f5f65ee6a9",
+      "40b4c457-de4c-417d-be48-0f27e7df37e3",
+      "f7bdad35-7c5d-4a39-ac7c-8f8a7f613ed2"
+    ],
+    "sections": [
+      {
+        "name": "English Language",
+        "duration_minutes": 5,
+        "question_ids": [
+          "5fd6d5fe-1e84-4d9f-a359-607724c46e15",
+          "2499e641-ce10-4d4b-9bf7-c73bdf7834fb",
+          "bb3b8362-a07e-4d69-b8f9-c022e3353cfd",
+          "6fd33f05-7df9-4018-a5c3-7bd5590b9eab"
+        ]
+      },
+      {
+        "name": "Quantitative Aptitude",
+        "duration_minutes": 5,
+        "question_ids": [
+          "53a8320b-6953-4e41-9f92-9bff485e2543",
+          "0861b7b5-749e-418b-a9a4-612d9cc6df51",
+          "2a551f96-b52a-43e9-8abc-7d7ae859d76b",
+          "205c663d-d3d0-4569-8887-0f7ed81578e4"
+        ]
+      },
+      {
+        "name": "Reasoning Ability",
+        "duration_minutes": 5,
+        "question_ids": [
+          "40c1f748-2fd1-4d3d-ab7a-c79522f4ec59",
+          "3df68edf-ff19-4471-82ae-55f5f65ee6a9",
+          "40b4c457-de4c-417d-be48-0f27e7df37e3",
+          "f7bdad35-7c5d-4a39-ac7c-8f8a7f613ed2"
+        ]
+      }
+    ],
+    "sectional_timing": true,
+    "current_section": 0,
+    "section_ends_at": "2026-10-13T16:24:16.989806+00:00"
   }
 ]

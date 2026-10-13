@@ -452,5 +452,76 @@
     ],
     "time_taken_sec": 182,
     "created_at": "2026-10-13T14:31:53.462163+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6ace598a7396bbf8d178c3db"
+    },
+    "id": "948142b6-f6ff-416f-868b-94a554120de3",
+    "attempt_id": "980a13b9-aff2-4cf9-ac8c-a4524b2c9860",
+    "user_id": "9eb90a2e-5e73-4ac9-9add-3873a80975ec",
+    "test_id": "9f13631e-df0c-4e5c-bf03-1e1f207d6365",
+    "series_id": "5c415501-4681-477d-920a-2050f88284bf",
+    "score": 2.0,
+    "total_marks": 20.0,
+    "correct": 1,
+    "wrong": 0,
+    "unattempted": 9,
+    "accuracy": 100.0,
+    "details": [
+      {
+        "qid": "0e696606-aa0c-4e41-81dd-90713acc5a85",
+        "status": "correct",
+        "awarded": 2.0
+      },
+      {
+        "qid": "055bcca1-b7c7-406c-a347-8d4e2419405b",
+        "status": "unattempted",
+        "awarded": 0
+      },
+      {
+        "qid": "7030cade-6092-44b9-9a5b-111a5daa8117",
+        "status": "unattempted",
+        "awarded": 0
+      },
+      {
+        "qid": "fc85f443-21d4-407b-b701-12d972909ba9",
+        "status": "unattempted",
+        "awarded": 0
+      },
+      {
+        "qid": "957c9dd2-ca4e-49b7-ab39-454a76a0437e",
+        "status": "unattempted",
+        "awarded": 0
+      },
+      {
+        "qid": "5d97b719-a18b-4ef7-b3b4-278e4ed41f84",
+        "status": "unattempted",
+        "awarded": 0
+      },
+      {
+        "qid": "3f041d26-8e51-4204-900a-126e245cfe8c",
+        "status": "unattempted",
+        "awarded": 0
+      },
+      {
+        "qid": "7d1bb3e7-28e8-4838-a2b8-24c00102004d",
+        "status": "unattempted",
+        "awarded": 0
+      },
+      {
+        "qid": "3eca8bb0-32a1-4edd-9ac2-3f6631b559c9",
+        "status": "unattempted",
+        "awarded": 0
+      },
+      {
+        "qid": "8ccfa3e6-6485-48aa-9ecc-4a809332478a",
+        "status": "unattempted",
+        "awarded": 0
+      }
+    ],
+    "sections": [],
+    "time_taken_sec": 3600,
+    "created_at": "2026-10-13T16:17:14.444392+00:00"
   }
 ]
