@@ -19,13 +19,13 @@ For a new production database, run from the repository root after setting `MONGO
 python backend/create_admin.py --email admin@example.com --name "ExamForge Administrator"
 ```
 
-The script prompts for a password, creates only the first super administrator, and never prints the password. To rotate an existing admin/super-admin password and invalidate existing sessions:
+The script prompts for a password, creates only the first super administrator, and never prints the password. To rotate an existing account password (including a legacy demo account) and invalidate its sessions:
 
 ```bash
 python backend/create_admin.py --email admin@example.com --reset-existing
 ```
 
-The script refuses to create another first administrator if one already exists. Public registration always creates student accounts.
+The script refuses to create another first administrator if one already exists. Public registration always creates student accounts. In production, startup refuses to continue if the old default passwords for the legacy admin, teacher, or student demo accounts are still active; rotate each existing demo account with the same command before restarting.
 
 If the database was previously started with an older version of ExamForge, immediately rotate or remove the old demo accounts (including any account created from the old sample seed) before exposing the service publicly. Code changes cannot change passwords in an already-running database automatically.
 
