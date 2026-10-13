@@ -23,7 +23,16 @@ Secure cPanel-based Test Series + LMS (PRD specified Laravel 12/PHP/MySQL). User
 - Student dashboard, admin dashboard (stats, users, orders)
 - Tested: iteration_1 100% backend + frontend
 
+## Iteration 2 (2026-06)
+- Admin panel with sidebar (Dashboard, Question Bank, Test Series, Tests, Courses, Study Materials, Categories, Users, Orders, Settings); teachers see content sections only
+- Full CRUD builders (generic /api/content/{kind}/{id} PUT/DELETE with cascades), test builder with question picker, course → section → lesson editor
+- Users: role management
+- Settings: Razorpay Key ID/Secret stored in DB (masked), optional webhook secret with auto-generate, test-connection; payments read settings live
+- Google sign-in (Emergent Auth) issuing our JWT; users upserted by email
+- All-India Rank, percentile, top-5 leaderboard (first attempt per student)
+- Tested: iteration_2 28/28 backend, admin UI flows
+
 ## Backlog
-- P0: Razorpay live keys; admin UIs for question bank / test builder / course builder (APIs exist); Emergent Google login
+- P0: Admin enters real Razorpay keys in Settings (currently demo mode)
 - P1: sections in tests (Quant/Reasoning), bookmarks, notifications, certificates, file uploads (object storage), light theme toggle
 - P2: blog/FAQ/pricing pages, coupons, leaderboard/ranking, bulk CSV import, Laravel migration docs
