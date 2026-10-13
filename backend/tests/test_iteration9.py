@@ -256,7 +256,7 @@ class TestCsvImport:
 @pytest.fixture
 def temp_user(admin):
     body = {"name": "TEST User", "email": f"test_{uuid.uuid4().hex[:8]}@ex.com",
-            "phone": "9999999999", "role": "student", "password": "pass1234"}
+            "phone": "9999999999", "role": "student", "password": "SafePassphrase123!"}
     r = requests.post(f"{BASE_URL}/api/admin/users", json=body, headers=admin["h"], timeout=20)
     assert r.status_code == 200, r.text
     u = r.json()
@@ -266,7 +266,7 @@ def temp_user(admin):
 
 class TestUserManagement:
     def test_create_duplicate_email_400(self, admin, temp_user):
-        body = {"name": "Dup", "email": temp_user["email"], "phone": "", "role": "student", "password": "pass1234"}
+        body = {"name": "Dup", "email": temp_user["email"], "phone": "", "role": "student", "password": "SafePassphrase123!"}
         r = requests.post(f"{BASE_URL}/api/admin/users", json=body, headers=admin["h"], timeout=20)
         assert r.status_code == 400
 
@@ -337,7 +337,7 @@ class TestUserManagement:
 
     def test_delete_removes_user(self, admin):
         body = {"name": "TEST Del", "email": f"del_{uuid.uuid4().hex[:6]}@ex.com",
-                "phone": "", "role": "student", "password": "pass1234"}
+                "phone": "", "role": "student", "password": "SafePassphrase123!"}
         r = requests.post(f"{BASE_URL}/api/admin/users", json=body, headers=admin["h"], timeout=20)
         assert r.status_code == 200
         uid = r.json()["id"]
