@@ -32,6 +32,13 @@ Secure cPanel-based Test Series + LMS (PRD specified Laravel 12/PHP/MySQL). User
 - All-India Rank, percentile, top-5 leaderboard (first attempt per student)
 - Tested: iteration_2 28/28 backend, admin UI flows
 
+## Iteration 3 (2026-06)
+- Bulk question import (CSV/XLSX): preview, row-level errors, defaults, commit, undo by batch
+- Exam sections: free-navigation tabs or per-section timers (server-enforced, only current section served, auto-advance, locked past sections); section-wise result breakdown; test builder sections editor
+- Public leaderboards (/leaderboard, /leaderboard/:testId): podium, live refresh, your-rank card, tie-aware ranks, time tiebreak
+- Seeded 'SSC CGL Tier I · Sectional Mock 1' and 'SBI PO Prelims · Sectional Mock 1'
+- Tested: iteration_3 19/19 backend + UI flows
+
 ## Backlog
 - P0: Admin enters real Razorpay keys in Settings (currently demo mode)
 - P1: sections in tests (Quant/Reasoning), bookmarks, notifications, certificates, file uploads (object storage), light theme toggle

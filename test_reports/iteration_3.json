@@ -1,0 +1,62 @@
+{
+  "summary": "Iteration 3 testing complete: Bulk Import (CSV/XLSX), Exam Sections (free-nav + sectional_timing), Public Leaderboards. Added /app/backend/tests/test_iteration3.py (19 pytest cases, 19/19 PASS). Frontend flows verified via Playwright: public /leaderboard, test leaderboard with lb-participants/lb-top/lb-avg/lb-cta, student lb-me after SBI attempt, nav-leaderboard, teacher ImportDialog full flow (preview counts, error list, confirm, undo), SSC free-nav sectional exam shows 4 section tabs and palette-title scopes to section.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_backend_tests": [
+    "POST /api/questions/import - student 403",
+    "POST /api/questions/import - missing 'correct' header → 400",
+    "POST /api/questions/import - non csv/xlsx extension → 400",
+    "POST /api/questions/import - preview counts valid=4/errors=4 for mixed rows (mcq/multi/true_false/numerical, gap options, single-with-2-correct, unknown category, missing correct); row numbers 1-based correctly reported",
+    "POST /api/questions/import - commit=true inserts valid rows, batch_id returned, defaults positive_marks/negative_marks applied",
+    "DELETE /api/questions/import/{batch_id} removes questions AND detaches from tests[].question_ids and tests[].sections[].question_ids",
+    "XLSX upload (openpyxl) parses and inserts correctly",
+    "Seeded tests exist: 'SSC CGL Tier I · Sectional Mock 1' (4 sections, 60 min, sectional_timing=False) and 'SBI PO Prelims · Sectional Mock 1' (3 sections, sectional_timing=True, duration = sum of section durations)",
+    "Free-nav sectional attempt: GET /api/attempts/{id} returns ALL questions across all sections; result page has sections[] breakdown with name/score/total_marks/correct/wrong/unattempted/accuracy",
+    "Timed sectional: GET /api/attempts/{id} returns ONLY current section's questions; autosave for a non-current-section qid is dropped by _merge_section_answers; POST /api/attempts/{id}/next-section advances; setting section_ends_at to past in Mongo causes GET to auto-advance (or finalize on last section)",
+    "POST /api/tests with sectional_timing=true and missing section.duration_minutes → 422; duration_minutes = sum of section durations (overrides client value)",
+    "GET /api/leaderboards - public (no auth), lists tests with participants/top_score, never exposes user_id/email",
+    "GET /api/tests/{id}/leaderboard - no auth works; never leaks user_id or @emails; entries contain rank/name/score/accuracy/time_taken_sec/percentile/is_you",
+    "Rank ties: 2 users with same score share rank 1, next rank is 3 (skip-rank from bisect)",
+    "lb-me card returned for authenticated student with existing attempt",
+    "Regression: non-sectional test still starts and accepts autosave"
+  ],
+  "passed_frontend_checks": [
+    "/leaderboard logged-out shows leaderboards-grid with 10 leaderboard-card-<id> entries",
+    "/leaderboard/<testId> shows lb-participants, lb-top, lb-avg plus lb-cta for guests",
+    "Student login → nav-leaderboard visible in Navbar",
+    "Student on SBI sectional leaderboard sees lb-me card (is_you=true)",
+    "Teacher /admin/questions → import-questions-btn opens import-dialog with download-template-btn",
+    "import-file-input accepts CSV; import-preview shows import-total=2, import-valid=1, import-errors=1; import-error-list renders row-level messages",
+    "import-confirm-btn → import-done; import-undo-btn works (toast 'Removed 1 imported questions')",
+    "SSC Sectional Mock 1 exam: section-bar renders 4 section-tab-i tabs with per-section answered counters; clicking a tab scopes palette-title to that section ('Reasoning Ability · Palette')",
+    "TestSeriesDetail renders test-sections-<id> badge and leaderboard-link-<id> link per test (source verified at /app/frontend/src/pages/TestSeriesDetail.jsx:103-104)"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_iteration3.py",
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/iteration3_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py now 1516 lines – well past the 700-line split threshold. Split into routers/ (auth, content, exam, orders, admin, settings, import, leaderboard, seed) before next iteration.",
+    "_sync_sections: when a section 'expires in the past but we haven't visited for a while', the while-loop only advances while now > end. If the user is idle across multiple sections, each hop adds that section's full duration without saving/zeroing time — fine per spec (section_ends_at anchored to original start), but worth confirming intent. Current behaviour: unanswered intermediate sections are effectively skipped with 0 answers, matching SBI PO style.",
+    "DialogContent in ImportDialog (and likely other dialogs) emits React warning: 'Missing Description or aria-describedby={undefined}'. Add DialogDescription for a11y.",
+    "_board sort key uses 10**9 as sentinel for None time_taken_sec; prefer math.inf for clarity.",
+    "import endpoint accepts up to 5MB AND up to 2000 rows but reads the full file into memory before counting – a 5MB CSV with pathological content could still DOS. Acceptable at current scale.",
+    "ImportDialog sends category_id/positive_marks/negative_marks via FormData even when blank; backend tolerates it. OK."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration3.py (new - 19 pytest cases)",
+    "/app/test_reports/iteration_3.json"
+  ],
+  "success_rate": { "backend": "100% (19/19 iteration-3 tests)", "frontend": "100% of flows exercised" },
+  "test_credentials": "admin@lms.com/admin123, teacher@lms.com/teacher123, student@lms.com/student123",
+  "seed_data_creation": "No persistent seed data. Imported questions were undone. TEST_* users/questions/tests cleaned up by teardown_module.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run iteration-3 backend tests: `python -m pytest /app/backend/tests/test_iteration3.py -v -o addopts=''`. Pytest.ini has xdist args that must be overridden. The timed sectional test (TestTimedSectional) registers a TEST_sec_* user when student@lms.com has already submitted the SBI mock; it cleans up itself. Expiry simulation is done by setting section_ends_at='2020-01-01' in Mongo and calling GET /api/attempts/{id}. Student has an in-progress SSC Sectional Mock 1 attempt and a submitted SBI Sectional Mock 1 result from prior runs — tests handle both states."
+}

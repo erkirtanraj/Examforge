@@ -4,8 +4,10 @@ import { inputCls, CategorySelect } from "../../components/admin/kit";
 export default function QuestionPicker({ questions, categories, selected, onChange }) {
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("");
-  const visible = questions.filter((x) => (!cat || x.category_id === cat) && x.text.toLowerCase().includes(q.toLowerCase()));
   const sel = new Set(selected);
+  const visible = questions
+    .filter((x) => (!cat || x.category_id === cat) && x.text.toLowerCase().includes(q.toLowerCase()))
+    .sort((a, b) => sel.has(b.id) - sel.has(a.id));
   const toggle = (id) => onChange(sel.has(id) ? selected.filter((x) => x !== id) : [...selected, id]);
   const addAll = () => onChange([...selected, ...visible.map((x) => x.id).filter((id) => !sel.has(id))]);
   const marks = questions.filter((x) => sel.has(x.id)).reduce((s, x) => s + (x.positive_marks || 0), 0);
