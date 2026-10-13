@@ -248,7 +248,7 @@ class TestCouponCheckout:
 
     def _fresh_user(self):
         email = f"TEST_cp_{uuid.uuid4().hex[:8]}@test.lms"
-        t, u = _register(email, "pass1234", "Coupon Tester")
+        t, u = _register(email, "SafePassphrase123!", "Coupon Tester")
         TestCouponCheckout.temp_users.append(u["id"])
         return {"token": t, "user": u, "h": {"Authorization": f"Bearer {t}"}}
 
@@ -399,7 +399,7 @@ class TestWeakTopics:
 
     def test_fresh_student_empty(self):
         email = f"TEST_wk_{uuid.uuid4().hex[:8]}@test.lms"
-        t, u = _register(email, "pass1234", "Fresh Wk")
+        t, u = _register(email, "SafePassphrase123!", "Fresh Wk")
         try:
             r = requests.get(f"{API}/my/weak-topics", headers={"Authorization": f"Bearer {t}"})
             assert r.status_code == 200
