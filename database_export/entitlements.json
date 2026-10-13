@@ -1,5 +1,8 @@
 [
   {
+    "_id": {
+      "$oid": "6ace33ae8c4f6f8d10aaa7d6"
+    },
     "id": "3368a392-d39a-4455-93b8-1a84e6f596d3",
     "user_id": "9eb90a2e-5e73-4ac9-9add-3873a80975ec",
     "item_type": "test_series",

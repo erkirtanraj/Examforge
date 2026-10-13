@@ -1,5 +1,8 @@
 [
   {
+    "_id": {
+      "$oid": "6ace48edabc404a450f3ebb8"
+    },
     "id": "47592e9c-87fb-4c93-9718-f227453df72e",
     "code": "WELCOME20",
     "discount_type": "percent",

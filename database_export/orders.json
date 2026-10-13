@@ -1,5 +1,8 @@
 [
   {
+    "_id": {
+      "$oid": "6ace33ae8c4f6f8d10aaa7d5"
+    },
     "id": "a15b87c5-1cf6-437c-b84c-50d4a8850764",
     "user_id": "9eb90a2e-5e73-4ac9-9add-3873a80975ec",
     "item_type": "test_series",
@@ -12,6 +15,9 @@
     "receipt": "a15b87c5-1cf6-437c-b84c-50d4a8850764"
   },
   {
+    "_id": {
+      "$oid": "6ace33ae8c4f6f8d10aaa7d7"
+    },
     "id": "0e0a85f0-48a9-4422-85bb-ac7960f5b0c7",
     "user_id": "9eb90a2e-5e73-4ac9-9add-3873a80975ec",
     "item_type": "test_series",

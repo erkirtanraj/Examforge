@@ -50,3 +50,6 @@ Secure cPanel-based Test Series + LMS (PRD specified Laravel 12/PHP/MySQL). User
 - P0: Admin enters real Razorpay keys in Settings (currently demo mode); atomic coupon max-use reservation for paid checkouts
 - P1: live-mock registration + email reminders, Hindi UI, practice-from-mistakes quizzes, bookmarks, notifications, certificates, file uploads (object storage), light theme toggle
 - P2: blog/FAQ/pricing/policy pages, split server.py into routers, Laravel 12 + MySQL migration for cPanel
+
+## Changelog (Jun 2026)
+- Packaged downloadable zips: ExamForge_Full.zip, ExamForge_Code.zip, ExamForge_Database.zip (JSON + mongodump BSON archive, restore via import_db.py or mongorestore). .env files excluded.

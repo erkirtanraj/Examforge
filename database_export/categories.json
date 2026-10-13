@@ -1,5 +1,8 @@
 [
   {
+    "_id": {
+      "$oid": "6ace3023463f13783b0838dc"
+    },
     "id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
     "name": "SSC CGL",
     "slug": "ssc-cgl",
@@ -8,6 +11,9 @@
     "created_at": "2026-10-13T13:20:35.175591+00:00"
   },
   {
+    "_id": {
+      "$oid": "6ace3023463f13783b0838dd"
+    },
     "id": "c845c6fc-375c-4039-93b9-94da9bda3080",
     "name": "UPSC Civil Services",
     "slug": "upsc",
@@ -16,6 +22,9 @@
     "created_at": "2026-10-13T13:20:35.175599+00:00"
   },
   {
+    "_id": {
+      "$oid": "6ace3023463f13783b0838de"
+    },
     "id": "118d79b2-0a41-4477-a8f2-d0df605fa3ec",
     "name": "Banking (SBI/IBPS PO)",
     "slug": "banking",
@@ -24,6 +33,9 @@
     "created_at": "2026-10-13T13:20:35.175604+00:00"
   },
   {
+    "_id": {
+      "$oid": "6ace3023463f13783b0838df"
+    },
     "id": "a71ffc8e-51cf-478f-b199-9abe5a75856b",
     "name": "Railways RRB NTPC",
     "slug": "rrb-ntpc",
@@ -32,6 +44,9 @@
     "created_at": "2026-10-13T13:20:35.175610+00:00"
   },
   {
+    "_id": {
+      "$oid": "6ace3023463f13783b0838e0"
+    },
     "id": "3ee52085-dc46-46a2-b665-a4b257c7ed88",
     "name": "NEET / JEE",
     "slug": "neet-jee",

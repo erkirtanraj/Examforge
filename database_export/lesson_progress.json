@@ -1,5 +1,8 @@
 [
   {
+    "_id": {
+      "$oid": "6ace320e4dbefbd7561da850"
+    },
     "lesson_id": "0ed1ea89-8d21-426d-9613-8bebd41d7926",
     "user_id": "62b27c5c-912e-49db-a1e4-e37839d700eb",
     "completed_at": "2026-10-13T13:28:46.839651+00:00"
