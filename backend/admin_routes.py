@@ -61,11 +61,11 @@ class UserUpdateIn(BaseModel):
 
 
 class UserCreateIn(UserUpdateIn):
-    password: str = Field(min_length=6, max_length=128)
+    password: str = Field(min_length=10, max_length=72)
 
 
 class PasswordIn(BaseModel):
-    password: str = Field(min_length=6, max_length=128)
+    password: str = Field(min_length=10, max_length=72)
 
 
 class StatusIn(BaseModel):
