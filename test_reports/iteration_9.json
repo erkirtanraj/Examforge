@@ -1,0 +1,35 @@
+{
+  "summary": "Iteration 9 testing of exam engine redesign (ExamTopBar + Palette + QuestionPanel + Pause). Backend 4/4 pytest tests pass: attempt payload includes test_title/pause_left_seconds (900)/user_name/server_now; POST /attempts/{id}/pause saves answers+marked, is idempotent (second pause returns {status:'paused'}), decrements pause_left_seconds on resume (verified <900 after ~2s pause); POST /attempts/{id}/pause returns 400 'Pause is not available for this test' when allow_pause=false; sectional pause freezes section_ends_at + section_remaining_at_pause. Frontend: all required data-testids present on exam page (exam-header, exam-title, exam-marking, exam-timer, exam-user hidden <xl, exam-fullscreen-btn, exam-pause-btn, exam-submit-btn, question-counter, option-A..D, clear-response-btn, mark-review-btn, prev-btn, next-btn, palette-panel, stat-answered/not-answered/marked/not-visited, palette-q-N). Verified: answering an option increments stat-answered from 00->01; mark-review-btn flips to Unmark and stat-marked=01; palette-q-3 jump updates 'Question 3 of 10'; exam-pause-btn opens pause-overlay with pause-remaining frozen (00:59:57) and pause-left starting at 00:14:59 and decrementing (00:14:58 after 1.5s); resume-test-btn closes overlay and returns to in-progress; fullscreen click does not crash; mobile 390 hides palette-panel and shows open-palette-btn which opens full-screen palette with palette-close; submit flow via exam-submit-btn opens exam-confirm-dialog with exam-confirm-submit button that navigates to /result/{id}. Admin test form: test-allow-pause-input checkbox present at /admin/tests and persists via PUT /content/tests/{id} (backend test verified).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Exam footer at 390px width", "issues": ["Horizontal scroll present (scrollWidth=400, clientWidth=390). Offender is the 'Save & Next' button (data-testid=next-btn, width=138, right=400). The Mark-for-review button already uses `<span className='hidden sm:inline'>Mark for review</span><span className='sm:hidden'>Review</span>` pattern - apply the same to next-btn (e.g. show 'Next' only on <sm). Task explicitly requires 'footer buttons fit in one row at 390px'."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration9_exam_pause.py",
+    "/app/test_reports/pytest/iteration9.xml"
+  ],
+  "action_items": [
+    "Fix 10px horizontal overflow on exam page at 390px: in /app/frontend/src/pages/exam/QuestionPanel.jsx line ~50, shorten the 'Save & Next' label on mobile. Suggested: `<span className='hidden sm:inline'>Save &amp; </span>Next` or just render 'Next' at <sm. Same for 'Next section' button (next-section-inline-btn)."
+  ],
+  "critical_code_review_comments": [
+    "ExamPage.jsx is 193 lines — well-structured and under 700-line budget. Good separation into ExamTopBar/Palette/QuestionPanel/PauseOverlay.",
+    "Backend _pause_allowed() excludes tests with live_start_at - correct and matches requirement, verified indirectly via NON_SECTIONAL_TEST (no live_start_at) and SECTIONAL_TEST both allowing pause.",
+    "Backend pause endpoint accepts AutosaveIn so answers sent at pause time ARE persisted (confirmed by GET /attempts/{id} returning saved answer after pause). Good.",
+    "pause update uses conditional filter {paused_at: None} to avoid double-pause race - good concurrency guard.",
+    "ExamTopBar palette grid uses `palette-q-${n}` where n is a running counter over all groups - consistent with required flat 1..N numbering across sections. Good.",
+    "Minor: stat-not-answered counts only VISITED-and-unanswered which is standard CBT convention; good UX.",
+    "exam-user is correctly hidden on <xl (hidden xl:flex) matching requirement 'user name xl screens only'."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "95%"},
+  "test_credentials": "student@lms.com/student123, admin@lms.com/admin123 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Started and submitted several attempts against test 80540ef2-7531-4403-8182-46a9954592c7 (SBI PO Mock 2) and cabc26f0-9c25-4a05-aa6d-52ec28362527 (sectional). allow_pause temporarily toggled off then restored to true for 80540ef2 as per instructions.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend test file: /app/backend/tests/test_iteration9_exam_pause.py. The only outstanding issue is a 10px horizontal overflow at 390px from the next-btn 'Save & Next' label - a one-line responsive text fix in QuestionPanel.jsx. All other exam engine behaviour (pause/resume, palette, stats, submit, admin allow_pause toggle) works end-to-end.",
+  "rca of the issue": "Mobile overflow RCA: the sticky bottom bar in QuestionPanel.jsx groups 4 buttons (Clear, Mark/Unmark, Prev, Save & Next). Clear uses `hidden sm:inline` on text, Mark splits via sm:inline/sm:hidden, Prev has `hidden sm:inline` on 'Prev'. But Save & Next renders its full label on all breakpoints causing the right edge of next-btn (138px wide) + gap + prev-btn + Mark + Clear + ml-auto to exceed 390px by 10px at 390 viewport."
+}
