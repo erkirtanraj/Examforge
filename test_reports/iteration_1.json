@@ -1,0 +1,28 @@
+{
+  "summary": "First end-to-end smoke test of LMS Test Series MVP. All backend APIs and critical frontend flows verified. Backend 100% pass across 13 checks; Frontend 100% pass across 7 UI checks including full exam-attempt → result flow.",
+  "tested_scope": ["backend", "frontend", "auth", "integration"],
+  "passed": [
+    "GET /api/ health ok",
+    "Register new student (POST /api/auth/register) returns token+user",
+    "Login admin/student; /api/auth/me returns correct role",
+    "Public catalog: 5 categories, 4 test-series, courses (2), study-materials (3), /test-series/{id} returns included tests",
+    "POST /api/tests/{id}/start creates attempt with server timestamps and 10 question_ids (version=1)",
+    "GET /api/attempts/{id} returns questions WITHOUT 'correct' or 'explanation' (security OK)",
+    "Autosave: client_version:1 -> status:ok,version:2; stale client_version:0 -> status:stale (persistence verified)",
+    "Submit flow: all 10 correct answers -> score 20.0, correct=10, wrong=0, total_marks=20, accuracy=100 (positive_marks=2 confirmed)",
+    "Submit idempotency: same result id/score on re-submit",
+    "/api/attempts/{id}/result returns questions WITH correct + explanation",
+    "Access control: student starting UPSC paid test -> 403 'Purchase required'",
+    "POST /api/orders free series (SSC): status=paid, amount=0 (immediate entitlement); paid series: amount=99900, demo_mode:true (EXPECTED, Razorpay keys empty)",
+    "Admin endpoints /admin/stats, /admin/users, /admin/orders -> 200 for admin, 403 for student; POST /api/questions as student -> 403",
+    "/api/my/dashboard returns attempts/submitted/avg_accuracy/total_score/entitlements/courses_enrolled; /api/my/attempts count=1",
+    "Frontend: home loads, student login redirects to /dashboard, 4 series cards render, series detail shows start-test buttons, admin login redirects to /admin with 8 stat tiles",
+    "Full UI exam flow: timer, option-A, mark-review, next, submit confirmation, lands on /result/:id showing Score 2/20, answer review with correct answer highlighted"
+  ],
+  "failed": [],
+  "action_items": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "retest_needed": false,
+  "full_testing_deferred": true,
+  "notes": "Razorpay demo_mode:true confirmed working as expected (keys intentionally empty). Response field for JWT is 'token' (not 'access_token') — frontend already uses correct field. 1 existing attempt (idempotent id 9a68413c-) in DB after submits."
+}
