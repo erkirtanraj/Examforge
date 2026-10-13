@@ -51,8 +51,14 @@ export default function CourseDetail() {
   };
 
   useEffect(() => {
-    api.get(`/courses/${id}`).then((r) => { setCourse(r.data); setActive(r.data.sections?.[0]?.lessons?.[0] || null); });
-    loadProgress();
+    let cancelled = false;
+    api.get(`/courses/${id}`).then((r) => {
+      if (cancelled) return;
+      setCourse(r.data);
+      setActive(r.data.sections?.[0]?.lessons?.[0] || null);
+      if (user && !r.data.access_required) loadProgress();
+    });
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, user]);
 
