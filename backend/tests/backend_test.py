@@ -110,7 +110,9 @@ class TestPaymentSettings:
         assert len(sec) > 20
         # verify persisted
         r2 = requests.get(f"{API}/admin/settings/payment", headers=admin["h"])
-        assert r2.json()["razorpay_webhook_secret"] == sec
+        assert r2.json()["has_webhook_secret"] is True
+        assert r2.json()["webhook_secret_hint"].endswith(sec[-4:])
+        assert "razorpay_webhook_secret" not in r2.json()
 
     def test_save_fake_keys_mode_test(self, admin):
         r = requests.put(f"{API}/admin/settings/payment", headers=admin["h"], json={
@@ -367,7 +369,7 @@ class TestRank:
         for i in range(2):
             email = f"TEST_rank_{uuid.uuid4().hex[:6]}@x.com"
             r = requests.post(f"{API}/auth/register", json={
-                "name": f"Rank Student {i}", "email": email, "password": "pass1234"
+                "name": f"Rank Student {i}", "email": email, "password": "SafePassphrase123!"
             })
             assert r.status_code == 200
             extras.append({"token": r.json()["token"], "user": r.json()["user"],
