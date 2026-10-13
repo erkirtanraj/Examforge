@@ -13,6 +13,7 @@ import os
 import re
 import sys
 import time
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -97,7 +98,7 @@ def main() -> int:
                 return 2
             users.create_index("email", unique=True)
             users.insert_one({
-                "id": __import__("uuid").uuid4().__str__(),
+                "id": str(uuid.uuid4()),
                 "name": args.name.strip(),
                 "email": email,
                 "password_hash": password_hash,
