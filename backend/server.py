@@ -28,9 +28,26 @@ load_dotenv(ROOT_DIR / ".env")
 
 MONGO_URL = os.environ["MONGO_URL"]
 DB_NAME = os.environ["DB_NAME"]
-JWT_SECRET = os.environ.get("JWT_SECRET", "dev-secret")
-JWT_ALG = os.environ.get("JWT_ALGORITHM", "HS256")
+APP_ENV = os.environ.get("APP_ENV", os.environ.get("ENVIRONMENT", "production")).strip().lower()
+if APP_ENV == "prod":
+    APP_ENV = "production"
+elif APP_ENV in ("dev", "local"):
+    APP_ENV = "development"
+if APP_ENV not in ("production", "development", "test"):
+    raise RuntimeError("APP_ENV must be production, development, or test")
+
+IS_PRODUCTION = APP_ENV == "production"
+JWT_SECRET = os.environ.get("JWT_SECRET", "")
+JWT_ALG = os.environ.get("JWT_ALGORITHM", "HS256").strip().upper()
 JWT_EXPIRE_HOURS = int(os.environ.get("JWT_EXPIRE_HOURS", "168"))
+if JWT_ALG not in ("HS256", "HS384", "HS512"):
+    raise RuntimeError("JWT_ALGORITHM must be one of HS256, HS384, or HS512")
+if IS_PRODUCTION:
+    if len(JWT_SECRET.encode("utf-8")) < 32 or JWT_SECRET in ("dev-secret", "changeme", "secret"):
+        raise RuntimeError("Production requires a unique JWT_SECRET of at least 32 bytes")
+elif not JWT_SECRET:
+    JWT_SECRET = "dev-secret"
+    logging.warning("Using development-only JWT_SECRET. Set APP_ENV=production and configure JWT_SECRET before deployment.")
 RZP_KEY = os.environ.get("RAZORPAY_KEY_ID", "")
 RZP_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "")
 RZP_WEBHOOK = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "")
@@ -49,7 +66,12 @@ async def get_rzp():
     wh = s.get("razorpay_webhook_secret") or RZP_WEBHOOK
     return (razorpay.Client(auth=(kid, sec)) if kid and sec else None), kid, wh
 
-app = FastAPI(title="LMS Test Series API")
+app = FastAPI(
+    title="LMS Test Series API",
+    docs_url=None if IS_PRODUCTION else "/docs",
+    redoc_url=None if IS_PRODUCTION else "/redoc",
+    openapi_url=None if IS_PRODUCTION else "/openapi.json",
+)
 api = APIRouter(prefix="/api")
 bearer = HTTPBearer(auto_error=False)
 
@@ -63,7 +85,43 @@ def now_iso() -> str:
 def gen_id() -> str:
     return str(uuid.uuid4())
 
+
+_AUTH_REQUESTS: dict[str, list[float]] = {}
+
+def enforce_rate_limit(request: Request, scope: str, ip_limit: int, window_seconds: int,
+                       identity: Optional[str] = None, identity_limit: Optional[int] = None,
+                       identity_window_seconds: Optional[int] = None) -> None:
+    """Per-process guardrail; use a trusted proxy/WAF rate limit in production as well."""
+    now = time.monotonic()
+    client_ip = request.client.host if request.client else "unknown"
+    buckets = [(f"{scope}:ip:{client_ip}", ip_limit, window_seconds)]
+    if identity:
+        identity_hash = hashlib.sha256(identity.strip().casefold().encode("utf-8")).hexdigest()
+        buckets.append((f"{scope}:identity:{identity_hash}", identity_limit or ip_limit,
+                        identity_window_seconds or window_seconds))
+    pruned = {}
+    for key, limit, window in buckets:
+        active = [t for t in _AUTH_REQUESTS.get(key, []) if now - t < window]
+        pruned[key] = (active, limit, window)
+        if len(active) >= limit:
+            retry = max(1, int(window - (now - active[0])))
+            raise HTTPException(status_code=429, detail="Too many requests. Please try again later.",
+                                headers={"Retry-After": str(retry)})
+    for key, (active, _limit, _window) in pruned.items():
+        _AUTH_REQUESTS[key] = active + [now]
+    if len(_AUTH_REQUESTS) > 10000:
+        cutoff = now - 3600
+        for key in list(_AUTH_REQUESTS):
+            fresh = [t for t in _AUTH_REQUESTS[key] if t >= cutoff]
+            if fresh:
+                _AUTH_REQUESTS[key] = fresh
+            else:
+                _AUTH_REQUESTS.pop(key, None)
+
+
 def hash_pw(pw: str) -> str:
+    if len(pw.encode("utf-8")) > 72:
+        raise HTTPException(422, "Password must be 72 UTF-8 bytes or fewer")
     return bcrypt.hashpw(pw.encode(), bcrypt.gensalt()).decode()
 
 def verify_pw(pw: str, h: str) -> bool:
@@ -88,6 +146,8 @@ async def get_current_user(creds: HTTPAuthorizationCredentials = Depends(bearer)
         data = pyjwt.decode(creds.credentials, JWT_SECRET, algorithms=[JWT_ALG])
     except Exception:
         raise HTTPException(401, "Invalid or expired token")
+    if not isinstance(data, dict) or not isinstance(data.get("uid"), str):
+        raise HTTPException(401, "Invalid or expired token")
     user = await db.users.find_one({"id": data["uid"]}, {"_id": 0, "password_hash": 0})
     if not user:
         raise HTTPException(401, "User not found")
@@ -96,6 +156,13 @@ async def get_current_user(creds: HTTPAuthorizationCredentials = Depends(bearer)
     if data.get("iat", 0) < user.pop("tokens_valid_after", 0):
         raise HTTPException(401, "Your session has expired. Please sign in again.")
     return user
+
+
+async def get_optional_current_user(creds: Optional[HTTPAuthorizationCredentials] = Depends(bearer)):
+    if not creds:
+        return None
+    return await get_current_user(creds)
+
 
 def require_roles(*roles):
     async def _dep(user=Depends(get_current_user)):
@@ -106,14 +173,14 @@ def require_roles(*roles):
 
 # ========== Models ==========
 class RegisterIn(BaseModel):
-    name: str
+    name: str = Field(min_length=1, max_length=120)
     email: EmailStr
-    password: str
-    role: Optional[Literal["student", "teacher"]] = "student"
+    password: str = Field(min_length=10, max_length=72)
+    # Public signup never grants staff privileges.
 
 class LoginIn(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=1, max_length=128)
 
 class CategoryIn(BaseModel):
     name: str
@@ -248,7 +315,10 @@ class VerifyPaymentIn(BaseModel):
 
 # ========== Auth ==========
 @api.post("/auth/register")
-async def register(data: RegisterIn):
+async def register(request: Request, data: RegisterIn):
+    enforce_rate_limit(request, "register", 15, 3600)
+    if len(data.password.encode("utf-8")) > 72:
+        raise HTTPException(422, "Password must be 72 UTF-8 bytes or fewer")
     existing = await db.users.find_one({"email": data.email.lower()})
     if existing:
         raise HTTPException(400, "Email already registered")
@@ -258,7 +328,7 @@ async def register(data: RegisterIn):
         "name": data.name,
         "email": data.email.lower(),
         "password_hash": hash_pw(data.password),
-        "role": data.role or "student",
+        "role": "student",
         "created_at": now_iso(),
         "avatar_url": None,
     }
@@ -267,7 +337,8 @@ async def register(data: RegisterIn):
     return {"token": token, "user": {"id": uid, "name": doc["name"], "email": doc["email"], "role": doc["role"]}}
 
 @api.post("/auth/login")
-async def login(data: LoginIn):
+async def login(request: Request, data: LoginIn):
+    enforce_rate_limit(request, "login", 120, 60, identity=data.email, identity_limit=10, identity_window_seconds=300)
     user = await db.users.find_one({"email": data.email.lower()})
     if not user or not verify_pw(data.password, user.get("password_hash") or ""):
         raise HTTPException(401, "Invalid credentials")
@@ -565,7 +636,7 @@ async def bulk_questions(items: List[QuestionIn], user=Depends(require_roles("ad
 # ========== Test Series & Tests ==========
 @api.get("/test-series")
 async def list_series(category_id: Optional[str] = None, is_free: Optional[bool] = None):
-    q = {}
+    q = {"is_published": {"$ne": False}}
     if category_id: q["category_id"] = category_id
     if is_free is not None: q["is_free"] = is_free
     rows = await db.test_series.find(q, {"_id": 0}).to_list(500)
@@ -575,10 +646,13 @@ async def list_series(category_id: Optional[str] = None, is_free: Optional[bool]
 
 @api.get("/test-series/{series_id}")
 async def get_series(series_id: str):
-    s = await db.test_series.find_one({"id": series_id}, {"_id": 0})
+    s = await db.test_series.find_one({"id": series_id, "is_published": {"$ne": False}}, {"_id": 0})
     if not s:
         raise HTTPException(404, "Not found")
-    s["tests"] = await db.tests.find({"series_id": series_id}, {"_id": 0, "question_ids": 0}).to_list(500)
+    s["tests"] = await db.tests.find(
+        {"series_id": series_id, "is_published": {"$ne": False}},
+        {"_id": 0, "question_ids": 0},
+    ).to_list(500)
     return s
 
 @api.post("/test-series")
@@ -684,7 +758,7 @@ async def _prepare_test(data: dict) -> dict:
 @api.get("/tests/{test_id}")
 async def get_test(test_id: str, user=Depends(get_current_user)):
     t = await db.tests.find_one({"id": test_id}, {"_id": 0})
-    if not t:
+    if not t or (t.get("is_published", True) is False and user.get("role") not in ("admin", "super_admin", "teacher")):
         raise HTTPException(404, "Not found")
     return t
 
@@ -704,6 +778,10 @@ async def has_access(user_id: str, item_type: str, item_id: str) -> bool:
         c = await db.courses.find_one({"id": item_id})
         if c and c.get("is_free"):
             return True
+    if item_type == "study_material":
+        material = await db.study_materials.find_one({"id": item_id}, {"is_free": 1})
+        if material and material.get("is_free"):
+            return True
     # Check entitlements
     ent = await db.entitlements.find_one({
         "user_id": user_id,
@@ -717,12 +795,14 @@ async def has_access(user_id: str, item_type: str, item_id: str) -> bool:
 @api.post("/tests/{test_id}/start")
 async def start_attempt(test_id: str, user=Depends(get_current_user)):
     t = await db.tests.find_one({"id": test_id}, {"_id": 0})
-    if not t:
+    if not t or t.get("is_published", True) is False:
         raise HTTPException(404, "Test not found")
     live_start, _end = _live_window(t)
     if live_start and datetime.now(timezone.utc) < live_start:
         raise HTTPException(403, "This live mock hasn't opened yet")
     series = await db.test_series.find_one({"id": t["series_id"]}, {"_id": 0})
+    if series and series.get("is_published", True) is False:
+        raise HTTPException(404, "Test series not found")
     if series and not await has_access(user["id"], "test_series", series["id"]):
         raise HTTPException(403, "Purchase required")
     # Reuse existing in-progress attempt
@@ -1161,14 +1241,23 @@ async def list_courses(category_id: Optional[str] = None):
     return await db.courses.find(q, {"_id": 0}).to_list(500)
 
 @api.get("/courses/{course_id}")
-async def get_course(course_id: str):
+async def get_course(course_id: str, user=Depends(get_optional_current_user)):
     c = await db.courses.find_one({"id": course_id}, {"_id": 0})
     if not c:
         raise HTTPException(404, "Not found")
+    staff_preview = bool(user and user.get("role") in ("admin", "super_admin", "teacher"))
+    can_view_content = bool(c.get("is_free", True) or staff_preview or (
+        user and await has_access(user["id"], "course", course_id)
+    ))
     sections = await db.course_sections.find({"course_id": course_id}, {"_id": 0}).sort("position", 1).to_list(200)
-    for s in sections:
-        s["lessons"] = await db.lessons.find({"section_id": s["id"]}, {"_id": 0}).sort("position", 1).to_list(200)
+    for section in sections:
+        lessons = await db.lessons.find({"section_id": section["id"]}, {"_id": 0}).sort("position", 1).to_list(200)
+        if not can_view_content:
+            # Expose titles/order as preview metadata, not paid URLs or lesson body text.
+            lessons = [{k: v for k, v in lesson.items() if k not in ("content_url", "text_content")} for lesson in lessons]
+        section["lessons"] = lessons
     c["sections"] = sections
+    c["access_required"] = not can_view_content
     return c
 
 @api.post("/courses")
@@ -1194,6 +1283,14 @@ async def create_lesson(data: LessonIn, _=Depends(require_roles("admin", "teache
 
 @api.post("/lessons/{lesson_id}/complete")
 async def complete_lesson(lesson_id: str, user=Depends(get_current_user)):
+    lesson = await db.lessons.find_one({"id": lesson_id}, {"_id": 0, "id": 1, "section_id": 1})
+    if not lesson:
+        raise HTTPException(404, "Lesson not found")
+    section = await db.course_sections.find_one({"id": lesson["section_id"]}, {"_id": 0, "course_id": 1})
+    if not section:
+        raise HTTPException(404, "Lesson not found")
+    if not await has_access(user["id"], "course", section["course_id"]):
+        raise HTTPException(403, "Enrollment required")
     await db.lesson_progress.update_one(
         {"user_id": user["id"], "lesson_id": lesson_id},
         {"$set": {"completed_at": now_iso()}},
@@ -1203,6 +1300,11 @@ async def complete_lesson(lesson_id: str, user=Depends(get_current_user)):
 
 @api.get("/my/progress/{course_id}")
 async def course_progress(course_id: str, user=Depends(get_current_user)):
+    course = await db.courses.find_one({"id": course_id}, {"_id": 0, "id": 1})
+    if not course:
+        raise HTTPException(404, "Course not found")
+    if not await has_access(user["id"], "course", course_id):
+        raise HTTPException(403, "Enrollment required")
     sections = await db.course_sections.find({"course_id": course_id}, {"_id": 0, "id": 1}).to_list(500)
     sec_ids = [s["id"] for s in sections]
     lessons = await db.lessons.find({"section_id": {"$in": sec_ids}}, {"_id": 0, "id": 1}).to_list(1000)
@@ -1222,6 +1324,16 @@ class PositionIn(BaseModel):
 
 @api.put("/lessons/{lesson_id}/position")
 async def save_position(lesson_id: str, data: PositionIn, user=Depends(get_current_user)):
+    lesson = await db.lessons.find_one({"id": lesson_id}, {"_id": 0, "section_id": 1})
+    if not lesson:
+        raise HTTPException(404, "Lesson not found")
+    section = await db.course_sections.find_one({"id": lesson["section_id"]}, {"_id": 0, "course_id": 1})
+    if not section:
+        raise HTTPException(404, "Lesson not found")
+    if not await has_access(user["id"], "course", section["course_id"]):
+        raise HTTPException(403, "Enrollment required")
+    if data.duration and data.position > data.duration:
+        raise HTTPException(422, "Position cannot exceed duration")
     await db.lesson_positions.update_one(
         {"user_id": user["id"], "lesson_id": lesson_id},
         {"$set": {"position": round(data.position, 1), "duration": round(data.duration, 1), "updated_at": now_iso()}}, upsert=True)
@@ -1236,6 +1348,8 @@ async def issue_certificate(course_id: str, user=Depends(get_current_user)):
     course = await db.courses.find_one({"id": course_id}, {"_id": 0})
     if not course:
         raise HTTPException(404, "Course not found")
+    if not await has_access(user["id"], "course", course_id):
+        raise HTTPException(403, "Enrollment required")
     if not course.get("certificate_enabled"):
         raise HTTPException(400, "This course doesn't offer a certificate")
     existing = await db.certificates.find_one({"user_id": user["id"], "course_id": course_id}, {"_id": 0})
@@ -1243,8 +1357,10 @@ async def issue_certificate(course_id: str, user=Depends(get_current_user)):
         return existing
     sec_ids = await db.course_sections.distinct("id", {"course_id": course_id})
     lesson_ids = await db.lessons.distinct("id", {"section_id": {"$in": sec_ids}})
-    done = await db.lesson_progress.count_documents({"user_id": user["id"], "lesson_id": {"$in": lesson_ids}})
-    if not lesson_ids or done < len(lesson_ids):
+    done_ids = await db.lesson_progress.distinct(
+        "lesson_id", {"user_id": user["id"], "lesson_id": {"$in": lesson_ids}}
+    )
+    if not lesson_ids or len(done_ids) < len(set(lesson_ids)):
         raise HTTPException(400, "Complete every lesson to unlock your certificate")
     cert = {"id": _cert_code(), "user_id": user["id"], "course_id": course_id, "name": user["name"],
             "course_title": course["title"], "lessons": len(lesson_ids), "issued_at": now_iso()}
@@ -1260,9 +1376,18 @@ async def verify_certificate(code: str):
 
 # ========== Study Materials ==========
 @api.get("/study-materials")
-async def list_materials(category_id: Optional[str] = None):
+async def list_materials(category_id: Optional[str] = None, user=Depends(get_optional_current_user)):
     q = {"category_id": category_id} if category_id else {}
-    return await db.study_materials.find(q, {"_id": 0}).to_list(500)
+    rows = await db.study_materials.find(q, {"_id": 0}).to_list(500)
+    out = []
+    for material in rows:
+        accessible = bool(material.get("is_free", True) or (
+            user and await has_access(user["id"], "study_material", material["id"])
+        ))
+        if not accessible:
+            material["file_url"] = None
+        out.append(material)
+    return out
 
 @api.post("/study-materials")
 async def create_material(data: StudyMaterialIn, user=Depends(require_roles("admin", "teacher"))):
@@ -1669,8 +1794,9 @@ async def _payment_view() -> dict:
     kid = s.get("razorpay_key_id") or RZP_KEY
     sec = s.get("razorpay_key_secret") or RZP_SECRET
     mode = "demo" if not (kid and sec) else ("live" if kid.startswith("rzp_live") else "test")
+    wh = s.get("razorpay_webhook_secret") or RZP_WEBHOOK
     return {"razorpay_key_id": kid, "has_secret": bool(sec), "secret_hint": f"••••{sec[-4:]}" if sec else "",
-            "razorpay_webhook_secret": s.get("razorpay_webhook_secret") or RZP_WEBHOOK,
+            "has_webhook_secret": bool(wh), "webhook_secret_hint": f"••••{wh[-4:]}" if wh else "",
             "mode": mode, "updated_at": s.get("updated_at")}
 
 @api.get("/admin/settings/payment")
@@ -1682,7 +1808,7 @@ async def save_payment_settings(data: PaymentSettingsIn, user=Depends(require_ro
     upd = {"razorpay_key_id": data.razorpay_key_id.strip(), "updated_at": now_iso(), "updated_by": user["id"]}
     if data.razorpay_key_secret:
         upd["razorpay_key_secret"] = data.razorpay_key_secret.strip()
-    if data.razorpay_webhook_secret is not None:
+    if data.razorpay_webhook_secret:
         upd["razorpay_webhook_secret"] = data.razorpay_webhook_secret.strip()
     await db.settings.update_one({"key": "payment"}, {"$set": upd}, upsert=True)
     return await _payment_view()
@@ -1718,7 +1844,13 @@ async def startup():
     await db.entitlements.create_index([("user_id", 1), ("item_type", 1), ("item_id", 1), ("order_id", 1)], unique=True)
     await db.orders.create_index("razorpay_order_id")
     # Seed admin + sample data if missing
-    if not await db.users.find_one({"email": "admin@lms.com"}):
+    admin_exists = await db.users.find_one({"role": {"$in": ["admin", "super_admin"]}}, {"_id": 1})
+    if not admin_exists:
+        if IS_PRODUCTION:
+            raise RuntimeError(
+                "No administrator exists. Create the first admin through a secure bootstrap process; "
+                "production startup will not create demo accounts."
+            )
         await _seed_data()
     await _seed_sectional_mocks()
     await _seed_extras()
@@ -1976,10 +2108,31 @@ app.mount("/api/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads"
 app.add_middleware(PublicCacheMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=800)
 
+_configured_origins = os.environ.get("CORS_ORIGINS", "").strip()
+if IS_PRODUCTION and (not _configured_origins or "*" in [x.strip() for x in _configured_origins.split(",")]):
+    raise RuntimeError("Production requires CORS_ORIGINS set to explicit trusted frontend origins")
+if _configured_origins:
+    CORS_ORIGINS = [origin.strip().rstrip("/") for origin in _configured_origins.split(",") if origin.strip()]
+elif APP_ENV in ("development", "test"):
+    CORS_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]
+else:
+    CORS_ORIGINS = []
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=CORS_ORIGINS,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"],
 )
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+    if IS_PRODUCTION:
+        response.headers.setdefault("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+    return response
