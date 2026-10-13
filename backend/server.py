@@ -7,12 +7,12 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
-from pydantic import BaseModel, Field, EmailStr, ConfigDict
+from pydantic import BaseModel, Field, EmailStr, ConfigDict, ValidationError
 from typing import List, Optional, Literal, Dict, Any
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 import os, uuid, logging, hashlib, hmac, jwt as pyjwt
-import bcrypt
+import bcrypt, secrets, asyncio, requests
 import razorpay
 
 ROOT_DIR = Path(__file__).parent
@@ -29,7 +29,17 @@ RZP_WEBHOOK = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "")
 
 client = AsyncIOMotorClient(MONGO_URL)
 db = client[DB_NAME]
-rzp_client = razorpay.Client(auth=(RZP_KEY, RZP_SECRET)) if RZP_KEY and RZP_SECRET else None
+
+async def _payment_settings() -> dict:
+    return await db.settings.find_one({"key": "payment"}, {"_id": 0}) or {}
+
+async def get_rzp():
+    """Razorpay client from admin settings (falls back to env)."""
+    s = await _payment_settings()
+    kid = s.get("razorpay_key_id") or RZP_KEY
+    sec = s.get("razorpay_key_secret") or RZP_SECRET
+    wh = s.get("razorpay_webhook_secret") or RZP_WEBHOOK
+    return (razorpay.Client(auth=(kid, sec)) if kid and sec else None), kid, wh
 
 app = FastAPI(title="LMS Test Series API")
 api = APIRouter(prefix="/api")
@@ -213,7 +223,7 @@ async def register(data: RegisterIn):
 @api.post("/auth/login")
 async def login(data: LoginIn):
     user = await db.users.find_one({"email": data.email.lower()})
-    if not user or not verify_pw(data.password, user["password_hash"]):
+    if not user or not verify_pw(data.password, user.get("password_hash") or ""):
         raise HTTPException(401, "Invalid credentials")
     token = make_token(user["id"], user["role"])
     return {"token": token, "user": {"id": user["id"], "name": user["name"], "email": user["email"], "role": user["role"]}}
@@ -221,6 +231,35 @@ async def login(data: LoginIn):
 @api.get("/auth/me")
 async def me(user=Depends(get_current_user)):
     return user
+
+class GoogleSessionIn(BaseModel):
+    session_id: str
+
+@api.post("/auth/google")
+async def google_login(data: GoogleSessionIn):
+    try:
+        r = await asyncio.to_thread(
+            requests.get, "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
+            headers={"X-Session-ID": data.session_id}, timeout=15,
+        )
+    except Exception:
+        raise HTTPException(502, "Google sign-in service unavailable")
+    if r.status_code != 200:
+        raise HTTPException(401, "Google session invalid or expired")
+    info = r.json()
+    email = (info.get("email") or "").lower()
+    if not email:
+        raise HTTPException(401, "Google account has no email")
+    user = await db.users.find_one({"email": email}, {"_id": 0, "password_hash": 0})
+    if not user:
+        user = {"id": gen_id(), "name": info.get("name") or email.split("@")[0], "email": email,
+                "role": "student", "created_at": now_iso(), "avatar_url": info.get("picture"),
+                "auth_provider": "google"}
+        await db.users.insert_one(dict(user))
+    elif not user.get("avatar_url") and info.get("picture"):
+        await db.users.update_one({"id": user["id"]}, {"$set": {"avatar_url": info["picture"]}})
+    token = make_token(user["id"], user["role"])
+    return {"token": token, "user": {"id": user["id"], "name": user["name"], "email": user["email"], "role": user["role"]}}
 
 # ========== Categories & Subjects ==========
 @api.get("/categories")
@@ -250,7 +289,7 @@ async def create_subject(data: SubjectIn, _=Depends(require_roles("admin", "teac
 # ========== Questions ==========
 @api.get("/questions")
 async def list_questions(category_id: Optional[str] = None, subject_id: Optional[str] = None,
-                         difficulty: Optional[str] = None, limit: int = 100,
+                         difficulty: Optional[str] = None, limit: int = 2000,
                          _=Depends(require_roles("admin", "teacher"))):
     q = {}
     if category_id: q["category_id"] = category_id
@@ -514,7 +553,34 @@ async def get_result(attempt_id: str, user=Depends(get_current_user)):
     qs = await db.questions.find({"id": {"$in": a["question_ids"]}}, {"_id": 0}).to_list(1000)
     res["questions"] = qs
     res["user_answers"] = a.get("answers", {})
+    res["rank"] = await _rank_for(res)
     return res
+
+async def _rank_for(result: dict) -> dict:
+    """All-India rank among all students, using each student's first attempt of this test."""
+    rows = await db.test_results.find(
+        {"test_id": result["test_id"]}, {"_id": 0, "user_id": 1, "score": 1, "attempt_id": 1, "created_at": 1}
+    ).sort("created_at", 1).to_list(None)
+    first = {}
+    for r in rows:
+        first.setdefault(r["user_id"], r)
+    scores = [r["score"] for r in first.values()]
+    mine_row = first.get(result["user_id"])
+    mine = mine_row["score"] if mine_row else result["score"]
+    total = len(scores)
+    rank = 1 + sum(1 for s in scores if s > mine)
+    below = sum(1 for s in scores if s < mine)
+    percentile = 100.0 if total <= 1 else round(below / (total - 1) * 100, 2)
+    top_rows = sorted(first.values(), key=lambda r: -r["score"])[:5]
+    users = await db.users.find({"id": {"$in": [r["user_id"] for r in top_rows]}}, {"_id": 0, "id": 1, "name": 1}).to_list(10)
+    names = {u["id"]: u["name"] for u in users}
+    def short(n):
+        parts = (n or "Student").split()
+        return parts[0] + (f" {parts[-1][0]}." if len(parts) > 1 else "")
+    top = [{"rank": 1 + sum(1 for s in scores if s > r["score"]), "name": short(names.get(r["user_id"])),
+            "score": r["score"], "is_you": r["user_id"] == result["user_id"]} for r in top_rows]
+    return {"rank": rank, "total": total, "percentile": percentile, "top": top,
+            "is_official": bool(mine_row and mine_row["attempt_id"] == result["attempt_id"])}
 
 @api.get("/my/attempts")
 async def my_attempts(user=Depends(get_current_user)):
@@ -624,9 +690,10 @@ async def create_order(data: OrderIn, user=Depends(get_current_user)):
     oid = gen_id()
     receipt = oid[:40]
     rzp_order = None
+    rzp_client, rzp_key, _ = await get_rzp()
     if rzp_client:
         try:
-            rzp_order = rzp_client.order.create({
+            rzp_order = await asyncio.to_thread(rzp_client.order.create, {
                 "amount": amount, "currency": "INR", "receipt": receipt, "payment_capture": 1,
                 "notes": {"user_id": user["id"], "item_type": data.item_type, "item_id": data.item_id}
             })
@@ -639,7 +706,7 @@ async def create_order(data: OrderIn, user=Depends(get_current_user)):
              "item_title": item.get("title")}
     await db.orders.insert_one(order)
     order.pop("_id", None)
-    return {**order, "razorpay_key": RZP_KEY, "demo_mode": not bool(rzp_client)}
+    return {**order, "razorpay_key": rzp_key, "demo_mode": not bool(rzp_client)}
 
 async def _grant_entitlement(user_id: str, item_type: str, item_id: str, order_id: str):
     item = await _get_item(item_type, item_id)
@@ -659,16 +726,19 @@ async def verify_payment(data: VerifyPaymentIn, user=Depends(get_current_user)):
         raise HTTPException(404, "Order not found")
     if order["status"] == "paid":
         return {"status": "already_paid"}
-    # Verify signature
-    if rzp_client:
-        try:
-            rzp_client.utility.verify_payment_signature({
-                "razorpay_order_id": data.razorpay_order_id,
-                "razorpay_payment_id": data.razorpay_payment_id,
-                "razorpay_signature": data.razorpay_signature,
-            })
-        except Exception:
-            raise HTTPException(400, "Invalid payment signature")
+    rzp_client, _, _ = await get_rzp()
+    if not rzp_client:
+        raise HTTPException(400, "Payments are not configured")
+    if order.get("razorpay_order_id") != data.razorpay_order_id:
+        raise HTTPException(400, "Order mismatch")
+    try:
+        rzp_client.utility.verify_payment_signature({
+            "razorpay_order_id": data.razorpay_order_id,
+            "razorpay_payment_id": data.razorpay_payment_id,
+            "razorpay_signature": data.razorpay_signature,
+        })
+    except Exception:
+        raise HTTPException(400, "Invalid payment signature")
     await db.orders.update_one(
         {"id": order["id"]},
         {"$set": {"status": "paid", "razorpay_payment_id": data.razorpay_payment_id, "paid_at": now_iso()}},
@@ -680,10 +750,12 @@ async def verify_payment(data: VerifyPaymentIn, user=Depends(get_current_user)):
 async def razorpay_webhook(request: Request):
     body = await request.body()
     sig = request.headers.get("X-Razorpay-Signature", "")
-    if RZP_WEBHOOK:
-        expected = hmac.new(RZP_WEBHOOK.encode(), body, hashlib.sha256).hexdigest()
-        if not hmac.compare_digest(expected, sig):
-            raise HTTPException(400, "Invalid signature")
+    _, _, wh_secret = await get_rzp()
+    if not wh_secret:
+        raise HTTPException(400, "Webhook not configured")
+    expected = hmac.new(wh_secret.encode(), body, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, sig):
+        raise HTTPException(400, "Invalid signature")
     try:
         payload = (await request.json())
     except Exception:
@@ -691,7 +763,6 @@ async def razorpay_webhook(request: Request):
     event = payload.get("event", "")
     if event == "payment.captured":
         rp = payload.get("payload", {}).get("payment", {}).get("entity", {})
-        order_id = rp.get("notes", {}).get("user_id")  # not reliable; we use order_id lookup
         rp_order_id = rp.get("order_id")
         order = await db.orders.find_one({"razorpay_order_id": rp_order_id})
         if order and order["status"] != "paid":
@@ -726,8 +797,8 @@ async def student_dashboard(user=Depends(get_current_user)):
 
 # ========== Admin ==========
 @api.get("/admin/stats")
-async def admin_stats(_=Depends(require_roles("admin"))):
-    return {
+async def admin_stats(user=Depends(require_roles("admin", "teacher"))):
+    stats = {
         "users": await db.users.count_documents({}),
         "questions": await db.questions.count_documents({}),
         "test_series": await db.test_series.count_documents({}),
@@ -737,6 +808,10 @@ async def admin_stats(_=Depends(require_roles("admin"))):
         "orders_paid": await db.orders.count_documents({"status": "paid"}),
         "revenue": sum([o.get("amount", 0) async for o in db.orders.find({"status": "paid"}, {"amount": 1})]),
     }
+    if user["role"] == "teacher":
+        stats.pop("revenue")
+        stats.pop("orders_paid")
+    return stats
 
 @api.get("/admin/users")
 async def admin_users(_=Depends(require_roles("admin"))):
@@ -745,6 +820,120 @@ async def admin_users(_=Depends(require_roles("admin"))):
 @api.get("/admin/orders")
 async def admin_orders(_=Depends(require_roles("admin"))):
     return await db.orders.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+
+class RoleIn(BaseModel):
+    role: Literal["super_admin", "admin", "teacher", "student", "support"]
+
+@api.put("/admin/users/{user_id}/role")
+async def set_user_role(user_id: str, data: RoleIn, user=Depends(require_roles("admin"))):
+    if user_id == user["id"]:
+        raise HTTPException(400, "You cannot change your own role")
+    if data.role == "super_admin" and user["role"] != "super_admin":
+        raise HTTPException(403, "Only a super admin can grant super admin")
+    res = await db.users.update_one({"id": user_id}, {"$set": {"role": data.role}})
+    if not res.matched_count:
+        raise HTTPException(404, "User not found")
+    return {"ok": True}
+
+@api.get("/admin/tests")
+async def admin_tests(_=Depends(require_roles("admin", "teacher"))):
+    return await db.tests.find({}, {"_id": 0}).sort("created_at", -1).to_list(2000)
+
+# ---- Generic content update/delete (admin + teacher) ----
+CONTENT = {
+    "questions": (db.questions, QuestionIn),
+    "test-series": (db.test_series, TestSeriesIn),
+    "tests": (db.tests, TestIn),
+    "courses": (db.courses, CourseIn),
+    "sections": (db.course_sections, SectionIn),
+    "lessons": (db.lessons, LessonIn),
+    "study-materials": (db.study_materials, StudyMaterialIn),
+    "categories": (db.categories, CategoryIn),
+}
+
+def _content(kind: str):
+    if kind not in CONTENT:
+        raise HTTPException(404, "Unknown content type")
+    return CONTENT[kind]
+
+@api.put("/content/{kind}/{item_id}")
+async def update_content(kind: str, item_id: str, body: Dict[str, Any], _=Depends(require_roles("admin", "teacher"))):
+    coll, model = _content(kind)
+    try:
+        data = model(**body).model_dump()
+    except ValidationError as e:
+        raise HTTPException(422, e.errors()[0].get("msg", "Invalid data"))
+    if kind == "tests":
+        qs = await db.questions.find({"id": {"$in": data["question_ids"]}}, {"_id": 0, "positive_marks": 1}).to_list(5000)
+        data["total_marks"] = data.get("total_marks") or sum(q.get("positive_marks", 1.0) for q in qs)
+    res = await coll.update_one({"id": item_id}, {"$set": {**data, "updated_at": now_iso()}})
+    if not res.matched_count:
+        raise HTTPException(404, "Not found")
+    return await coll.find_one({"id": item_id}, {"_id": 0})
+
+@api.delete("/content/{kind}/{item_id}")
+async def delete_content(kind: str, item_id: str, _=Depends(require_roles("admin", "teacher"))):
+    coll, _m = _content(kind)
+    res = await coll.delete_one({"id": item_id})
+    if not res.deleted_count:
+        raise HTTPException(404, "Not found")
+    if kind == "test-series":
+        await db.tests.delete_many({"series_id": item_id})
+    elif kind == "courses":
+        sec_ids = [s["id"] async for s in db.course_sections.find({"course_id": item_id}, {"id": 1})]
+        await db.lessons.delete_many({"section_id": {"$in": sec_ids}})
+        await db.course_sections.delete_many({"course_id": item_id})
+    elif kind == "sections":
+        await db.lessons.delete_many({"section_id": item_id})
+    elif kind == "questions":
+        await db.tests.update_many({"question_ids": item_id}, {"$pull": {"question_ids": item_id}})
+    return {"ok": True}
+
+# ---- Payment settings (admin) ----
+class PaymentSettingsIn(BaseModel):
+    razorpay_key_id: str = ""
+    razorpay_key_secret: Optional[str] = None  # blank keeps the saved secret
+    razorpay_webhook_secret: Optional[str] = None
+
+async def _payment_view() -> dict:
+    s = await _payment_settings()
+    kid = s.get("razorpay_key_id") or RZP_KEY
+    sec = s.get("razorpay_key_secret") or RZP_SECRET
+    mode = "demo" if not (kid and sec) else ("live" if kid.startswith("rzp_live") else "test")
+    return {"razorpay_key_id": kid, "has_secret": bool(sec), "secret_hint": f"••••{sec[-4:]}" if sec else "",
+            "razorpay_webhook_secret": s.get("razorpay_webhook_secret") or RZP_WEBHOOK,
+            "mode": mode, "updated_at": s.get("updated_at")}
+
+@api.get("/admin/settings/payment")
+async def get_payment_settings(_=Depends(require_roles("admin"))):
+    return await _payment_view()
+
+@api.put("/admin/settings/payment")
+async def save_payment_settings(data: PaymentSettingsIn, user=Depends(require_roles("admin"))):
+    upd = {"razorpay_key_id": data.razorpay_key_id.strip(), "updated_at": now_iso(), "updated_by": user["id"]}
+    if data.razorpay_key_secret:
+        upd["razorpay_key_secret"] = data.razorpay_key_secret.strip()
+    if data.razorpay_webhook_secret is not None:
+        upd["razorpay_webhook_secret"] = data.razorpay_webhook_secret.strip()
+    await db.settings.update_one({"key": "payment"}, {"$set": upd}, upsert=True)
+    return await _payment_view()
+
+@api.post("/admin/settings/payment/webhook-secret")
+async def generate_webhook_secret(_=Depends(require_roles("admin"))):
+    sec = secrets.token_urlsafe(32)
+    await db.settings.update_one({"key": "payment"}, {"$set": {"razorpay_webhook_secret": sec, "updated_at": now_iso()}}, upsert=True)
+    return {"razorpay_webhook_secret": sec}
+
+@api.post("/admin/settings/payment/test")
+async def test_payment_settings(_=Depends(require_roles("admin"))):
+    c, _k, _w = await get_rzp()
+    if not c:
+        raise HTTPException(400, "Razorpay keys are not configured")
+    try:
+        await asyncio.to_thread(c.order.all, {"count": 1})
+    except Exception:
+        raise HTTPException(400, "Razorpay rejected these keys. Check Key ID and Secret.")
+    return {"ok": True}
 
 # ========== Health ==========
 @api.get("/")

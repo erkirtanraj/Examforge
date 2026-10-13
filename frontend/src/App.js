@@ -15,15 +15,66 @@ import StudentDashboard from "./pages/StudentDashboard";
 import CourseCatalog from "./pages/CourseCatalog";
 import CourseDetail from "./pages/CourseDetail";
 import StudyMaterials from "./pages/StudyMaterials";
-import AdminDashboard from "./pages/AdminDashboard";
+import AuthCallback from "./pages/AuthCallback";
+import AdminLayout from "./components/admin/AdminLayout";
+import Overview from "./pages/admin/Overview";
+import Questions from "./pages/admin/Questions";
+import Series from "./pages/admin/Series";
+import Tests from "./pages/admin/Tests";
+import Courses from "./pages/admin/Courses";
+import Materials from "./pages/admin/Materials";
+import Categories from "./pages/admin/Categories";
+import Users from "./pages/admin/Users";
+import Orders from "./pages/admin/Orders";
+import Settings from "./pages/admin/Settings";
 
-function Protected({ children, admin = false }) {
+const ADMIN_ROLES = ["admin", "super_admin"];
+const STAFF_ROLES = [...ADMIN_ROLES, "teacher"];
+
+function Protected({ children, roles }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading…</div>;
   if (!user) return <Navigate to="/login" replace />;
-  if (admin && user.role !== "admin" && user.role !== "super_admin")
-    return <Navigate to="/dashboard" replace />;
+  if (roles && !roles.includes(user.role)) return <Navigate to={STAFF_ROLES.includes(user.role) ? "/admin" : "/dashboard"} replace />;
   return children;
+}
+
+const adminOnly = (el) => <Protected roles={ADMIN_ROLES}>{el}</Protected>;
+
+function AppRouter() {
+  const location = useLocation();
+  if (location.hash?.includes("session_id=")) return <AuthCallback />;
+  return (
+    <>
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/test-series" element={<TestSeriesCatalog />} />
+        <Route path="/test-series/:id" element={<TestSeriesDetail />} />
+        <Route path="/courses" element={<CourseCatalog />} />
+        <Route path="/courses/:id" element={<Protected><CourseDetail /></Protected>} />
+        <Route path="/study-materials" element={<StudyMaterials />} />
+        <Route path="/dashboard" element={<Protected><StudentDashboard /></Protected>} />
+        <Route path="/exam/:attemptId" element={<Protected><ExamAttempt /></Protected>} />
+        <Route path="/result/:attemptId" element={<Protected><TestResult /></Protected>} />
+        <Route path="/admin" element={<Protected roles={STAFF_ROLES}><AdminLayout /></Protected>}>
+          <Route index element={<Overview />} />
+          <Route path="questions" element={<Questions />} />
+          <Route path="series" element={<Series />} />
+          <Route path="tests" element={<Tests />} />
+          <Route path="courses" element={<Courses />} />
+          <Route path="materials" element={<Materials />} />
+          <Route path="categories" element={adminOnly(<Categories />)} />
+          <Route path="users" element={adminOnly(<Users />)} />
+          <Route path="orders" element={adminOnly(<Orders />)} />
+          <Route path="settings" element={adminOnly(<Settings />)} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
+  );
 }
 
 function RazorpayLoader() {
@@ -43,22 +94,7 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <RazorpayLoader />
-        <Navbar />
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/test-series" element={<TestSeriesCatalog />} />
-          <Route path="/test-series/:id" element={<TestSeriesDetail />} />
-          <Route path="/courses" element={<CourseCatalog />} />
-          <Route path="/courses/:id" element={<Protected><CourseDetail /></Protected>} />
-          <Route path="/study-materials" element={<StudyMaterials />} />
-          <Route path="/dashboard" element={<Protected><StudentDashboard /></Protected>} />
-          <Route path="/exam/:attemptId" element={<Protected><ExamAttempt /></Protected>} />
-          <Route path="/result/:attemptId" element={<Protected><TestResult /></Protected>} />
-          <Route path="/admin" element={<Protected admin><AdminDashboard /></Protected>} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <AppRouter />
         <Toaster richColors position="top-right" theme="dark" />
       </BrowserRouter>
     </AuthProvider>

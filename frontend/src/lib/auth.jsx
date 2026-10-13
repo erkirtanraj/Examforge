@@ -8,6 +8,8 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Returning from Google OAuth: AuthCallback exchanges session_id first
+    if (window.location.hash?.includes("session_id=")) { setLoading(false); return; }
     const t = localStorage.getItem("lms_token");
     if (!t) { setLoading(false); return; }
     api.get("/auth/me").then((r) => setUser(r.data)).catch(() => {
@@ -29,12 +31,17 @@ export const AuthProvider = ({ children }) => {
     return data.user;
   };
 
+  const loginWithToken = (token, u) => {
+    localStorage.setItem("lms_token", token);
+    setUser(u);
+  };
+
   const logout = () => {
     localStorage.removeItem("lms_token");
     setUser(null);
   };
 
-  return <AuthCtx.Provider value={{ user, loading, login, register, logout }}>{children}</AuthCtx.Provider>;
+  return <AuthCtx.Provider value={{ user, loading, login, register, loginWithToken, logout }}>{children}</AuthCtx.Provider>;
 };
 
 export const useAuth = () => useContext(AuthCtx);

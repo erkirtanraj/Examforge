@@ -12,7 +12,7 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
 
   // Hide navbar on exam page
-  if (loc.pathname.startsWith("/exam/")) return null;
+  if (loc.pathname.startsWith("/exam/") || loc.pathname.startsWith("/admin")) return null;
 
   const links = [
     { to: "/test-series", label: "Test Series" },
@@ -42,7 +42,7 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-3">
           {user ? (
             <>
-              {(user.role === "admin" || user.role === "super_admin") && (
+              {["admin", "super_admin", "teacher"].includes(user.role) && (
                 <Button variant="outline" size="sm" onClick={() => nav("/admin")} data-testid="nav-admin-btn"
                         className="border-gray-700 text-gray-200 hover:bg-gray-800 bg-transparent">
                   <Shield className="w-4 h-4 mr-1" /> Admin
@@ -85,7 +85,7 @@ export default function Navbar() {
           {user ? (
             <>
               <Link to="/dashboard" onClick={() => setOpen(false)} className="block text-gray-200">Dashboard</Link>
-              {user.role === "admin" && <Link to="/admin" onClick={() => setOpen(false)} className="block text-gray-200">Admin</Link>}
+              {["admin", "super_admin", "teacher"].includes(user.role) && <Link to="/admin" onClick={() => setOpen(false)} className="block text-gray-200">Admin</Link>}
               <button onClick={() => { logout(); nav("/"); setOpen(false); }} className="block text-rose-400">Log out</button>
             </>
           ) : (

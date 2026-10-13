@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { Button } from "../components/ui/button";
 import { Trophy, Target, Clock, CheckCircle2, XCircle, MinusCircle } from "lucide-react";
+import RankCard from "../components/RankCard";
 
 export default function TestResult() {
   const { attemptId } = useParams();
@@ -51,6 +52,8 @@ export default function TestResult() {
           <div><div className="text-xs text-gray-400 mono-font uppercase">Unattempted</div><div className="text-xl font-bold text-white">{r.unattempted}</div></div>
         </div>
       </div>
+
+      <RankCard rank={r.rank} />
 
       <h2 className="heading-font text-xl font-semibold text-white mt-10 mb-4">Answer review</h2>
       <div className="space-y-4">

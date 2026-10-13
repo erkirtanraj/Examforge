@@ -6,6 +6,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { GraduationCap, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import GoogleButton, { OrDivider } from "../components/GoogleButton";
 
 export default function Register() {
   const { register } = useAuth();
@@ -38,6 +39,8 @@ export default function Register() {
         </div>
         <h1 className="heading-font text-2xl font-bold text-white mb-1">Create your account</h1>
         <p className="text-sm text-gray-400 mb-6">Free forever for basic test series.</p>
+        <GoogleButton label="Sign up with Google" />
+        <OrDivider />
         <form onSubmit={submit} className="space-y-4">
           <div>
             <Label className="text-gray-300">Full name</Label>
