@@ -141,8 +141,23 @@ SEED_PAGES = [
 
 UPLOAD_DIR = Path(__file__).parent / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
+# SVG is intentionally excluded: uploaded SVGs can contain active script/content.
 IMAGE_TYPES = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif",
-               "image/svg+xml": "svg", "image/x-icon": "ico", "image/vnd.microsoft.icon": "ico"}
+               "image/x-icon": "ico", "image/vnd.microsoft.icon": "ico"}
+
+
+def _matches_image_signature(data: bytes, ext: str) -> bool:
+    if ext == "png":
+        return data.startswith(b"\x89PNG\r\n\x1a\n")
+    if ext == "jpg":
+        return data.startswith(b"\xff\xd8\xff")
+    if ext == "webp":
+        return len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP"
+    if ext == "gif":
+        return data.startswith((b"GIF87a", b"GIF89a"))
+    if ext == "ico":
+        return data.startswith(b"\x00\x00\x01\x00")
+    return False
 MAX_UPLOAD = 2 * 1024 * 1024
 
 
@@ -274,10 +289,12 @@ def build_site_router(db, require_roles):
     async def upload_image(file: UploadFile = File(...), _=Depends(require_roles("admin", "teacher"))):
         ext = IMAGE_TYPES.get(file.content_type)
         if not ext:
-            raise HTTPException(400, "Only PNG, JPG, WEBP, GIF, SVG or ICO images are allowed")
+            raise HTTPException(400, "Only PNG, JPG, WEBP, GIF or ICO images are allowed")
         data = await file.read(MAX_UPLOAD + 1)
         if len(data) > MAX_UPLOAD:
             raise HTTPException(400, "Image must be 2 MB or smaller")
+        if not _matches_image_signature(data, ext):
+            raise HTTPException(400, "Image content does not match its declared file type")
         name = f"{uuid.uuid4().hex}.{ext}"
         (UPLOAD_DIR / name).write_bytes(data)
         return {"url": f"/api/uploads/{name}"}
