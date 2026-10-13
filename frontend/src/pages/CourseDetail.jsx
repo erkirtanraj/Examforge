@@ -67,7 +67,8 @@ export default function CourseDetail() {
     if (!quiet) toast.success("Lesson marked complete");
     loadProgress();
   };
-  const next = async () => { await complete(true); if (idx < flat.length - 1) pick(flat[idx + 1]); };
+  // Navigation alone must not complete a lesson; completion remains explicit or occurs at video end.
+  const next = () => { if (idx < flat.length - 1) pick(flat[idx + 1]); };
   const savePosition = (lessonId) => (time, duration) => {
     localStorage.setItem(`lesson_pos_${lessonId}`, JSON.stringify({ time, duration }));
     setPositions((p) => ({ ...p, [lessonId]: { position: time, duration } }));
