@@ -47,6 +47,6 @@ Secure cPanel-based Test Series + LMS (PRD specified Laravel 12/PHP/MySQL). User
 - Tested: iteration_4 27/27 backend + UI flows
 
 ## Backlog
-- P0: Admin enters real Razorpay keys in Settings (currently demo mode)
-- P1: sections in tests (Quant/Reasoning), bookmarks, notifications, certificates, file uploads (object storage), light theme toggle
-- P2: blog/FAQ/pricing pages, coupons, leaderboard/ranking, bulk CSV import, Laravel migration docs
+- P0: Admin enters real Razorpay keys in Settings (currently demo mode); atomic coupon max-use reservation for paid checkouts
+- P1: live-mock registration + email reminders, Hindi UI, practice-from-mistakes quizzes, bookmarks, notifications, certificates, file uploads (object storage), light theme toggle
+- P2: blog/FAQ/pricing/policy pages, split server.py into routers, Laravel 12 + MySQL migration for cPanel
