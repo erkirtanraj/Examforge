@@ -187,7 +187,7 @@ def build_email_router(db, require_roles, get_brand, hash_pw):
         if not t:
             raise HTTPException(400, "This reset link is invalid or has expired. Please request a new one.")
         await db.users.update_one({"id": t["user_id"]}, {"$set": {
-            "password_hash": hash_pw(data.password), "tokens_valid_after": int(time.time()), "password_reset_at": now.isoformat()}})
+            "password_hash": hash_pw(data.password), "tokens_valid_after": int(time.time()) + 1, "password_reset_at": now.isoformat()}})
         await db.password_reset_tokens.update_many({"user_id": t["user_id"], "used": False}, {"$set": {"used": True}})
         return {"ok": True}
 
