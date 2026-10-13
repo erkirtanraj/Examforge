@@ -1,0 +1,14 @@
+[
+  {
+    "_id": {
+      "$oid": "6ace71b2f03ef183c7676f51"
+    },
+    "id": "EF-79UE-PCEM-WMQM",
+    "user_id": "9eb90a2e-5e73-4ac9-9add-3873a80975ec",
+    "course_id": "7b9f8123-fd48-4cbf-9c40-9746caf38c97",
+    "name": "Riya Student",
+    "course_title": "Complete Quantitative Aptitude",
+    "lessons": 6,
+    "issued_at": "2026-10-13T18:00:18.808997+00:00"
+  }
+]

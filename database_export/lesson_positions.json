@@ -1,0 +1,12 @@
+[
+  {
+    "_id": {
+      "$oid": "6ace71582774107e49129ddd"
+    },
+    "lesson_id": "822a180e-3c1c-42d0-9071-bbaf33fa3e0a",
+    "user_id": "9eb90a2e-5e73-4ac9-9add-3873a80975ec",
+    "duration": 300.0,
+    "position": 42.5,
+    "updated_at": "2026-10-13T18:00:16.383681+00:00"
+  }
+]

@@ -1,0 +1,32 @@
+{
+  "summary": "Iteration 10 testing of NEW features: resume playback positions, playback speed persistence, and course completion certificate (admin toggle + student issue/download + public verify). Backend: 7/7 pytest tests passed (position save+GET progress, auth required, certificate_enabled persists via PUT /api/content/courses/{id}, certificate 400 when incomplete / idempotent issuance / case-insensitive public verify / 404 unknown / 400 when disabled). Frontend: verified lesson-player, speed select has 6 options (0.5-2) and persists to localStorage player_rate across reload, certificate-card renders when enabled, resume-prompt shows 'Resume from 0:42' for lesson 2 with player-resume-from + player-start-over, admin edit dialog contains course-certificate-input (checked state reflects server), CERTIFICATE pill visible on course card, /verify/:code shows verify-invalid for bad code and verify-valid (with verify-name & verify-course) for issued code (also lowercase), /verify page has verify-input + verify-submit that navigates. All targeted new features are working.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "LessonPlayer <select data-testid='player-speed'>", "issues": ["React hydration warning: visual-editor wrapper injects <span> inside <option> causing 'In HTML, <span> cannot be a child of <option>' console error. This is instrumentation-related (x-dynamic span) but still logs an error on every render. Consider marking the option children as non-editable or using plain string option label."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration10_certificate_resume.py",
+    "/app/test_reports/pytest/iteration10.xml"
+  ],
+  "action_items": [
+    "(Minor) Suppress hydration warning for <option> content in LessonPlayer.jsx (visual-editor injects span wrapper around dynamic rate value)."
+  ],
+  "critical_code_review_comments": [
+    "backend certificate issuance correctly uses secrets for code generation (EF-XXXX-XXXX-XXXX) and is idempotent via existing-cert short-circuit.",
+    "GET /api/certificates/{code} properly strips user_id from response (projection {_id:0,user_id:0}) and is case-insensitive via code.strip().upper(). Good.",
+    "PUT /api/lessons/{lesson_id}/position has no ownership/entitlement check on lesson_id - any authenticated user can save position for any lesson id (even non-existent). Low risk but could allow garbage data. Consider validating lesson exists / user has access.",
+    "LessonPlayer uses onContextMenu block; good UX for anti-copy."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@lms.com/admin123, student@lms.com/student123 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Enabled certificate_enabled=true on course 7b9f8123... (kept enabled per instructions). Student completed all 6 lessons and was issued certificate EF-79UE-PCEM-WMQM during backend test run. Also saved lesson2 position=42.5s. Created and deleted TEST_no_cert_course transient.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Course 7b9f8123... now has certificate_enabled=true and student@lms.com has an issued certificate (EF-79UE-PCEM-WMQM). All 6 lessons marked complete for student. Lesson 2 position is 42.5s. Use data-testid='edit-{courseId}' (not 'edit-course-*') to open admin edit dialog. Lesson list uses data-testid='lesson-{lessonId}' not 'lesson-item-*'.",
+  "rca of the issue": "N/A - no bugs found. Minor console warning about <span> inside <option> is caused by visual-editor instrumentation wrapping dynamic text; does not affect functionality."
+}

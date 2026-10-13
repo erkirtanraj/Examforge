@@ -96,7 +96,7 @@ export default function LessonPlayer({ url, cover, onPrev, onNext, hasPrev, hasN
         <span className="text-xs mono-font text-gray-400 whitespace-nowrap" data-testid="player-time">{fmt(state.time)} / {fmt(state.duration)}</span>
         <select value={rate} onChange={(e) => changeRate(Number(e.target.value))} aria-label="Playback speed" data-testid="player-speed"
                 className="ml-1 bg-transparent border border-gray-700 rounded px-1.5 py-1 text-xs mono-font text-gray-200 focus:outline-none focus:border-blue-500 cursor-pointer">
-          {RATES.map((r) => <option key={r} value={r} className="bg-[#0b1120]">{r}×</option>)}
+          {RATES.map((r) => <option key={r} value={r} className="bg-[#0b1120]">{`${r}×`}</option>)}
         </select>
       </div>
     </div>

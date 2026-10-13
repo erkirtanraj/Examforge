@@ -7,11 +7,13 @@
     "title": "Complete Quantitative Aptitude",
     "description": "Master Quant for SSC, Banking & Railways in 40 structured lessons.",
     "category_id": "b3feb113-dab1-4f97-ae7f-a8fdc6827704",
-    "thumbnail": "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=800",
+    "thumbnail": null,
     "is_free": true,
     "price": 0,
     "created_by": "44d6671c-d70a-4d4a-84ae-8009434a66bf",
-    "created_at": "2026-10-13T13:20:35.213960+00:00"
+    "created_at": "2026-10-13T13:20:35.213960+00:00",
+    "certificate_enabled": true,
+    "updated_at": "2026-10-13T18:00:17.257688+00:00"
   },
   {
     "_id": {

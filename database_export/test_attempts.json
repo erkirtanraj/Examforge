@@ -440,7 +440,7 @@
     "started_at": "2026-10-13T15:08:28.386545+00:00",
     "ends_at": "2026-10-13T16:08:28.386545+00:00",
     "duration_minutes": 60,
-    "status": "in_progress",
+    "status": "submitted",
     "answers": {},
     "marked_for_review": [],
     "version": 2,
@@ -458,7 +458,9 @@
     ],
     "sections": [],
     "sectional_timing": false,
-    "last_saved_at": "2026-10-13T15:08:59.687200+00:00"
+    "last_saved_at": "2026-10-13T15:08:59.687200+00:00",
+    "auto_submitted": false,
+    "submitted_at": "2026-10-13T17:38:12.697498+00:00"
   },
   {
     "_id": {
@@ -598,5 +600,96 @@
     "sectional_timing": false,
     "auto_submitted": false,
     "submitted_at": "2026-10-13T17:06:48.518381+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6ace6c90442ce15e957f965b"
+    },
+    "id": "b2e2e02f-fe56-45df-9909-8f97c713ea88",
+    "user_id": "62b27c5c-912e-49db-a1e4-e37839d700eb",
+    "test_id": "5a8ebb4f-2da8-42f1-b29a-e026aa4dd2dd",
+    "series_id": "5c415501-4681-477d-920a-2050f88284bf",
+    "started_at": "2026-10-13T17:38:24.572654+00:00",
+    "ends_at": "2026-10-13T18:38:24.572654+00:00",
+    "duration_minutes": 60,
+    "status": "in_progress",
+    "answers": {},
+    "marked_for_review": [],
+    "version": 0,
+    "question_ids": [
+      "0e696606-aa0c-4e41-81dd-90713acc5a85",
+      "055bcca1-b7c7-406c-a347-8d4e2419405b",
+      "7030cade-6092-44b9-9a5b-111a5daa8117",
+      "fc85f443-21d4-407b-b701-12d972909ba9",
+      "957c9dd2-ca4e-49b7-ab39-454a76a0437e",
+      "5d97b719-a18b-4ef7-b3b4-278e4ed41f84",
+      "3f041d26-8e51-4204-900a-126e245cfe8c",
+      "7d1bb3e7-28e8-4838-a2b8-24c00102004d",
+      "3eca8bb0-32a1-4edd-9ac2-3f6631b559c9",
+      "8ccfa3e6-6485-48aa-9ecc-4a809332478a"
+    ],
+    "sections": [],
+    "sectional_timing": false
+  },
+  {
+    "_id": {
+      "$oid": "6ace6cab442ce15e957f965c"
+    },
+    "id": "acec3954-5db8-4fa4-ad0d-55f0462b856d",
+    "user_id": "62b27c5c-912e-49db-a1e4-e37839d700eb",
+    "test_id": "9f13631e-df0c-4e5c-bf03-1e1f207d6365",
+    "series_id": "5c415501-4681-477d-920a-2050f88284bf",
+    "started_at": "2026-10-13T17:38:51.371975+00:00",
+    "ends_at": "2026-10-13T18:38:51.371975+00:00",
+    "duration_minutes": 60,
+    "status": "in_progress",
+    "answers": {},
+    "marked_for_review": [],
+    "version": 37,
+    "question_ids": [
+      "0e696606-aa0c-4e41-81dd-90713acc5a85",
+      "055bcca1-b7c7-406c-a347-8d4e2419405b",
+      "7030cade-6092-44b9-9a5b-111a5daa8117",
+      "fc85f443-21d4-407b-b701-12d972909ba9",
+      "957c9dd2-ca4e-49b7-ab39-454a76a0437e",
+      "5d97b719-a18b-4ef7-b3b4-278e4ed41f84",
+      "3f041d26-8e51-4204-900a-126e245cfe8c",
+      "7d1bb3e7-28e8-4838-a2b8-24c00102004d",
+      "3eca8bb0-32a1-4edd-9ac2-3f6631b559c9",
+      "8ccfa3e6-6485-48aa-9ecc-4a809332478a"
+    ],
+    "sections": [],
+    "sectional_timing": false,
+    "last_saved_at": "2026-10-13T18:04:27.292701+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6ace6cb6442ce15e957f965d"
+    },
+    "id": "6ddd5b41-2701-43b7-b616-47f8d4f7190c",
+    "user_id": "62b27c5c-912e-49db-a1e4-e37839d700eb",
+    "test_id": "54ad827a-bc6f-46d7-926e-807e68894b79",
+    "series_id": "77e6453f-7cbc-4742-9221-48ded8af3958",
+    "started_at": "2026-10-13T17:39:02.563257+00:00",
+    "ends_at": "2026-10-13T18:39:02.563257+00:00",
+    "duration_minutes": 60,
+    "status": "in_progress",
+    "answers": {},
+    "marked_for_review": [],
+    "version": 0,
+    "question_ids": [
+      "0e696606-aa0c-4e41-81dd-90713acc5a85",
+      "055bcca1-b7c7-406c-a347-8d4e2419405b",
+      "7030cade-6092-44b9-9a5b-111a5daa8117",
+      "fc85f443-21d4-407b-b701-12d972909ba9",
+      "957c9dd2-ca4e-49b7-ab39-454a76a0437e",
+      "5d97b719-a18b-4ef7-b3b4-278e4ed41f84",
+      "3f041d26-8e51-4204-900a-126e245cfe8c",
+      "7d1bb3e7-28e8-4838-a2b8-24c00102004d",
+      "3eca8bb0-32a1-4edd-9ac2-3f6631b559c9",
+      "8ccfa3e6-6485-48aa-9ecc-4a809332478a"
+    ],
+    "sections": [],
+    "sectional_timing": false
   }
 ]

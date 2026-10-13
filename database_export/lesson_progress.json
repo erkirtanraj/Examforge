@@ -6,5 +6,53 @@
     "lesson_id": "0ed1ea89-8d21-426d-9613-8bebd41d7926",
     "user_id": "62b27c5c-912e-49db-a1e4-e37839d700eb",
     "completed_at": "2026-10-13T13:28:46.839651+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6ace6e4e2774107e49129c22"
+    },
+    "user_id": "9eb90a2e-5e73-4ac9-9add-3873a80975ec",
+    "lesson_id": "ad198867-bc08-47a6-a7a5-3e3adc7bf447",
+    "completed_at": "2026-10-13T18:00:17.778767+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6ace71b12774107e49129e5e"
+    },
+    "lesson_id": "822a180e-3c1c-42d0-9071-bbaf33fa3e0a",
+    "user_id": "9eb90a2e-5e73-4ac9-9add-3873a80975ec",
+    "completed_at": "2026-10-13T18:00:17.889107+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6ace71b22774107e49129e61"
+    },
+    "lesson_id": "14f24e17-0684-4780-8453-79cacf024286",
+    "user_id": "9eb90a2e-5e73-4ac9-9add-3873a80975ec",
+    "completed_at": "2026-10-13T18:00:18.007009+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6ace71b22774107e49129e64"
+    },
+    "lesson_id": "0ed1ea89-8d21-426d-9613-8bebd41d7926",
+    "user_id": "9eb90a2e-5e73-4ac9-9add-3873a80975ec",
+    "completed_at": "2026-10-13T18:00:18.266739+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6ace71b22774107e49129e67"
+    },
+    "lesson_id": "6b69f5c8-464b-49d7-b6b1-e302d20d181b",
+    "user_id": "9eb90a2e-5e73-4ac9-9add-3873a80975ec",
+    "completed_at": "2026-10-13T18:00:18.428001+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6ace71b22774107e49129e6a"
+    },
+    "lesson_id": "f666a302-baed-4b50-b9d7-a827ee3cecf6",
+    "user_id": "9eb90a2e-5e73-4ac9-9add-3873a80975ec",
+    "completed_at": "2026-10-13T18:00:18.692871+00:00"
   }
 ]
