@@ -3,6 +3,8 @@ import { toast } from "sonner";
 import { api } from "../../lib/api";
 import { PageHeader, DataTable, Pill, RowActions, NewButton, FormDialog, Field, inputCls, useResource, useEditor, useCategories } from "../../components/admin/kit";
 import SectionsEditor from "./SectionsEditor";
+import { Copy } from "lucide-react";
+import { DuplicateDialog, TestBulkBar } from "../../components/admin/TestBulkActions";
 
 const BLANK = { series_id: "", title: "", duration_minutes: 60, passing_marks: "", instructions: "", is_published: true, sectional_timing: false, live_start_at: "", live_window_minutes: 120, sections: [{ name: "General", duration_minutes: null, question_ids: [] }] };
 const toLocal = (iso) => { const d = new Date(iso); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
@@ -13,7 +15,10 @@ const toForm = (t) => ({
 });
 
 export default function Tests() {
-  const { items, loading, save, remove } = useResource("/admin/tests", "tests");
+  const { items, loading, save, remove, reload } = useResource("/admin/tests", "tests");
+  const [sel, setSel] = useState(new Set());
+  const [dup, setDup] = useState(null);
+  const [seriesFilter, setSeriesFilter] = useState("");
   const cats = useCategories();
   const [series, setSeries] = useState([]);
   const [questions, setQuestions] = useState([]);
@@ -25,6 +30,12 @@ export default function Tests() {
     api.get("/questions").then((r) => setQuestions(r.data));
   }, []);
   const seriesName = useMemo(() => Object.fromEntries(series.map((s) => [s.id, s.title])), [series]);
+
+  const rows = items.filter((t) => !seriesFilter || t.series_id === seriesFilter);
+  const allSel = rows.length > 0 && rows.every((t) => sel.has(t.id));
+  const toggleAll = () => setSel(allSel ? new Set() : new Set(rows.map((t) => t.id)));
+  const toggle = (id) => { const n = new Set(sel); n.has(id) ? n.delete(id) : n.add(id); setSel(n); };
+  const selIds = rows.filter((t) => sel.has(t.id)).map((t) => t.id);
 
   const sectionTotal = f.sections.reduce((s, x) => s + (Number(x.duration_minutes) || 0), 0);
   const submit = () => {
@@ -46,10 +57,20 @@ export default function Tests() {
     <div>
       <PageHeader eyebrow="Content" title="Test builder" desc="Pick questions from the bank, set the timer and publish."
                   action={<NewButton onClick={ed.openNew} label="New test" testid="new-test-btn" />} />
-      <DataTable head={["Test", "Series", "Questions", "Sections", "Duration", "Marks", "Status", ""]} testid="tests-table"
-                 empty={!loading && !items.length ? "No tests yet." : null}>
-        {items.map((t) => (
-          <tr key={t.id} className="border-t border-gray-800 hover:bg-gray-900/40" data-testid={`test-row-${t.id}`}>
+      <div className="mb-4 max-w-xs">
+        <select value={seriesFilter} onChange={(e) => { setSeriesFilter(e.target.value); setSel(new Set()); }} className={`${inputCls} mt-0`} data-testid="tests-filter-series">
+          <option value="">All series</option>{series.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
+        </select>
+      </div>
+      {selIds.length > 0 && (
+        <TestBulkBar ids={selIds} series={series} onClear={() => setSel(new Set())} onDone={reload}
+                     onDuplicate={() => setDup(rows.filter((t) => sel.has(t.id)))} />
+      )}
+      <DataTable head={[<input key="all" type="checkbox" checked={allSel} onChange={toggleAll} aria-label="Select all tests" data-testid="tests-select-all" />, "Test", "Series", "Questions", "Sections", "Duration", "Marks", "Status", ""]} testid="tests-table"
+                 empty={!loading && !rows.length ? "No tests yet." : null}>
+        {rows.map((t) => (
+          <tr key={t.id} className={`border-t border-gray-800 hover:bg-gray-900/40 ${sel.has(t.id) ? "bg-blue-500/5" : ""}`} data-testid={`test-row-${t.id}`}>
+            <td className="p-3 w-8"><input type="checkbox" checked={sel.has(t.id)} onChange={() => toggle(t.id)} data-testid={`select-test-${t.id}`} /></td>
             <td className="p-3 text-white">{t.title}</td>
             <td className="p-3 text-gray-400 max-w-[220px] truncate">{seriesName[t.series_id] || "—"}</td>
             <td className="p-3 mono-font text-gray-300">{t.question_ids?.length || 0}</td>
@@ -59,8 +80,12 @@ export default function Tests() {
             <td className="p-3 text-gray-300 whitespace-nowrap">{t.duration_minutes} min</td>
             <td className="p-3 mono-font text-gray-300">{t.total_marks}</td>
             <td className="p-3 space-x-1 whitespace-nowrap">{t.is_published ? <Pill tone="emerald">PUBLISHED</Pill> : <Pill tone="gray">DRAFT</Pill>}{t.live_start_at && <Pill tone="rose">LIVE {new Date(t.live_start_at).toLocaleDateString()}</Pill>}</td>
-            <td className="p-3"><RowActions id={t.id} onDelete={() => remove(t.id)}
-                  onEdit={() => ed.openEdit(t, toForm)} /></td>
+            <td className="p-3">
+              <div className="flex items-center justify-end gap-1">
+                <button type="button" onClick={() => setDup([t])} title="Duplicate" aria-label="Duplicate" className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition-colors" data-testid={`duplicate-test-${t.id}`}><Copy className="w-4 h-4" /></button>
+                <RowActions id={t.id} onDelete={() => remove(t.id)} onEdit={() => ed.openEdit(t, toForm)} />
+              </div>
+            </td>
           </tr>
         ))}
       </DataTable>
@@ -103,6 +128,7 @@ export default function Tests() {
           <SectionsEditor sections={f.sections} onChange={(s) => ed.set("sections", s)} sectional={f.sectional_timing} questions={questions} categories={cats} />
         </div>
       </FormDialog>
+      <DuplicateDialog tests={dup} onOpenChange={(o) => !o && setDup(null)} onDone={reload} />
     </div>
   );
 }

@@ -43,16 +43,12 @@
         {
           "label": "Study Materials",
           "url": "/study-materials"
-        },
-        {
-          "label": "Leaderboard",
-          "url": "/leaderboard"
         }
       ],
       "cta_label": "Get Started",
       "cta_url": "/register"
     },
-    "updated_at": "2026-10-13T17:06:43.350017+00:00",
+    "updated_at": "2026-10-13T17:14:22.014701+00:00",
     "updated_by": "62b27c5c-912e-49db-a1e4-e37839d700eb",
     "features": [
       {

@@ -24,6 +24,35 @@ class BulkDeleteIn(BaseModel):
     filters: QuestionFilter = QuestionFilter()
 
 
+class DuplicateIn(BaseModel):
+    ids: List[str] = Field(min_length=1)
+    copies: int = Field(1, ge=1, le=20)
+
+
+class TestBulkIn(BaseModel):
+    ids: List[str] = Field(min_length=1)
+    action: Literal["assign", "publish", "unpublish", "delete"]
+    series_id: Optional[str] = None
+
+
+def _numbered(title: str, taken: set, n: int) -> list:
+    """Next n titles after the highest existing number for this title's prefix."""
+    m = re.match(r"^(.*?)(\d+)\s*$", title)
+    if m:
+        prefix = m.group(1)
+        rx = re.compile(r"^" + re.escape(prefix) + r"(\d+)\s*$")
+        top = max([int(x.group(1)) for t in taken if (x := rx.match(t))] + [int(m.group(2))])
+        return [f"{prefix}{top + i}" for i in range(1, n + 1)]
+    base, out, k = f"{title} (Copy)", [], 1
+    while len(out) < n:
+        cand = base if k == 1 else f"{title} (Copy {k})"
+        if cand not in taken:
+            out.append(cand)
+            taken.add(cand)
+        k += 1
+    return out
+
+
 class UserUpdateIn(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     email: EmailStr
@@ -98,6 +127,38 @@ def build_admin_router(db, require_roles, hash_pw, detach_questions):
             await db.questions.delete_many({"id": {"$in": ids}})
             await detach_questions(ids)
         return {"deleted": len(ids)}
+
+    # ---- Tests: duplicate & bulk ----
+    @r.post("/tests/duplicate")
+    async def duplicate_tests(data: DuplicateIn, user=staff):
+        src = await db.tests.find({"id": {"$in": data.ids}}, {"_id": 0}).to_list(len(data.ids))
+        if not src:
+            raise HTTPException(404, "Tests not found")
+        created = []
+        for t in sorted(src, key=lambda x: data.ids.index(x["id"])):
+            taken = set(await db.tests.distinct("title", {"series_id": t["series_id"]}))
+            for title in _numbered(t["title"], taken, data.copies):
+                doc = {**t, "id": str(uuid.uuid4()), "title": title, "is_published": False, "live_start_at": None,
+                       "duplicated_from": t["id"], "created_by": user["id"], "created_at": _now(), "updated_at": _now()}
+                await db.tests.insert_one(doc)
+                taken.add(title)
+                created.append({"id": doc["id"], "title": title})
+        return {"created": created}
+
+    @r.post("/tests/bulk")
+    async def bulk_tests(data: TestBulkIn, _=staff):
+        q = {"id": {"$in": data.ids}}
+        if data.action == "delete":
+            res = await db.tests.delete_many(q)
+            return {"affected": res.deleted_count}
+        if data.action == "assign":
+            if not data.series_id or not await db.test_series.find_one({"id": data.series_id}, {"_id": 1}):
+                raise HTTPException(400, "Choose a valid test series")
+            upd = {"series_id": data.series_id}
+        else:
+            upd = {"is_published": data.action == "publish"}
+        res = await db.tests.update_many(q, {"$set": {**upd, "updated_at": _now()}})
+        return {"affected": res.matched_count}
 
     # ---- Users ----
     async def _target(user_id: str, actor: dict) -> dict:
