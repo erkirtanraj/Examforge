@@ -37,19 +37,24 @@ export default function QuestionPanel({ q, lang, number, total, sectionName, sec
           </div>
         )}
       </div>
-      <div className="sticky bottom-0 border-t border-gray-800 bg-[#0d1424]/95 backdrop-blur px-3 sm:px-6 py-3 rounded-b-xl flex items-center gap-2 min-w-0">
-        <Button variant="outline" onClick={onClear} data-testid="clear-response-btn" className={ghost}><Eraser className="w-4 h-4 sm:mr-1" /><span className="hidden sm:inline">Clear</span></Button>
-        <Button variant="outline" onClick={onMark} data-testid="mark-review-btn" className={`${isMarked ? "border-violet-400 bg-violet-500/25" : "border-violet-500/40 bg-violet-500/10"} text-violet-100 hover:bg-violet-500/20`}>
-          <Flag className="w-4 h-4 mr-1" />{isMarked ? "Unmark" : <><span className="hidden sm:inline">Mark for review</span><span className="sm:hidden">Review</span></>}
+      <div className="sticky bottom-0 border-t border-gray-800 bg-[#0d1424]/95 backdrop-blur px-3 sm:px-6 py-3 rounded-b-xl grid grid-cols-4 gap-2 sm:flex sm:items-center" data-testid="question-footer">
+        <Button variant="outline" onClick={onClear} data-testid="clear-response-btn" className={`${ghost} px-2 sm:px-4`} aria-label="Clear response"><Eraser className="w-4 h-4 sm:mr-1" /><span className="hidden sm:inline">Clear</span></Button>
+        <Button variant="outline" onClick={onMark} data-testid="mark-review-btn" aria-label="Mark for review"
+                className={`${isMarked ? "border-violet-400 bg-violet-500/25" : "border-violet-500/40 bg-violet-500/10"} text-violet-100 hover:bg-violet-500/20 px-2 sm:px-4`}>
+          <Flag className="w-4 h-4 sm:mr-1" fill={isMarked ? "currentColor" : "none"} /><span className="hidden sm:inline">{isMarked ? "Unmark" : "Mark for review"}</span>
         </Button>
-        <div className="ml-auto flex gap-2 shrink-0">
-          <Button onClick={onPrev} disabled={isFirst} variant="outline" className={ghost} data-testid="prev-btn"><ChevronLeft className="w-4 h-4" /><span className="hidden sm:inline">Prev</span></Button>
-          {isLast && nextIsSection ? (
-            <Button onClick={onNext} className="bg-violet-600 hover:bg-violet-700" data-testid="next-section-inline-btn"><span className="hidden sm:inline">Next section</span><span className="sm:hidden">Section</span><ChevronsRight className="w-4 h-4" /></Button>
-          ) : (
-            <Button onClick={onNext} disabled={isLast} className="bg-blue-700 hover:bg-blue-600 font-semibold" data-testid="next-btn"><span className="hidden sm:inline">Save & Next</span><span className="sm:hidden">Next</span><ChevronRight className="w-4 h-4" /></Button>
-          )}
-        </div>
+        <Button onClick={onPrev} disabled={isFirst} variant="outline" className={`${ghost} px-2 sm:px-4 sm:ml-auto`} data-testid="prev-btn" aria-label="Previous question">
+          <ChevronLeft className="w-4 h-4" /><span className="hidden sm:inline">Prev</span>
+        </Button>
+        {isLast && nextIsSection ? (
+          <Button onClick={onNext} className="bg-violet-600 hover:bg-violet-700 px-2 sm:px-4" data-testid="next-section-inline-btn" aria-label="Next section">
+            <span className="hidden sm:inline">Next section</span><ChevronsRight className="w-4 h-4" />
+          </Button>
+        ) : (
+          <Button onClick={onNext} disabled={isLast} className="bg-blue-700 hover:bg-blue-600 font-semibold px-2 sm:px-4" data-testid="next-btn" aria-label="Save and next">
+            <span className="hidden sm:inline">Save & Next</span><span className="sm:hidden">Next</span><ChevronRight className="w-4 h-4" />
+          </Button>
+        )}
       </div>
     </div>
   );
