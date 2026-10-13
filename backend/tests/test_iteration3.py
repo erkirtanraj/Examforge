@@ -245,7 +245,7 @@ class TestTimedSectional:
             # register fresh test student
             email = f"TEST_sec_{uuid.uuid4().hex[:6]}@x.com"
             r = requests.post(f"{API}/auth/register",
-                              json={"name": "SecS", "email": email, "password": "pass1234"})
+                              json={"name": "SecS", "email": email, "password": "SafePassphrase123!"})
             tok = r.json()["token"]
             h = {"Authorization": f"Bearer {tok}"}
             uid = r.json()["user"]["id"]
@@ -397,7 +397,7 @@ class TestLeaderboard:
         studs = []
         for i in range(3):
             email = f"TEST_lb_{uuid.uuid4().hex[:6]}@x.com"
-            r = requests.post(f"{API}/auth/register", json={"name": f"LB{i}", "email": email, "password": "pass1234"})
+            r = requests.post(f"{API}/auth/register", json={"name": f"LB{i}", "email": email, "password": "SafePassphrase123!"})
             studs.append({"h": {"Authorization": f"Bearer {r.json()['token']}"}, "uid": r.json()["user"]["id"]})
 
         attempts = []
