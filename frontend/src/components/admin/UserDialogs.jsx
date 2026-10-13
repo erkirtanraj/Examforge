@@ -12,7 +12,7 @@ const PasswordInput = ({ value, onChange, testid }) => {
   return (
     <div className="mt-1.5 flex gap-2">
       <div className="relative flex-1">
-        <input type={show ? "text" : "password"} value={value} onChange={(e) => onChange(e.target.value)} minLength={6} required
+        <input type={show ? "text" : "password"} value={value} onChange={(e) => onChange(e.target.value)} minLength={10} maxLength={72} required
                className={`${inputCls} mt-0 pr-9 mono-font`} data-testid={testid} autoComplete="new-password" />
         <button type="button" onClick={() => setShow(!show)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white" aria-label="Show password" data-testid={`${testid}-toggle`}>
           {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -55,7 +55,7 @@ export function UserFormDialog({ open, onOpenChange, user, me, onSaved }) {
           {(f.role === "super_admin" && !roles.includes("super_admin") ? ROLES : roles).map((r) => <option key={r} value={r}>{r.replace("_", " ")}</option>)}
         </select>
       </Field>
-      {isNew && <Field label="Password (min 6 characters)"><PasswordInput value={f.password || ""} onChange={(v) => set("password", v)} testid="user-password-input" /></Field>}
+      {isNew && <Field label="Password (min 10 characters)"><PasswordInput value={f.password || ""} onChange={(v) => set("password", v)} testid="user-password-input" /></Field>}
       {!isNew && <p className="text-xs text-gray-500">Changing the email or role signs this user out of all devices.</p>}
     </FormDialog>
   );
@@ -66,7 +66,8 @@ export function ResetPasswordDialog({ user, onOpenChange }) {
   const [saving, setSaving] = useState(false);
   useEffect(() => { if (user) setPw(""); }, [user]);
   const submit = async () => {
-    if (pw.length < 6) return toast.error("Password must be at least 6 characters");
+    if (pw.length < 10) return toast.error("Password must be at least 10 characters");
+    if (new TextEncoder().encode(pw).length > 72) return toast.error("Password must be 72 UTF-8 bytes or fewer");
     setSaving(true);
     try {
       await api.post(`/admin/users/${user.id}/reset-password`, { password: pw });
