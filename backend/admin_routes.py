@@ -208,7 +208,7 @@ def build_admin_router(db, require_roles, hash_pw, detach_questions):
         await _email_free(email, user_id)
         upd = {"name": data.name.strip(), "email": email, "phone": data.phone.strip(), "role": data.role, "updated_at": _now()}
         if data.role != u["role"] or email != u["email"]:
-            upd["tokens_valid_after"] = int(time.time())
+            upd["tokens_valid_after"] = int(time.time()) + 1
         await db.users.update_one({"id": user_id}, {"$set": upd})
         return _public_user(await db.users.find_one({"id": user_id}, {"_id": 0}))
 
@@ -217,7 +217,7 @@ def build_admin_router(db, require_roles, hash_pw, detach_questions):
         await _target(user_id, actor)
         await db.users.update_one({"id": user_id}, {"$set": {
             "password_hash": hash_pw(data.password), "password_reset_at": _now(), "password_reset_by": actor["id"],
-            "tokens_valid_after": int(time.time())}})
+            "tokens_valid_after": int(time.time()) + 1}})
         return {"ok": True}
 
     @r.put("/users/{user_id}/status")
@@ -227,7 +227,7 @@ def build_admin_router(db, require_roles, hash_pw, detach_questions):
         await _target(user_id, actor)
         upd = {"status": "suspended" if data.suspended else "active", "updated_at": _now()}
         if data.suspended:
-            upd["tokens_valid_after"] = int(time.time())
+            upd["tokens_valid_after"] = int(time.time()) + 1
         await db.users.update_one({"id": user_id}, {"$set": upd})
         return {"ok": True, "status": upd["status"]}
 
