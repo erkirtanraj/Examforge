@@ -81,6 +81,19 @@ export default function CourseDetail() {
   const prev = () => idx > 0 && pick(flat[idx - 1]);
 
   if (!course) return <div className="max-w-7xl mx-auto p-8 text-gray-400">Loading…</div>;
+  if (course.access_required) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
+        <div className="card-elev p-6 sm:p-8">
+          <div className="text-xs text-cyan-300 mono-font uppercase tracking-wider">Premium course</div>
+          <h1 className="heading-font text-2xl sm:text-3xl font-bold text-white mt-2">{course.title}</h1>
+          <p className="text-gray-400 mt-3">{course.description}</p>
+          <p className="text-sm text-amber-200 mt-5">Enrollment is required to access lesson videos, notes, and progress tracking.</p>
+          <a href="/courses" className="inline-flex mt-5 px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm">Browse courses</a>
+        </div>
+      </div>
+    );
+  }
   const isVideo = active?.content_type === "video" && active?.content_url;
 
   return (
