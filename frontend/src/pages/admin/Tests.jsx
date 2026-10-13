@@ -6,10 +6,10 @@ import SectionsEditor from "./SectionsEditor";
 import { Copy } from "lucide-react";
 import { DuplicateDialog, TestBulkBar } from "../../components/admin/TestBulkActions";
 
-const BLANK = { series_id: "", title: "", duration_minutes: 60, passing_marks: "", instructions: "", is_published: true, sectional_timing: false, live_start_at: "", live_window_minutes: 120, sections: [{ name: "General", duration_minutes: null, question_ids: [] }] };
+const BLANK = { series_id: "", title: "", duration_minutes: 60, passing_marks: "", instructions: "", is_published: true, allow_pause: true, sectional_timing: false, live_start_at: "", live_window_minutes: 120, sections: [{ name: "General", duration_minutes: null, question_ids: [] }] };
 const toLocal = (iso) => { const d = new Date(iso); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
 const toForm = (t) => ({
-  ...t, passing_marks: t.passing_marks ?? "", instructions: t.instructions || "", sectional_timing: !!t.sectional_timing,
+  ...t, passing_marks: t.passing_marks ?? "", instructions: t.instructions || "", sectional_timing: !!t.sectional_timing, allow_pause: t.allow_pause !== false,
   live_start_at: t.live_start_at ? toLocal(t.live_start_at) : "", live_window_minutes: t.live_window_minutes || 120,
   sections: t.sections?.length ? t.sections : [{ name: "General", duration_minutes: null, question_ids: t.question_ids || [] }],
 });
@@ -45,7 +45,7 @@ export default function Tests() {
     ed.run(() => save(ed.editingId, {
       series_id: f.series_id, title: f.title, duration_minutes: f.sectional_timing ? sectionTotal : Number(f.duration_minutes),
       passing_marks: f.passing_marks === "" ? null : Number(f.passing_marks), instructions: f.instructions,
-      is_published: f.is_published, sectional_timing: f.sectional_timing,
+      is_published: f.is_published, allow_pause: f.allow_pause, sectional_timing: f.sectional_timing,
       live_start_at: f.live_start_at ? new Date(f.live_start_at).toISOString() : null, live_window_minutes: Number(f.live_window_minutes) || 120,
       sections: f.sections.map((s) => ({ name: s.name, duration_minutes: s.duration_minutes ? Number(s.duration_minutes) : null, question_ids: s.question_ids,
         positive_marks: s.positive_marks ?? null, negative_marks: s.negative_marks ?? null, language: s.language || "bilingual" })),
@@ -116,6 +116,9 @@ export default function Tests() {
         <div className="flex flex-wrap gap-6">
           <label className="flex items-center gap-2 text-sm text-gray-300">
             <input type="checkbox" checked={f.is_published} onChange={(e) => ed.set("is_published", e.target.checked)} data-testid="test-published-input" /> Published
+          </label>
+          <label className="flex items-center gap-2 text-sm text-gray-300" title="Students can pause up to 15 minutes in total. Never available for All-India live mocks.">
+            <input type="checkbox" checked={f.allow_pause} onChange={(e) => ed.set("allow_pause", e.target.checked)} data-testid="test-allow-pause-input" /> Allow pause (15 min max)
           </label>
           <label className="flex items-center gap-2 text-sm text-gray-300">
             <input type="checkbox" checked={f.sectional_timing} data-testid="test-sectional-input"

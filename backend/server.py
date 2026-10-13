@@ -177,6 +177,7 @@ class TestIn(BaseModel):
     is_published: bool = True
     live_start_at: Optional[str] = None
     live_window_minutes: int = 120
+    allow_pause: bool = True
 
 class CourseIn(BaseModel):
     title: str
@@ -766,10 +767,70 @@ async def get_attempt(attempt_id: str, user=Depends(get_current_user)):
     qs = await db.questions.find({"id": {"$in": qids}}, {"_id": 0, "correct": 0, "explanation": 0, "explanation_hi": 0}).to_list(5000)
     qmap = {q["id"]: q for q in qs}
     a["questions"] = _apply_section_rules([qmap[qid] for qid in qids if qid in qmap], a.get("sections"))
-    t = await db.tests.find_one({"id": a["test_id"]}, {"_id": 0, "title": 1})
+    t = await db.tests.find_one({"id": a["test_id"]}, {"_id": 0, "title": 1, "allow_pause": 1, "live_start_at": 1})
     a["test_title"] = t["title"] if t else "Online Examination"
+    a["pause_left_seconds"] = _pause_left(a) if _pause_allowed(t) else 0
+    a["user_name"] = user["name"]
     a["server_now"] = now_iso()
     return a
+
+MAX_PAUSE = 15 * 60
+
+def _pause_allowed(t: Optional[dict]) -> bool:
+    return t is not None and t.get("allow_pause", True) and not t.get("live_start_at")
+
+def _pause_left(a: dict) -> int:
+    return max(0, MAX_PAUSE - int(a.get("paused_seconds", 0)))
+
+@api.post("/attempts/{attempt_id}/pause")
+async def pause_attempt(attempt_id: str, data: AutosaveIn, user=Depends(get_current_user)):
+    a = await _own_attempt(attempt_id, user)
+    a = await _sync_sections(a)
+    if a["status"] != "in_progress":
+        return {"status": "submitted"}
+    if a.get("paused_at"):
+        return {"status": "paused"}
+    t = await db.tests.find_one({"id": a["test_id"]}, {"_id": 0, "allow_pause": 1, "live_start_at": 1})
+    left = _pause_left(a)
+    if not _pause_allowed(t) or left <= 0:
+        raise HTTPException(400, "Pause is not available for this test")
+    now = datetime.now(timezone.utc)
+    if now > datetime.fromisoformat(a["ends_at"]):
+        await _finalize_attempt(a, data.answers, data.marked_for_review, auto=True)
+        return {"status": "submitted"}
+    answers, marked = (_merge_section_answers(a, data.answers, data.marked_for_review) if a.get("sectional_timing")
+                       else (data.answers, data.marked_for_review))
+    upd = {"paused_at": now.isoformat(), "answers": answers, "marked_for_review": marked,
+           "remaining_at_pause": (datetime.fromisoformat(a["ends_at"]) - now).total_seconds(),
+           "ends_at": (datetime.fromisoformat(a["ends_at"]) + timedelta(seconds=left)).isoformat()}
+    if a.get("sectional_timing"):
+        sec_end = datetime.fromisoformat(a["section_ends_at"])
+        upd["section_remaining_at_pause"] = (sec_end - now).total_seconds()
+        upd["section_ends_at"] = (sec_end + timedelta(seconds=left)).isoformat()
+    await db.test_attempts.update_one({"id": attempt_id, "paused_at": None}, {"$set": upd, "$inc": {"version": 1}})
+    return {"status": "paused"}
+
+@api.post("/attempts/{attempt_id}/resume")
+async def resume_attempt(attempt_id: str, user=Depends(get_current_user)):
+    a = await _own_attempt(attempt_id, user)
+    if a["status"] != "in_progress":
+        return {"status": "submitted"}
+    if not a.get("paused_at"):
+        return {"status": "ok"}
+    now = datetime.now(timezone.utc)
+    elapsed = (now - datetime.fromisoformat(a["paused_at"])).total_seconds()
+    left = _pause_left(a)
+    overage = max(0.0, elapsed - left)
+    upd = {"paused_at": None, "paused_seconds": int(a.get("paused_seconds", 0) + min(elapsed, left)),
+           "ends_at": (now + timedelta(seconds=a["remaining_at_pause"] - overage)).isoformat()}
+    if a.get("sectional_timing"):
+        upd["section_ends_at"] = (now + timedelta(seconds=a["section_remaining_at_pause"] - overage)).isoformat()
+    await db.test_attempts.update_one({"id": attempt_id}, {"$set": upd, "$inc": {"version": 1}})
+    a = await _sync_sections({**a, **upd})
+    if a.get("status") == "in_progress" and now > datetime.fromisoformat(upd["ends_at"]):
+        await _finalize_attempt({**a, **upd}, a.get("answers") or {}, a.get("marked_for_review") or [], auto=True)
+        return {"status": "submitted"}
+    return {"status": "ok" if a.get("status") == "in_progress" else "submitted"}
 
 async def _own_attempt(attempt_id: str, user: dict) -> dict:
     a = await db.test_attempts.find_one({"id": attempt_id}, {"_id": 0})
