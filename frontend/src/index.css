@@ -1,0 +1,131 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #090D16;
+  --bg-surface: #111827;
+  --bg-elevated: #1F2937;
+  --border: #1F2937;
+  --border-accent: #374151;
+  --text-primary: #F9FAFB;
+  --text-secondary: #9CA3AF;
+  --text-muted: #6B7280;
+  --accent: #2563EB;
+  --accent-hover: #1D4ED8;
+  --cyan: #06B6D4;
+  --emerald: #10B981;
+  --amber: #F59E0B;
+  --rose: #EF4444;
+  --violet: #8B5CF6;
+}
+
+@layer base {
+  :root {
+    --background: 222 32% 6%;
+    --foreground: 210 20% 98%;
+    --card: 221 30% 10%;
+    --card-foreground: 210 20% 98%;
+    --popover: 221 30% 10%;
+    --popover-foreground: 210 20% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 220 24% 18%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 220 24% 14%;
+    --muted-foreground: 220 9% 65%;
+    --accent: 220 24% 18%;
+    --accent-foreground: 210 20% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 220 24% 18%;
+    --input: 220 24% 18%;
+    --ring: 217 91% 60%;
+    --radius: 0.5rem;
+  }
+}
+
+* { border-color: hsl(var(--border)); }
+
+html, body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(37, 99, 235, 0.08), transparent 60%),
+    radial-gradient(900px 500px at 110% 10%, rgba(6, 182, 212, 0.06), transparent 60%),
+    var(--bg-primary);
+  min-height: 100vh;
+}
+
+.heading-font { font-family: 'Outfit', 'Inter', sans-serif; letter-spacing: -0.02em; }
+.mono-font { font-family: 'JetBrains Mono', monospace; }
+
+/* Grid overlay */
+.grid-mesh {
+  background-image:
+    linear-gradient(rgba(55, 65, 81, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(55, 65, 81, 0.08) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Glassmorphism header */
+.glass-nav {
+  background: rgba(9, 13, 22, 0.78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+}
+
+/* Status palette colors */
+.qp-answered { background: #10B981; color: #fff; }
+.qp-not-answered { background: #EF4444; color: #fff; }
+.qp-marked { background: #8B5CF6; color: #fff; }
+.qp-ans-marked { background: #3B82F6; color: #fff; }
+.qp-not-visited { background: #374151; color: #9CA3AF; }
+.qp-current { outline: 2px solid #06B6D4; outline-offset: 2px; }
+
+/* Smooth scrollbars */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--border-accent); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #4B5563; }
+
+/* Button hover transitions - specific property */
+.btn-primary {
+  background: var(--accent);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: background-color 180ms ease, transform 150ms ease, box-shadow 180ms ease;
+}
+.btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: 0 10px 20px -10px rgba(37, 99, 235, 0.6); }
+
+.card-elev {
+  background: linear-gradient(180deg, rgba(31, 41, 55, 0.6), rgba(17, 24, 39, 0.6));
+  border: 1px solid rgba(55, 65, 81, 0.5);
+  border-radius: 12px;
+  transition: border-color 200ms ease, transform 200ms ease;
+}
+.card-elev:hover { border-color: #374151; }
+
+input, textarea, select {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-accent);
+}
+
+/* Prevent horizontal overflow */
+.app-shell { max-width: 100%; overflow-x: hidden; }
+
+/* Fade in */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.fade-in { animation: fadeIn 400ms ease-out both; }

@@ -1,0 +1,114 @@
+{
+  "theme": {
+    "default": "dark-portal",
+    "supported": ["dark-portal", "light-academic"],
+    "description": "High-contrast tactical dark theme for intense focus during online examinations and modern SaaS dashboard; crisp academic light theme for study material, reading & course discovery."
+  },
+  "colors": {
+    "dark_portal": {
+      "bg_primary": "#090D16",
+      "bg_surface": "#111827",
+      "bg_surface_elevated": "#1F2937",
+      "border": "#1F2937",
+      "border_accent": "#374151",
+      "text_primary": "#F9FAFB",
+      "text_secondary": "#9CA3AF",
+      "text_muted": "#6B7280",
+      "accent_primary": "#2563EB",
+      "accent_primary_hover": "#1D4ED8",
+      "accent_cyan": "#06B6D4",
+      "accent_emerald": "#10B981",
+      "accent_amber": "#F59E0B",
+      "accent_rose": "#EF4444",
+      "palette_archetype": "ARCHETYPE 2: THE PERFORMANCE PRO (Tactical Exam Focus & High-Precision Analytics)"
+    },
+    "light_academic": {
+      "bg_primary": "#F8FAFC",
+      "bg_surface": "#FFFFFF",
+      "bg_surface_elevated": "#F1F5F9",
+      "border": "#E2E8F0",
+      "border_accent": "#CBD5E1",
+      "text_primary": "#0F172A",
+      "text_secondary": "#475569",
+      "text_muted": "#64748B",
+      "accent_primary": "#1E40AF",
+      "accent_primary_hover": "#1E3A8A",
+      "accent_cyan": "#0891B2",
+      "accent_emerald": "#059669",
+      "accent_amber": "#D97706",
+      "accent_rose": "#DC2626"
+    },
+    "exam_status_palette": {
+      "answered": { "bg": "#10B981", "text": "#FFFFFF", "label": "Answered" },
+      "not_answered": { "bg": "#EF4444", "text": "#FFFFFF", "label": "Not Answered" },
+      "marked_for_review": { "bg": "#8B5CF6", "text": "#FFFFFF", "label": "Marked for Review" },
+      "ans_and_marked": { "bg": "#3B82F6", "text": "#FFFFFF", "label": "Answered & Marked for Review" },
+      "not_visited": { "bg": "#374151", "text": "#9CA3AF", "label": "Not Visited" }
+    }
+  },
+  "typography": {
+    "headings_font": "Cabinet Grotesk / Outfit / System Sans",
+    "body_font": "Inter / System Sans",
+    "mono_font": "JetBrains Mono / Fira Code",
+    "scale": {
+      "h1": "text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight",
+      "h3": "text-xl sm:text-2xl font-semibold tracking-normal",
+      "h4": "text-lg sm:text-xl font-semibold",
+      "body": "text-sm sm:text-base leading-relaxed",
+      "caption": "text-xs text-muted-foreground uppercase tracking-wider font-mono"
+    }
+  },
+  "responsive": {
+    "breakpoint": "mobile-first",
+    "layout": "Multi-column grids condense to single column on mobile (< 768px). Online Exam Interface shifts to tabbed bottom sheet / slide-over panel for Question Palette on mobile viewports. Dashboard stats convert to horizontal scroll / 2x2 grid.",
+    "typography": "Mobile responsive fluid sizing with rem units. Inputs stay minimum 16px to prevent iOS auto-zoom.",
+    "overflow_guard": "Ensure max-w-full and overflow-x-hidden on root containers to prevent unintended horizontal scrollbars.",
+    "tap_targets": "Minimum 48px by 48px tap areas for exam action buttons (Next, Mark for Review, Clear Response, Question Palette Nodes)."
+  },
+  "surface_strategies": {
+    "marketing_hero": "Dark slate grid mesh background with subtle ambient radial glow, clear overlay, semi-transparent sticky glass header (backdrop-blur-md bg-slate-900/80 border-b border-slate-800)",
+    "exam_portal": "Full screen strict distraction-free layout (h-screen overflow-hidden). Dark solid crisp panels, high contrast timer bar, status-coded question palette grid.",
+    "lms_course_player": "Split view layout (70% video player / reading pane, 30% section lesson tree drawer). Mobile view turns lesson tree into tabbed modal drawer.",
+    "admin_dashboard": "High-density data grid (MODE B), cardless or subtle border container layout, sharp radii (rounded-md), status pills, search & multi-select filters."
+  },
+  "grids": {
+    "marketing": "MODE A: TETRIS GRID (col-span-12 with generous gap-8)",
+    "dashboard": "MODE B: HIGH DENSITY GRID (col-span-4 / col-span-12 with gap-4 to gap-6)",
+    "exam_palette": "grid-cols-5 sm:grid-cols-6 md:grid-cols-5 gap-2 font-mono text-sm"
+  },
+  "image_urls": {
+    "hero_student": "https://images.unsplash.com/photo-1654063841940-76939eeb1c73?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODh8MHwxfHNlYXJjaHwyfHxpbmRpYW4lMjBzdHVkZW50JTIwc3R1ZHlpbmclMjBvbmxpbmUlMjBleGFtJTIwbGFwdG9wJTIwdGVzdCUyMHByZXBhcmF0aW9ufGVufDB8fHxibHVlfDE3OTE4OTc0MDV8MA&ixlib=rb-4.1.0&q=85",
+    "student_tablet": "https://images.unsplash.com/photo-1659355889803-24ed3339fbbe?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODh8MHwxfHNlYXJjaHwzfHxpbmRpYW4lMjBzdHVkZW50JTIwc3R1ZHlpbmclMjBvbmxpbmUlMjBleGFtJTIwbGFwdG9wJTIwdGVzdCUyMHByZXBhcmF0aW9ufGVufDB8fHxibHVlfDE3OTE4OTc0MDV8MA&ixlib=rb-4.1.0&q=85",
+    "student_laptop_desk": "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ6MzR8MHwxfHNlYXJjaHxfHxzdHVkZW50JTIwZGVzayUyMGxhcHRvcHxlbnwwfHx8fDE3OTE4OTc0MTR8MA&ixlib=rb-4.1.0&q=85",
+    "classroom_study": "https://images.unsplash.com/photo-1571260899304-425eee4c7efc?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzl8MHwxfHNlYXJjaHw0fHxjbGFzc3Jvb20lMjBzdHVkZW50cyUyMHN0dWR5fGVufDB8fHx8MTc5MTg5NzQxNHww&ixlib=rb-4.1.0&q=85",
+    "classroom_teacher": "https://images.unsplash.com/photo-1509062522246-3755977927d7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzl8MHwxfHNlYXJjaHxfHxjbGFzc3Jvb20lMjBzdHVkZW50cyUyMHN0dWR5fGVufDB8fHx8MTc5MTg5NzQxNHww&ixlib=rb-4.1.0&q=85"
+  },
+  "icon_library": "lucide-react",
+  "motion": {
+    "framework": "framer-motion",
+    "transitions": "transition-colors duration-200 ease-in-out, transition-transform duration-150 ease-out",
+    "accessibility": "Respect prefers-reduced-motion, avoid jarring layout shifts, micro-hover scales limited to 1.02x"
+  },
+  "component_path": "/app/frontend/src/components/ui/",
+  "testing": {
+    "data_testid_convention": "kebab-case, role-based (e.g., test-card-item, exam-start-btn, question-option-radio, mark-for-review-btn, submit-exam-btn, timer-display, analytics-chart-card)"
+  },
+  "instructions_to_main_agent": [
+    "Build a production-grade, highly intuitive hybrid platform: Public Marketing Portal + Student LMS Dashboard + Online Examination Engine + Question Bank Admin + LMS Course Hierarchy.",
+    "Implement the Online Examination Engine with full real-time features: live countdown timer with amber/red warnings, question status palette grid (Answered, Not Answered, Marked for Review, Answered & Marked, Not Visited), section switcher (Quant, Reasoning, English, GA), autosave state, question bookmarking, calculator toggle modal, and submission summary popup.",
+    "Provide a detailed Exam Performance Result & Solution Review screen featuring score breakdown, accuracy percentage, time spent per question, topic-wise analysis, and step-by-step solutions with KaTeX math rendering.",
+    "Ensure LMS Course Hierarchy (Course -> Sections -> Lessons -> Video/PDF Resources) has a modern player experience with progress tracking, notes, and downloadable attachments.",
+    "Ensure Admin Panel includes complete multi-group management (Question Bank Builder, Test Builder with negative marking setup, User Management, Order History, Razorpay Payment Gateway integration status, Analytics).",
+    "Include sample exam packages for Indian competitive exams (SSC CGL, UPSC Civil Services, Banking SBI/IBPS PO, Railways RRB NTPC, NEET/JEE Mock Tests).",
+    "Make all key elements testable with explicit data-testid attributes.",
+    "Provide Theme Toggle between Dark Portal Mode (Exam center vibe) and Light Academic Mode."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "Avoid generic AI slop look - build layered, tactile, high-precision visual hierarchies.",
+    "DO NOT use raw transparent header backgrounds; use glassmorphism with blur or solid background.",
+    "DO NOT use universal transition 'transition: all'. Explicitly state transition properties.",
+    "Ensure mobile responsiveness: single column stack on smaller screens, touch-friendly target sizes (min 48px).",
+    "Always add data-testid to interactive and key data display elements."
+  ]
+}
