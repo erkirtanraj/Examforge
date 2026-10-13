@@ -1844,11 +1844,24 @@ async def startup():
     await db.entitlements.create_index([("user_id", 1), ("item_type", 1), ("item_id", 1), ("order_id", 1)], unique=True)
     await db.orders.create_index("razorpay_order_id")
     # Seed admin + sample data if missing
+    if IS_PRODUCTION:
+        # Refuse to expose a database whose old demo credentials are still active.
+        for demo_email, demo_password in (
+            ("admin@lms.com", "admin123"),
+            ("teacher@lms.com", "teacher123"),
+            ("student@lms.com", "student123"),
+        ):
+            demo_user = await db.users.find_one({"email": demo_email}, {"_id": 0, "password_hash": 1})
+            if demo_user and verify_pw(demo_password, demo_user.get("password_hash") or ""):
+                raise RuntimeError(
+                    f"Default demo credential remains active for {demo_email}. "
+                    "Rotate that account using python backend/create_admin.py --email EMAIL --reset-existing."
+                )
     admin_exists = await db.users.find_one({"role": {"$in": ["admin", "super_admin"]}}, {"_id": 1})
     if not admin_exists:
         if IS_PRODUCTION:
             raise RuntimeError(
-                "No administrator exists. Create the first admin through a secure bootstrap process; "
+                "No administrator exists. Create the first admin with python backend/create_admin.py; "
                 "production startup will not create demo accounts."
             )
         await _seed_data()
