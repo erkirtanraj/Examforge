@@ -126,7 +126,10 @@ def hash_pw(pw: str) -> str:
 
 def verify_pw(pw: str, h: str) -> bool:
     try:
-        return bcrypt.checkpw(pw.encode(), h.encode())
+        encoded = pw.encode("utf-8")
+        if len(encoded) > 72:
+            return False
+        return bcrypt.checkpw(encoded, h.encode())
     except Exception:
         return False
 
