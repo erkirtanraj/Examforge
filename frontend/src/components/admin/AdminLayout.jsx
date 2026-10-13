@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { NavLink, Outlet, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
+import { useSite } from "../../lib/site";
 import {
   LayoutDashboard, FileQuestion, Layers, PlayCircle, BookOpen, FileText, Tags, Users,
-  ShoppingBag, Settings, GraduationCap, LogOut, ExternalLink, Menu, X, Ticket,
+  ShoppingBag, Settings, GraduationCap, LogOut, ExternalLink, Menu, X, Ticket, PanelTop, Home, ScrollText,
 } from "lucide-react";
 
 const MENU = [
@@ -28,7 +29,16 @@ const MENU = [
       { to: "/admin/coupons", label: "Coupons", icon: Ticket },
     ],
   },
-  { group: "System", adminOnly: true, items: [{ to: "/admin/settings", label: "Settings", icon: Settings }] },
+  {
+    group: "Settings",
+    adminOnly: true,
+    items: [
+      { to: "/admin/site", label: "Site Settings", icon: PanelTop },
+      { to: "/admin/home", label: "Home Page", icon: Home },
+      { to: "/admin/pages", label: "Legal Pages", icon: ScrollText },
+      { to: "/admin/settings", label: "Payment Settings", icon: Settings },
+    ],
+  },
 ];
 
 const Sidebar = ({ isAdmin, onNavigate }) => (
@@ -58,6 +68,7 @@ export default function AdminLayout() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
+  const { site } = useSite();
   const isAdmin = ["admin", "super_admin"].includes(user?.role);
 
   const shell = (
@@ -66,7 +77,7 @@ export default function AdminLayout() {
         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center">
           <GraduationCap className="w-4 h-4 text-white" />
         </div>
-        <span className="heading-font font-bold text-white">ExamForge</span>
+        <span className="heading-font font-bold text-white">{site?.header?.brand_name}</span>
         <span className="ml-auto text-[10px] mono-font text-cyan-300 border border-cyan-500/30 rounded px-1.5 py-0.5">
           {isAdmin ? "ADMIN" : "TEACHER"}
         </span>

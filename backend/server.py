@@ -16,6 +16,7 @@ import bcrypt, secrets, asyncio, requests, bisect, csv, io, re
 import openpyxl
 from fastapi import UploadFile, File, Form
 import razorpay
+from site_routes import build_site_router, seed_pages
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -1528,6 +1529,7 @@ async def startup():
         await _seed_data()
     await _seed_sectional_mocks()
     await _seed_extras()
+    await seed_pages(db)
 
 async def _seed_data():
     log.info("Seeding sample data...")
@@ -1739,6 +1741,7 @@ async def shutdown():
     client.close()
 
 app.include_router(api)
+app.include_router(build_site_router(db, require_roles))
 
 app.add_middleware(
     CORSMiddleware,

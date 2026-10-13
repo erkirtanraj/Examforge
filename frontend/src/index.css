@@ -129,3 +129,12 @@ input, textarea, select {
 /* Fade in */
 @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 .fade-in { animation: fadeIn 400ms ease-out both; }
+
+.legal-prose { color: #d1d5db; line-height: 1.75; font-size: 0.95rem; }
+.legal-prose h2 { color: #fff; font-family: inherit; font-weight: 700; font-size: 1.25rem; margin: 2rem 0 0.5rem; }
+.legal-prose h3 { color: #fff; font-weight: 600; font-size: 1.05rem; margin: 1.5rem 0 0.5rem; }
+.legal-prose p { margin: 0.75rem 0; }
+.legal-prose ul, .legal-prose ol { margin: 0.75rem 0 0.75rem 1.25rem; list-style: disc; }
+.legal-prose ol { list-style: decimal; }
+.legal-prose a { color: #67e8f9; text-decoration: underline; }
+.legal-prose strong { color: #fff; }

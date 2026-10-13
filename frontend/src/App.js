@@ -3,6 +3,12 @@ import "./App.css";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./lib/auth";
 import { Toaster } from "./components/ui/sonner";
+import { SiteProvider } from "./lib/site";
+import Footer from "./components/Footer";
+import LegalPage from "./pages/LegalPage";
+import SiteSettings from "./pages/admin/SiteSettings";
+import HomeSettings from "./pages/admin/HomeSettings";
+import LegalPages from "./pages/admin/LegalPages";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -59,6 +65,7 @@ function AppRouter() {
         <Route path="/courses" element={<CourseCatalog />} />
         <Route path="/courses/:id" element={<Protected><CourseDetail /></Protected>} />
         <Route path="/study-materials" element={<StudyMaterials />} />
+        <Route path="/page/:slug" element={<LegalPage />} />
         <Route path="/leaderboard" element={<Leaderboards />} />
         <Route path="/leaderboard/:testId" element={<Leaderboard />} />
         <Route path="/dashboard" element={<Protected><StudentDashboard /></Protected>} />
@@ -76,9 +83,13 @@ function AppRouter() {
           <Route path="orders" element={adminOnly(<Orders />)} />
           <Route path="coupons" element={adminOnly(<Coupons />)} />
           <Route path="settings" element={adminOnly(<Settings />)} />
+          <Route path="site" element={adminOnly(<SiteSettings />)} />
+          <Route path="home" element={adminOnly(<HomeSettings />)} />
+          <Route path="pages" element={adminOnly(<LegalPages />)} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <Footer />
     </>
   );
 }
@@ -98,11 +109,13 @@ function RazorpayLoader() {
 function App() {
   return (
     <AuthProvider>
+      <SiteProvider>
       <BrowserRouter>
         <RazorpayLoader />
         <AppRouter />
         <Toaster richColors position="top-right" theme="dark" />
       </BrowserRouter>
+      </SiteProvider>
     </AuthProvider>
   );
 }

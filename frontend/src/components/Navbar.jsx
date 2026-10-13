@@ -1,6 +1,8 @@
 import React from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/auth";
+import { useSite } from "../lib/site";
+import SmartLink from "./SmartLink";
 import { Button } from "./ui/button";
 import { GraduationCap, LayoutDashboard, LogOut, Shield, Menu, X } from "lucide-react";
 import { useState } from "react";
@@ -10,16 +12,13 @@ export default function Navbar() {
   const nav = useNavigate();
   const loc = useLocation();
   const [open, setOpen] = useState(false);
+  const { site } = useSite();
 
   // Hide navbar on exam page
   if (loc.pathname.startsWith("/exam/") || loc.pathname.startsWith("/admin")) return null;
 
-  const links = [
-    { to: "/test-series", label: "Test Series" },
-    { to: "/courses", label: "Courses" },
-    { to: "/study-materials", label: "Study Materials" },
-    { to: "/leaderboard", label: "Leaderboard" },
-  ];
+  const header = site?.header;
+  const links = (header?.nav_links || []).map((l) => ({ to: l.url, label: l.label }));
 
   return (
     <header className="glass-nav sticky top-0 z-40">
@@ -28,15 +27,15 @@ export default function Navbar() {
           <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center">
             <GraduationCap className="w-5 h-5 text-white" />
           </div>
-          <span className="heading-font text-xl font-bold text-white">ExamForge</span>
+          <span className="heading-font text-xl font-bold text-white" data-testid="nav-brand-name">{header?.brand_name}</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-6">
           {links.map((l) => (
-            <Link key={l.to} to={l.to} data-testid={`nav-${l.to.slice(1)}`}
-                  className={`text-sm font-medium transition-colors ${loc.pathname.startsWith(l.to) ? "text-cyan-400" : "text-gray-300 hover:text-white"}`}>
+            <SmartLink key={l.to + l.label} to={l.to} data-testid={`nav-${l.to.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "")}`}
+                  className={`text-sm font-medium transition-colors ${l.to !== "/" && loc.pathname.startsWith(l.to) ? "text-cyan-400" : "text-gray-300 hover:text-white"}`}>
               {l.label}
-            </Link>
+            </SmartLink>
           ))}
         </nav>
 
@@ -64,9 +63,9 @@ export default function Navbar() {
           ) : (
             <>
               <Link to="/login" className="text-sm text-gray-300 hover:text-white" data-testid="nav-login-link">Sign in</Link>
-              <Link to="/register" data-testid="nav-register-link">
-                <Button size="sm" className="bg-blue-600 hover:bg-blue-700">Get Started</Button>
-              </Link>
+              <SmartLink to={header?.cta_url || "/register"} data-testid="nav-register-link">
+                <Button size="sm" className="bg-blue-600 hover:bg-blue-700">{header?.cta_label || "Get Started"}</Button>
+              </SmartLink>
             </>
           )}
         </div>
@@ -79,9 +78,9 @@ export default function Navbar() {
       {open && (
         <div className="md:hidden border-t border-gray-800 bg-[#0b1120] px-4 py-4 space-y-3">
           {links.map((l) => (
-            <Link key={l.to} to={l.to} onClick={() => setOpen(false)} className="block text-gray-200">
+            <SmartLink key={l.to + l.label} to={l.to} onClick={() => setOpen(false)} className="block text-gray-200">
               {l.label}
-            </Link>
+            </SmartLink>
           ))}
           {user ? (
             <>
@@ -92,7 +91,7 @@ export default function Navbar() {
           ) : (
             <>
               <Link to="/login" onClick={() => setOpen(false)} className="block text-gray-200">Sign in</Link>
-              <Link to="/register" onClick={() => setOpen(false)} className="block text-blue-400">Get Started</Link>
+              <SmartLink to={header?.cta_url || "/register"} onClick={() => setOpen(false)} className="block text-blue-400">{header?.cta_label || "Get Started"}</SmartLink>
             </>
           )}
         </div>

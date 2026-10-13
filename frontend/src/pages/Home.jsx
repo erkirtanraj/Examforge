@@ -3,13 +3,18 @@ import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { Button } from "../components/ui/button";
 import LiveMockBanner from "../components/LiveMockBanner";
-import { Trophy, Clock, Users, TrendingUp, BookOpen, Target, Zap, GraduationCap, Award, ArrowRight, FileText, Scale, Landmark, Train, Atom, CheckCircle2 } from "lucide-react";
+import SmartLink from "../components/SmartLink";
+import { useSite } from "../lib/site";
+import { FEATURE_ICONS } from "../lib/featureIcons";
+import { Clock, Zap, GraduationCap, ArrowRight, FileText, Scale, Landmark, Train, Atom, CheckCircle2, Target } from "lucide-react";
 
 const ICONS = { FileText, Scale, Landmark, Train, Atom, GraduationCap };
 
 export default function Home() {
   const [categories, setCategories] = useState([]);
   const [featured, setFeatured] = useState([]);
+  const { site } = useSite();
+  const hero = site?.hero;
 
   useEffect(() => {
     api.get("/categories").then((r) => setCategories(r.data));
@@ -25,36 +30,36 @@ export default function Home() {
         <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full bg-cyan-500/10 blur-3xl" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-20 lg:py-28 grid lg:grid-cols-2 gap-12 items-center">
           <div className="fade-in">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 text-xs font-medium mono-font">
-              <Zap className="w-3.5 h-3.5" /> LIVE · 12,480 ASPIRANTS NOW ATTEMPTING
-            </div>
-            <h1 className="heading-font mt-5 text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight">
-              Crack competitive exams with a <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">precision test engine</span>.
+            {hero?.badge_text && (
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 text-xs font-medium mono-font" data-testid="hero-badge">
+                <Zap className="w-3.5 h-3.5" /> {hero.badge_text}
+              </div>
+            )}
+            <h1 className="heading-font mt-5 text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight" data-testid="hero-title">
+              {hero?.title} {hero?.highlight && <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">{hero.highlight}</span>}
             </h1>
-            <p className="mt-5 text-base sm:text-lg text-gray-300 max-w-xl">
-              Full-length mocks for SSC, UPSC, Banking, Railways, NEET & JEE — real exam timers, detailed answer analytics, and courses by top faculty.
-            </p>
+            <p className="mt-5 text-base sm:text-lg text-gray-300 max-w-xl" data-testid="hero-subtitle">{hero?.subtitle}</p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link to="/test-series" data-testid="hero-start-cta">
-                <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white h-12 px-6">
-                  Explore Test Series <ArrowRight className="ml-2 w-4 h-4" />
-                </Button>
-              </Link>
-              <Link to="/register" data-testid="hero-register-cta">
-                <Button size="lg" variant="outline" className="h-12 px-6 border-gray-700 bg-transparent text-white hover:bg-gray-800">
-                  Create Free Account
-                </Button>
-              </Link>
+              {hero?.primary_cta_label && (
+                <SmartLink to={hero.primary_cta_url} data-testid="hero-start-cta">
+                  <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white h-12 px-6">
+                    {hero.primary_cta_label} <ArrowRight className="ml-2 w-4 h-4" />
+                  </Button>
+                </SmartLink>
+              )}
+              {hero?.secondary_cta_label && (
+                <SmartLink to={hero.secondary_cta_url} data-testid="hero-register-cta">
+                  <Button size="lg" variant="outline" className="h-12 px-6 border-gray-700 bg-transparent text-white hover:bg-gray-800">
+                    {hero.secondary_cta_label}
+                  </Button>
+                </SmartLink>
+              )}
             </div>
-            <div className="mt-10 grid grid-cols-3 gap-6 max-w-md">
-              {[
-                { k: "250K+", v: "Students" },
-                { k: "15K+", v: "Questions" },
-                { k: "92%", v: "Pass Rate" },
-              ].map((s) => (
-                <div key={s.v}>
-                  <div className="heading-font text-2xl font-bold text-white">{s.k}</div>
-                  <div className="text-xs text-gray-400 mono-font uppercase tracking-wider">{s.v}</div>
+            <div className="mt-10 grid grid-cols-3 gap-6 max-w-md" data-testid="hero-stats">
+              {(site?.stats || []).filter((s) => s.display).map((s, i) => (
+                <div key={i} data-testid={`hero-stat-${i}`}>
+                  <div className="heading-font text-2xl font-bold text-white">{s.display}</div>
+                  <div className="text-xs text-gray-400 mono-font uppercase tracking-wider">{s.label}</div>
                 </div>
               ))}
             </div>
@@ -166,33 +171,20 @@ export default function Home() {
 
       {/* Features */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 py-16">
-        <div className="grid md:grid-cols-3 gap-6">
-          {[
-            { icon: Target, title: "Real Exam Simulation", desc: "Server-authoritative timer, question palette, mark-for-review — a replica of actual exam portals.", color: "blue" },
-            { icon: TrendingUp, title: "Deep Analytics", desc: "Topic-wise accuracy, time per question, strengths & weaknesses — know where to focus.", color: "cyan" },
-            { icon: Award, title: "Verified Content", desc: "Questions crafted and reviewed by top faculty for SSC, UPSC, Banking, Railways and NEET/JEE.", color: "emerald" },
-          ].map((f) => (
-            <div key={f.title} className="card-elev p-6">
-              <f.icon className={`w-7 h-7 mb-3 ${f.color === "blue" ? "text-blue-400" : f.color === "cyan" ? "text-cyan-400" : "text-emerald-400"}`} />
+        <div className="grid md:grid-cols-3 gap-6" data-testid="home-features">
+          {(site?.features || []).map((f, i) => {
+            const Icon = FEATURE_ICONS[f.icon] || Target;
+            return (
+            <div key={i} className="card-elev p-6" data-testid={`home-feature-${i}`}>
+              <Icon className={`w-7 h-7 mb-3 ${["text-blue-400", "text-cyan-400", "text-emerald-400"][i % 3]}`} />
               <h3 className="heading-font text-lg font-semibold text-white">{f.title}</h3>
               <p className="text-sm text-gray-400 mt-2">{f.desc}</p>
             </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-800 mt-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 text-sm text-gray-500 flex flex-wrap justify-between gap-4">
-          <div>© 2026 ExamForge · All rights reserved.</div>
-          <div className="flex gap-5">
-            <Link to="/" className="hover:text-gray-300">Privacy</Link>
-            <Link to="/" className="hover:text-gray-300">Terms</Link>
-            <Link to="/" className="hover:text-gray-300">Refund Policy</Link>
-            <Link to="/" className="hover:text-gray-300">Contact</Link>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
