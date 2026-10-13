@@ -120,8 +120,8 @@ export default function TestSeriesDetail() {
           <div className="card-elev p-6 sticky top-24">
             <div className="heading-font text-3xl font-bold text-white" data-testid="series-price">
               {series.is_free ? "Free" : coupon ? (
-                <span className="flex items-baseline gap-3">₹{(coupon.final_amount / 100).toFixed(0)}
-                  <span className="text-lg text-gray-500 line-through font-normal" data-testid="series-original-price">₹{(series.price / 100).toFixed(0)}</span>
+                <span className="flex items-baseline gap-3">₹{(coupon.final_amount / 100).toFixed(0)}{" "}
+                  <span className="text-lg text-gray-500 line-through font-normal" aria-label="original price" data-testid="series-original-price">₹{(series.price / 100).toFixed(0)}</span>
                 </span>
               ) : `₹${(series.price / 100).toFixed(0)}`}
             </div>

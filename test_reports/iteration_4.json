@@ -1,0 +1,67 @@
+{
+  "summary": "Iteration 4 testing complete for Live mocks, Discount coupons (admin + checkout + one-use), Weak-topic report, and Bilingual (seed + import + attempt safety). Added /app/backend/tests/test_iteration4.py — 28 pytest cases, 27 PASSED, 1 SKIPPED (no backend template endpoint; template is generated client-side). Frontend flows verified via Playwright on the public preview URL for Home live-mock banner (ticking countdown + CTA), TestSeriesDetail live-badge + start-test disabled with 'Opens in …', CouponBox apply WELCOME20 on UPSC Prelims (₹999 → ₹799, −₹200, series-original-price struck), StudentDashboard weak-topics (4 topic rows + 7 suggestion links; weakest first), ExamTopBar exam-lang toggle switching EN↔HI on the SSC sectional mock with Hindi text, options falling back to EN where missing, and localStorage exam_lang=hi persisted. Admin: sidebar-coupons visible, coupon-row-WELCOME20 rendered, admin/orders has Coupon column.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "TestSeriesDetail (paid, coupon applied)", "issues": ["New price '₹799' and original '₹999' render adjacent inside series-price (text concatenates as '₹799₹999'); visually the original is struck-through next to the discounted price. Reads correctly in the live UI (see screenshot) but DOM text content lacks a separator — if any downstream test reads series-price raw text it will see '₹799₹999'."]}
+    ]
+  },
+  "passed_backend_tests": [
+    "GET /api/live-mocks includes seeded 'All-India Live Mock · SSC CGL #1' with status=upcoming, server_now, series meta",
+    "POST /api/tests/{live_id}/start → 403 'hasn't opened' before live_start_at",
+    "PUT /api/content/tests/{id} with live_start_at in the past → start succeeds, /api/live-mocks returns status=live; restored to original start",
+    "PUT /api/content/tests/{id} with invalid datetime string → 422",
+    "Clearing live_start_at (null) makes test normal; start works",
+    "GET /api/admin/coupons → 403 for student",
+    "POST /api/admin/coupons: percent and flat creation, duplicate code 400, invalid 'a b' code → normalised to 'AB' → 422 (length), percent>100 → 422",
+    "PUT and DELETE /api/admin/coupons/{id} work; delete 404 on repeat",
+    "POST /api/orders with WELCOME20 on UPSC Prelims (99900 paise): amount=79920, discount=19980, original_amount=99900, coupon_code=WELCOME20, demo_mode=true",
+    "Invalid / inactive / expired / used-up / not-applicable coupon codes → 400 with appropriate message",
+    "100% coupon → order amount=0, status=paid, entitlement granted, coupon.used_count incremented, re-use by same user → 400 'already used'",
+    "POST /api/coupons/validate returns code/original/discount/final_amount",
+    "GET /api/my/weak-topics for student@lms.com: topics sorted asc by score_pct, level ∈ {weak,average,strong}, accuracy/attempts/suggestions present, suggestions include has_access and attempted",
+    "Fresh student: /api/my/weak-topics → results_analyzed=0, topics=[]",
+    "Weak-topic suggestions exclude tests whose live_start_at is in the future",
+    "Hindi seed applied: 'Which planet is known as the Red Planet?' has text_hi, explanation_hi, and 4 options with text_hi",
+    "GET /api/attempts/{id} does NOT expose correct, explanation, or explanation_hi for in-progress questions",
+    "POST /api/questions/import with *_hi columns stores question_hi/option_x_hi/explanation_hi; true_false gets Hindi option labels 'सत्य' / 'असत्य'"
+  ],
+  "passed_frontend_checks": [
+    "Home: live-mock-banner with live-mock-title='All-India Live Mock · SSC CGL #1', live-mock-countdown ticking (1d 23h 44m 40s → 38s in 1.5s), live-mock-cta present",
+    "TestSeriesDetail (SSC free): live-badge-<id> shows '● LIVE Thu, Oct 15, 03:00 PM' for seeded live mock; start-test-<id> disabled with 'Opens in 1d 23h 43m …'; other mocks' start-test enabled",
+    "TestSeriesDetail (UPSC paid): coupon-input + coupon-apply-btn with WELCOME20 → coupon-applied shows 'WELCOME20 −₹200', series-price ₹799, series-original-price ₹999 struck",
+    "Admin /admin/coupons: sidebar-coupons visible, coupon-row-WELCOME20 renders in the list",
+    "Admin /admin/orders: COUPON column header present",
+    "StudentDashboard: weak-topics section rendered, weak-topic-reasoning-ability (weakest first) + 3 others, 7 suggestion-<testId> links",
+    "Exam (SSC CGL Tier I · Sectional Mock 1): exam-lang toggle with exam-lang-en / exam-lang-hi, clicking hi switches exam-question-text to Hindi (एक दुकानदार 10% लाभ …), options fall back to English where Hindi missing, localStorage.exam_lang='hi'"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_iteration4.py",
+    "/app/test_reports/pytest/iteration4_results.xml"
+  ],
+  "action_items": [
+    "(Optional minor UI) In TestSeriesDetail series-price, separate the discounted amount from the struck-through original with whitespace/margin — current DOM concatenates '₹799₹999'. Visually rendered correctly but reads oddly for screen readers / test selectors.",
+    "(Optional) Add a tiny space or 'MRP' label before the series-original-price span.",
+    "No functional fixes required."
+  ],
+  "critical_code_review_comments": [
+    "server.py is now 1750 lines – the 700-line split threshold flagged in iteration 3 is still unmet. Please split into routers/ before next feature iteration.",
+    "_apply_coupon() uses db.orders.find_one({... status:'paid'}) to detect reuse; this is checked before order creation but used_count is only incremented after _grant_entitlement runs. In the free (0-amount) path _grant_entitlement runs synchronously, so no race, but the 'one-use' check for paid flows relies on the webhook/verify path to produce a paid order — a user who starts two paid checkouts simultaneously could theoretically bypass max_uses before used_count is incremented. Low risk given Razorpay is in demo mode; consider an atomic $inc with a condition on used_count to harden.",
+    "_coupon_doc() normalises code via re.sub(r'\\s+', '', code).upper(). This silently rewrites user input (e.g. 'a b' → 'AB'). Consider surfacing a clearer 422 like 'Code can't contain whitespace' instead of relying on the length check for feedback.",
+    "weak-topics endpoint groups by s['name'].strip().lower() but returns t['name'] from the first seen result's section name — if section names differ in case/whitespace across tests, the display name is non-deterministic. Harmless but worth noting.",
+    "live_mocks response does NOT paginate; capped at 500 tests via to_list(500). Fine for current scale.",
+    "No backend endpoint for the import template; the frontend generates it. Fine, but documenting it in the test (SKIPPED) for the next agent."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration4.py (new)",
+    "/app/test_reports/iteration_4.json"
+  ],
+  "success_rate": { "backend": "100% (27/27 ran, 1 skipped)", "frontend": "100% of flows exercised" },
+  "test_credentials": "admin@lms.com/admin123, teacher@lms.com/teacher123, student@lms.com/student123",
+  "seed_data_creation": "Tests create temporary coupons, orders, test and users prefixed TEST_* / TESTP../TESTF../etc, and clean them up in teardown_class. The seeded live mock's live_start_at was mutated to a past time and immediately restored to the original value within the same test. No persistent changes.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run iteration-4 backend tests: `python -m pytest /app/backend/tests/test_iteration4.py -v -o addopts=''` (pytest.ini has mandatory -n 2 that MUST be overridden). The one SKIP is intentional (no /api/questions/import/template endpoint). The import test leaves no residue — it undoes its batch. The 100%-coupon test registers a fresh TEST_cp_* student, grants an entitlement, and leaves that record (teardown removes orders/entitlements/user). If re-running shortly after a previous run, pre-existing TESTUI**** coupon rows may still be in the UI from the Playwright admin test — safe to ignore or wipe with `mdb.coupons.delete_many({'code': {'$regex': '^TEST'}})`."
+}

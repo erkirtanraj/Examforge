@@ -39,6 +39,13 @@ Secure cPanel-based Test Series + LMS (PRD specified Laravel 12/PHP/MySQL). User
 - Seeded 'SSC CGL Tier I · Sectional Mock 1' and 'SBI PO Prelims · Sectional Mock 1'
 - Tested: iteration_3 19/19 backend + UI flows
 
+## Iteration 4 (2026-06)
+- Scheduled All-India live mocks (live_start_at + live window; server blocks early start; home countdown banner; 'Opens in' on series page)
+- Coupons: admin CRUD (percent/flat, max uses, expiry, per-series scope, active), validate endpoint, discounted Razorpay amount, 100% → free, one use per student; seeded WELCOME20
+- Weak topic report on dashboard with suggested practice tests
+- Bilingual (EN/हिंदी) questions: form toggle, *_hi import columns, exam + result language switch, Devanagari font; 8 seeded Hindi questions
+- Tested: iteration_4 27/27 backend + UI flows
+
 ## Backlog
 - P0: Admin enters real Razorpay keys in Settings (currently demo mode)
 - P1: sections in tests (Quant/Reasoning), bookmarks, notifications, certificates, file uploads (object storage), light theme toggle
