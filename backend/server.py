@@ -1146,8 +1146,9 @@ async def course_progress(course_id: str, user=Depends(get_current_user)):
     lessons = await db.lessons.find({"section_id": {"$in": sec_ids}}, {"_id": 0, "id": 1}).to_list(1000)
     total = len(lessons)
     lesson_ids = [l["id"] for l in lessons]
-    done = await db.lesson_progress.count_documents({"user_id": user["id"], "lesson_id": {"$in": lesson_ids}})
-    return {"total": total, "completed": done, "percent": round((done / total * 100) if total else 0, 1)}
+    done_ids = await db.lesson_progress.distinct("lesson_id", {"user_id": user["id"], "lesson_id": {"$in": lesson_ids}})
+    done = len(done_ids)
+    return {"total": total, "completed": done, "percent": round((done / total * 100) if total else 0, 1), "completed_ids": done_ids}
 
 # ========== Study Materials ==========
 @api.get("/study-materials")
