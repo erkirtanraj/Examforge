@@ -215,3 +215,15 @@ The existing FastAPI application cannot run on ordinary PHP-only shared hosting 
 ## Product requirements and progress
 
 See [`memory/PRD.md`](memory/PRD.md) for the implementation history, iteration notes, and remaining backlog. Update that document when a migration task is implemented and tested so that the README, source code, and deployment instructions remain consistent.
+
+
+## Firebase Hosting deployment
+
+The React frontend can be deployed as a static site using Firebase Hosting. Deployment configuration and detailed steps are in [FIREBASE_DEPLOYMENT.md](FIREBASE_DEPLOYMENT.md). A GitHub Actions workflow is available at `.github/workflows/firebase-hosting.yml`; it builds `frontend/` and deploys `frontend/build` on pushes to `main`.
+
+Required GitHub Actions configuration:
+- Repository variable `FIREBASE_PROJECT_ID`
+- Repository variable `REACT_APP_BACKEND_URL` (public HTTPS URL for the deployed FastAPI API)
+- Repository secret `FIREBASE_SERVICE_ACCOUNT` (Firebase deploy service account JSON)
+
+Firebase Hosting serves the frontend only. The FastAPI backend must be deployed to a Python-capable service, and it requires a persistent MongoDB database. The current app uses MongoDB Motor; SQLite and MySQL are not drop-in replacements. See the deployment guide for security, CORS, file upload persistence, database, and production validation considerations.
