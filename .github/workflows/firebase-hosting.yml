@@ -2,8 +2,7 @@ name: Deploy React frontend to Firebase Hosting
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -23,6 +22,18 @@ jobs:
           cache: yarn
           cache-dependency-path: frontend/yarn.lock
 
+      - name: Validate deployment configuration
+        env:
+          FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+          REACT_APP_BACKEND_URL: ${{ vars.REACT_APP_BACKEND_URL }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          test -n "$FIREBASE_PROJECT_ID" || { echo "::error::Set repository variable FIREBASE_PROJECT_ID."; exit 1; }
+          test -n "$REACT_APP_BACKEND_URL" || { echo "::error::Set repository variable REACT_APP_BACKEND_URL to the API HTTPS base URL."; exit 1; }
+          test -n "$FIREBASE_SERVICE_ACCOUNT" || { echo "::error::Set repository secret FIREBASE_SERVICE_ACCOUNT."; exit 1; }
+          case "$REACT_APP_BACKEND_URL" in https://*) ;; *) echo "::error::REACT_APP_BACKEND_URL must use HTTPS."; exit 1 ;; esac
+          case "$REACT_APP_BACKEND_URL" in */) echo "::error::REACT_APP_BACKEND_URL must not end with a slash."; exit 1 ;; esac
+
       - name: Install frontend dependencies
         working-directory: frontend
         run: yarn install --frozen-lockfile
@@ -31,12 +42,7 @@ jobs:
         working-directory: frontend
         env:
           REACT_APP_BACKEND_URL: ${{ vars.REACT_APP_BACKEND_URL }}
-        run: |
-          if [ -z "$REACT_APP_BACKEND_URL" ]; then
-            echo "::error::Set the GitHub Actions variable REACT_APP_BACKEND_URL to the public HTTPS URL of the deployed API."
-            exit 1
-          fi
-          yarn build
+        run: yarn build
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
