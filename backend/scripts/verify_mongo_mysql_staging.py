@@ -73,7 +73,10 @@ async def main() -> int:
                     for row in rows:
                         staged_ids.add(row.id)
                         try:
-                            json.loads(row.payload)
+                            if isinstance(row.payload, (str, bytes, bytearray)):
+                                json.loads(row.payload)
+                            elif not isinstance(row.payload, (dict, list)):
+                                invalid_json += 1
                         except (TypeError, ValueError):
                             invalid_json += 1
                     offset += len(rows)
