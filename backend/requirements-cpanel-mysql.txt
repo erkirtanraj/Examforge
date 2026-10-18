@@ -1,0 +1,6 @@
+# Minimal database dependencies for the staged cPanel migration.
+# Merge into the deployment environment alongside the application's existing
+# runtime dependencies after route conversion has been completed.
+SQLAlchemy>=2.0,<2.1
+asyncmy>=0.2.9,<0.3
+aiomysql>=0.2.0,<0.3
