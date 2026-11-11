@@ -4,13 +4,14 @@ These tests exercise the isolated SQLAlchemy foundation. They do not import or m
 
 ## Install (from backend/)
 
-```powershell
-# Install the existing application dependencies first (includes FastAPI, httpx, pytest and pytest-xdist).
-python -m pip install -r requirements.txt
+The full application `requirements.txt` includes `emergentintegrations`, which is distributed through a private package source and may not be available from public PyPI. The isolated M1 tests do not need that package or the full application dependency set. Install only the public test/runtime packages needed by these tests, then install the MySQL persistence dependencies:
 
-# Then install the additional MySQL persistence dependencies.
+```powershell
+python -m pip install "fastapi==0.110.1" "starlette==0.37.2" "httpx==0.28.1" "pytest==9.1.1" "pytest-xdist==3.8.0"
 python -m pip install -r requirements-mysql.txt
 ```
+
+For running the complete existing application locally, use the project's documented private package access for `emergentintegrations`; do not remove that dependency or replace it with an unrelated package.
 
 ## Run the M1 unit tests
 
