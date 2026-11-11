@@ -95,6 +95,7 @@ class IdentityRepository:
         payload.setdefault("status", "active")
         payload.setdefault("auth_provider", "email")
         payload.setdefault("phone", "")
+        payload.setdefault("created_at", utc_naive())
         try:
             async with self._sessions() as session, session.begin():
                 user = User(**payload)
@@ -102,7 +103,11 @@ class IdentityRepository:
                 await session.flush()
                 return user_to_dict(user)
         except IntegrityError as exc:
-            raise DuplicateIdentityEmail("Another account already uses this email") from exc
+            original = getattr(exc, "orig", None)
+            message = str(original or exc)
+            if "uq_users_email" in message or (getattr(original, "args", ()) and original.args[0] == 1062):
+                raise DuplicateIdentityEmail("Another account already uses this email") from exc
+            raise
 
     async def update_user(self, user_id: str, values: Mapping[str, Any]) -> dict:
         allowed = {
@@ -124,7 +129,11 @@ class IdentityRepository:
                 await session.flush()
                 return user_to_dict(user)
         except IntegrityError as exc:
-            raise DuplicateIdentityEmail("Another account already uses this email") from exc
+            original = getattr(exc, "orig", None)
+            message = str(original or exc)
+            if "uq_users_email" in message or (getattr(original, "args", ()) and original.args[0] == 1062):
+                raise DuplicateIdentityEmail("Another account already uses this email") from exc
+            raise
 
     async def delete_user(self, user_id: str) -> bool:
         async with self._sessions() as session, session.begin():
