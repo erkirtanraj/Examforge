@@ -81,7 +81,7 @@ Each phase must be independently testable and reviewed before proceeding to the 
 - Do not merge automatically. The repository owner must explicitly approve the final review and merge.
 - Keep `main` unchanged until that approval is given.
 
-## M1 implementation status (in progress)
+## M1 implementation status (implementation complete; PR review pending)
 
 Implemented on `feature/mysql-full-migration`:
 - Validated `mysql+asyncmy` configuration from `DATABASE_URL` or `MYSQL_*` variables, including URL-safe credential handling and redacted URL output.
@@ -92,10 +92,20 @@ Implemented on `feature/mysql-full-migration`:
 - Unit tests for config, database-name safety, engine construction and health response/error redaction.
 - Separate `requirements-mysql.txt` and `.env.mysql.example`; existing Motor/PyMongo dependencies and runtime remain untouched.
 
-Remaining M1 validation:
-1. Install the additional requirements in the local backend virtual environment.
-2. Run the M1 tests from `backend/` using the documented `-n 0` command.
-3. Run Alembic `upgrade head` and `current` against the local `examforge_local` database (empty baseline only).
-4. Review the resulting commit diff and resolve any test or migration-tool issues before M1 is marked complete.
+### M1 validation completed locally
+
+- Installed the isolated M1 test dependencies and `requirements-mysql.txt`.
+- `python -m pytest -n 0 tests/mysql_migration` — 10 passed.
+- Applied the empty baseline to the local `examforge_local` database; `alembic_version` records `0001_m1_baseline`.
+- `python -m alembic -c alembic.ini current` — `0001_m1_baseline (head)`.
+- `git status --short` — clean.
+- `git diff main...feature/mysql-full-migration --check` — no whitespace errors.
+- Local `backend/.env` is ignored by Git and is not part of the PR.
+
+### Review status and remaining gates
+
+- Draft PR #1 is open for review; no GitHub Actions workflow runs or commit status checks were reported for the reviewed head commit.
+- Complete code review and address any review comments before marking M1 ready.
+- Add CI coverage for the isolated M1 test suite before relying on automated PR validation.
 
 No production database, MongoDB export, or existing Mongo-backed API route is touched by M1. Do not merge to `main` without explicit approval.
