@@ -102,10 +102,50 @@ Implemented on `feature/mysql-full-migration`:
 - `git diff main...feature/mysql-full-migration --check` — no whitespace errors.
 - Local `backend/.env` is ignored by Git and is not part of the PR.
 
-### Review status and remaining gates
+### Review and merge status
 
-- Draft PR #1 is open for review; no GitHub Actions workflow runs or commit status checks were reported for the reviewed head commit.
-- Complete code review and address any review comments before marking M1 ready.
-- Add CI coverage for the isolated M1 test suite before relying on automated PR validation.
+- PR #1 was reviewed and squash-merged to `main` on 2026-11-11.
+- Merge commit: `bd0629706704bb46b57e1ba629344d8d270b26c1`.
+- Added `.github/workflows/mysql-m1-tests.yml` for isolated M1 tests. No workflow run or commit status was visible immediately after merge; confirm the first run in GitHub Actions.
+- No production database, MongoDB export, or existing Mongo-backed API route was touched by M1.
 
-No production database, MongoDB export, or existing Mongo-backed API route is touched by M1. Do not merge to `main` without explicit approval.
+## M2 implementation status (in progress on feature branch)
+
+Branch: `feature/mysql-m2-identity-authz`, created from the merged M1 `main` commit.
+
+### Identity and authorization contract audit
+
+Existing API contracts to preserve:
+- `POST /api/auth/register` returns `{token, user}`; frontend stores the bearer token in localStorage key `lms_token`.
+- `POST /api/auth/login` returns `{token, user}`.
+- `GET /api/auth/me` returns the authenticated user object.
+- `POST /api/auth/google` accepts `{session_id}` and exchanges the trusted OAuth session with the existing identity service.
+- Password reset routes: `POST /api/auth/forgot-password`, `GET /api/auth/reset-password/{token}`, and `POST /api/auth/reset-password`.
+- Existing role names: `super_admin`, `admin`, `teacher`, `student`, `support`.
+- Existing account states: `active`, `suspended`. Google-only accounts may have no password hash.
+- Existing API user IDs are UUID strings; preserve these IDs and response shapes.
+
+Security findings to address during M2 route migration:
+1. Public registration accepts a caller-supplied `role` including `teacher`; self-registration must always create a student. Elevated roles must be granted by authorized staff only.
+2. `JWT_SECRET` currently falls back to the literal `dev-secret`; production startup must fail closed when a strong secret is absent.
+3. The `/api/admin/users/{user_id}/role` handler does not protect an existing `super_admin` target from modification by an ordinary admin; unify super-admin target/grant protections across both admin route implementations.
+4. Token validation must handle malformed/missing `uid`/issued-at claims as a clean 401, re-read current user role/status, and preserve suspension/session invalidation behavior.
+5. Password-reset token consumption, password update, and invalidation of other reset tokens must be one database transaction; preserve one-time use, expiry, and generic forgot-password responses.
+6. Existing development seed credentials (`admin123`, `teacher123`, `student123`) must not be provisioned in production. Define a safe development-only seed policy before route cutover.
+7. Existing auth routes and admin user endpoints currently read/write MongoDB; they must switch together to the MySQL user repository so authorization cannot observe inconsistent identity stores. Do not dual-write.
+
+### M2 schema work started
+
+Implemented on `feature/mysql-m2-identity-authz`:
+- SQLAlchemy `User` model with string UUID primary key, unique email, password hash nullable for Google accounts, role/status/auth-provider constraints, profile fields, and session invalidation timestamp.
+- SQLAlchemy `PasswordResetToken` model with unique token hash, user foreign key/cascade, one-time-use fields, expiry, and query indexes.
+- Alembic revision `0002_m2_identity_authz` creates the two tables after the M1 baseline.
+- Metadata tests cover identity columns, role/status/provider constraints, unique email/token hashes, and token ownership cascade.
+
+Not yet complete:
+- Auth and admin user routes are not switched to MySQL.
+- JWT secret policy, registration role restriction, super-admin protections, Google identity boundary, and transactional password reset remain to implement.
+- M2 migration and model tests have not yet been run locally against MySQL 8.4.
+- Do not merge M2 until schema, route, API regression, authorization, and MySQL integration tests pass and the PR is reviewed.
+
+No M2 change is merged to `main`.
