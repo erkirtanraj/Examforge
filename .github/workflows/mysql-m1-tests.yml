@@ -80,7 +80,7 @@ jobs:
       - name: Install isolated test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install "fastapi==0.110.1" "starlette==0.37.2" "httpx==0.28.1" "pytest==9.1.1" "pytest-xdist==3.8.0" "pytest-asyncio>=0.23,<2.0"
+          python -m pip install "fastapi==0.110.1" "starlette==0.37.2" "httpx==0.28.1" "pytest==9.1.1" "pytest-xdist==3.8.0" "pytest-asyncio>=0.23,<2.0" "email-validator>=2.0,<3.0"
           python -m pip install -r requirements-mysql.txt
 
       - name: Apply MySQL schema migrations
