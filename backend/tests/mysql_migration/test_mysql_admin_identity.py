@@ -122,16 +122,43 @@ def user(user_id="user-1", role="student", **extra):
     }
 
 
-def test_admin_user_list_is_mysql_backed_and_hides_credentials():
+def test_admin_user_list_preserves_array_contract_and_hides_credentials():
     repository = FakeIdentityRepository([user(), user("user-2")])
-    response = make_client(repository).get("/api/admin/users?search=Student&page=1&page_size=1")
+    response = make_client(repository).get("/api/admin/users")
     assert response.status_code == 200
     payload = response.json()
-    assert payload["total"] == 2
-    assert payload["page_size"] == 1
-    assert len(payload["items"]) == 1
-    assert "password_hash" not in payload["items"][0]
-    assert "tokens_valid_after" not in payload["items"][0]
+    assert isinstance(payload, list)
+    assert len(payload) == 2
+    assert "password_hash" not in payload[0]
+    assert "tokens_valid_after" not in payload[0]
+
+
+def test_legacy_role_endpoint_updates_mysql_identity():
+    repository = FakeIdentityRepository([user()])
+    response = make_client(repository).put(
+        "/api/admin/users/user-1/role", json={"role": "teacher"},
+    )
+    assert response.status_code == 200
+    assert repository.users["user-1"]["role"] == "teacher"
+    assert repository.updated[-1][1] == {"role": "teacher"}
+
+
+def test_legacy_role_endpoint_blocks_admin_from_granting_super_admin():
+    repository = FakeIdentityRepository([user()])
+    response = make_client(repository).put(
+        "/api/admin/users/user-1/role", json={"role": "super_admin"},
+    )
+    assert response.status_code == 403
+    assert repository.users["user-1"]["role"] == "student"
+
+
+def test_legacy_role_endpoint_blocks_self_role_change():
+    repository = FakeIdentityRepository([user("admin-1", "admin")])
+    response = make_client(repository).put(
+        "/api/admin/users/admin-1/role", json={"role": "teacher"},
+    )
+    assert response.status_code == 400
+    assert repository.updated == []
 
 
 def test_admin_user_detail_uses_mysql_identity_and_keeps_mongo_stats():
