@@ -260,7 +260,7 @@ def build_admin_router(db, require_roles, hash_pw, detach_questions):
             "role": data.role,
         }
         if data.role != user["role"] or email != user["email"]:
-            changes["tokens_valid_after"] = int(time.time()) + 1 + 1
+            changes["tokens_valid_after"] = int(time.time()) + 1
         try:
             updated = await repository.update_user(user_id, changes, actor_role=actor["role"])
         except ProtectedIdentity as exc:
@@ -297,7 +297,7 @@ def build_admin_router(db, require_roles, hash_pw, detach_questions):
         status_value = "suspended" if data.suspended else "active"
         changes = {"status": status_value}
         if data.suspended:
-            changes["tokens_valid_after"] = int(time.time())
+            changes["tokens_valid_after"] = int(time.time()) + 1
         try:
             await repository.update_user(user_id, changes, actor_role=actor["role"])
         except ProtectedIdentity as exc:
