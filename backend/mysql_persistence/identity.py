@@ -321,7 +321,7 @@ class IdentityRepository:
             token.used_at = instant
             user.password_hash = new_password_hash
             user.password_reset_at = instant
-            user.tokens_valid_after = int(instant.replace(tzinfo=timezone.utc).timestamp())
+            user.tokens_valid_after = int(instant.replace(tzinfo=timezone.utc).timestamp()) + 1
             user.updated_at = instant
             await session.execute(
                 update(PasswordResetToken)
