@@ -81,9 +81,21 @@ Each phase must be independently testable and reviewed before proceeding to the 
 - Do not merge automatically. The repository owner must explicitly approve the final review and merge.
 - Keep `main` unchanged until that approval is given.
 
-## Immediate next steps
+## M1 implementation status (in progress)
 
-1. Confirm the local MySQL service/version and create a dedicated empty `examforge_local` database and least-privileged local user.
-2. Establish baseline tests for the current Mongo implementation in an isolated local environment.
-3. Implement M1 only: SQLAlchemy engine/session configuration, Alembic setup, health probe and isolated tests.
-4. Review M1 before beginning identity and route migration.
+Implemented on `feature/mysql-full-migration`:
+- Validated `mysql+asyncmy` configuration from `DATABASE_URL` or `MYSQL_*` variables, including URL-safe credential handling and redacted URL output.
+- Async SQLAlchemy engine/session runtime with connection pre-ping, bounded pool settings, health ping and disposal.
+- Declarative SQLAlchemy base with deterministic constraint naming conventions.
+- Opt-in `/health/mysql` router; it is deliberately not mounted into the existing Mongo-backed app yet.
+- Async Alembic environment and revision template. The initial migration history is empty by design; no application schema has been guessed or applied.
+- Unit tests for config, database-name safety, engine construction and health response/error redaction.
+- Separate `requirements-mysql.txt` and `.env.mysql.example`; existing Motor/PyMongo dependencies and runtime remain untouched.
+
+Remaining M1 validation:
+1. Install the additional requirements in the local backend virtual environment.
+2. Run the M1 tests from `backend/` using the documented `-n 0` command.
+3. Run Alembic `upgrade head` and `current` against the local `examforge_local` database (empty baseline only).
+4. Review the resulting commit diff and resolve any test or migration-tool issues before M1 is marked complete.
+
+No production database, MongoDB export, or existing Mongo-backed API route is touched by M1. Do not merge to `main` without explicit approval.
