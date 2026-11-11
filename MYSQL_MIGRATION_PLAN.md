@@ -81,7 +81,7 @@ Each phase must be independently testable and reviewed before proceeding to the 
 - Do not merge automatically. The repository owner must explicitly approve the final review and merge.
 - Keep `main` unchanged until that approval is given.
 
-## M1 implementation status (implementation complete; PR review pending)
+## M1 implementation status (implementation complete; merged to main)
 
 Implemented on `feature/mysql-full-migration`:
 - Validated `mysql+asyncmy` configuration from `DATABASE_URL` or `MYSQL_*` variables, including URL-safe credential handling and redacted URL output.
@@ -109,77 +109,48 @@ Implemented on `feature/mysql-full-migration`:
 - Added `.github/workflows/mysql-m1-tests.yml` for isolated M1 tests. No workflow run or commit status was visible immediately after merge; confirm the first run in GitHub Actions.
 - No production database, MongoDB export, or existing Mongo-backed API route was touched by M1.
 
-## M2 implementation status (in progress on feature branch)
+## M2 implementation status (implemented; final validation and review pending)
 
-Branch: `feature/mysql-m2-identity-authz`, created from the merged M1 `main` commit.
+Branch: `feature/mysql-m2-identity-authz`, based on merged M1 commit `bd0629706704bb46b57e1ba629344d8d270b26c1`.
 
-### Identity and authorization contract audit
+PR: [#2 — feat(mysql): migrate M2 identity and authorization to MySQL](https://github.com/erkirtanraj/Examforge/pull/2)
 
-Existing API contracts to preserve:
-- `POST /api/auth/register` returns `{token, user}`; frontend stores the bearer token in localStorage key `lms_token`.
-- `POST /api/auth/login` returns `{token, user}`.
-- `GET /api/auth/me` returns the authenticated user object.
-- `POST /api/auth/google` accepts `{session_id}` and exchanges the trusted OAuth session with the existing identity service.
-- Password reset routes: `POST /api/auth/forgot-password`, `GET /api/auth/reset-password/{token}`, and `POST /api/auth/reset-password`.
-- Existing role names: `super_admin`, `admin`, `teacher`, `student`, `support`.
-- Existing account states: `active`, `suspended`. Google-only accounts may have no password hash.
-- Existing API user IDs are UUID strings; preserve these IDs and response shapes.
+### Implemented
 
-Security findings to address during M2 route migration:
-1. **Addressed in the current M2 branch:** public registration no longer accepts a role field and always creates a `student`. Elevated roles remain staff-managed.
-2. **Addressed in the current M2 branch:** production (`APP_ENV`, `ENVIRONMENT`, or `NODE_ENV` set to `production`/`prod`) now fails startup unless `JWT_SECRET` is at least 32 characters and is not the development fallback. Non-production keeps the local fallback for compatibility.
-3. **Addressed in the current M2 branch:** the main `/api/admin/users/{user_id}/role` handler and the separate admin user-management routes both protect existing `super_admin` targets from ordinary admins and prevent ordinary admins from granting that role.
-4. **Partially addressed in the current M2 branch:** JWT validation rejects missing/malformed `uid` and `iat` claims as 401 and validates the session invalidation timestamp. It still reads the current identity from Mongo until the coordinated MySQL route cutover; current role/status re-read must move with that cutover.
-5. Password-reset token consumption, password update, and invalidation of other reset tokens must be one database transaction; preserve one-time use, expiry, and generic forgot-password responses.
-6. **Partially addressed in the current M2 branch:** the startup path no longer invokes the predictable demo-user seed routine in production. Review other sample-data seed routines and replace the development seed workflow with an explicit operator-provisioned initial super-admin before production cutover.
-7. Existing auth routes and admin user endpoints currently read/write MongoDB; they must switch together to the MySQL user repository so authorization cannot observe inconsistent identity stores. Do not dual-write.
+- MySQL `User` and `PasswordResetToken` schema, Alembic revision `0002_m2_identity_authz`, and async SQLAlchemy identity repository.
+- Registration, password login, current-user session validation, and Google session exchange now use MySQL identities. Public registration always creates a `student`; JWT role claims are not trusted as the current role.
+- Admin user list/detail/create/update/delete, role changes, status changes and password resets use MySQL. The legacy `GET /api/admin/users` response remains an array.
+- Super-admin protections are enforced again under MySQL row locks, including concurrent target-role changes. Ordinary admins cannot grant, modify or delete super-admin identities.
+- Password reset tokens are hashed at rest, expire, are one-time-use, rate-limited per account, and are consumed with the password update and sibling-token invalidation in one transaction. Session invalidation accounts for JWT second-level timestamp precision.
+- Admin access checks, leaderboard names, admin user counts and public site student metrics read current identity data from MySQL. No MongoDB role read remains in the exam entitlement shortcut.
+- Production startup no longer creates demo accounts, sample mocks, demo coupons, default legal-page copy, or automatic subject backfills. The initial MySQL super-admin is provisioned explicitly with `backend/scripts/bootstrap_super_admin.py`.
+- Added a dry-run-first MongoDB identity importer. It preserves UUIDs and reset-token state, blocks conflicts, does not mutate MongoDB, and restricts `--apply` to `examforge_local`.
+- MongoDB remains in use for catalog, tests, attempts, results, commerce and other operational collections that are outside M2. No dual-write was introduced.
 
-### MongoDB identity import utility (preflight stage)
+### Security and compatibility review
 
-Added `backend/scripts/migrate_mongo_identities.py` and focused normalization/preflight tests.
+- Production JWT startup requires a non-default secret of at least 32 characters.
+- JWT identity claims are validated and each authenticated request re-reads current user status and role from MySQL.
+- Password reset and admin identity mutations invalidate existing sessions.
+- Legacy admin list and role endpoints are consolidated onto the MySQL identity repository.
+- The import and bootstrap utilities are explicit operator actions; neither runs automatically at application startup.
+- Existing API response shapes and role names are preserved for the migrated endpoints.
 
-Safety properties:
-- Default invocation is read-only dry-run; `--dry-run` is explicit but optional.
-- `--apply` is restricted to the exact MySQL database name `examforge_local`; this utility cannot write to a production-named database.
-- Reads MongoDB `users` and `password_reset_tokens`; it never updates or deletes MongoDB records.
-- Preserves UUIDs, normalized email, password hashes, role/status/provider, profile fields, UTC timestamps, session invalidation metadata, user references, and reset-token use/expiry state.
-- Detects malformed records, case-insensitive duplicate source emails, missing user references, duplicate token hashes, and target identity/token mismatches. Any conflict blocks the entire import.
-- Uses a single MySQL transaction for new records and a two-pass insert for self-referencing user foreign keys.
-- Idempotent re-runs accept only exact existing-record parity; mismatched existing records are reported as conflicts, never overwritten.
-- Output excludes password hashes, reset-token hashes, and connection credentials.
+### Validation
 
-Important:
-- The utility has been committed to the M2 feature branch but has not yet been run against the user's local MongoDB/MySQL data.
-- Do not run `--apply` until the dry-run report is reviewed and explicitly approved. Production migration requires a separately reviewed process and cutover plan.
-- The migration does not switch any authentication or admin API route and does not perform dual writes.
+- User-verified local run on Windows / Python 3.11 / MySQL 8.4 before the final review hardening:
+  - API module compilation passed.
+  - Admin identity tests: 15 passed.
+  - Full `tests/mysql_migration` suite: 91 passed.
+  - Real MySQL identity integration tests: 6 passed.
+- GitHub Actions run #70, commit `d6f6599dbad4cabbec3ed41c589ac86066da7631`: **91 passed, 1 warning**. Alembic reached `0002_m2_identity_authz (head)`.
+- Latest review added same-second session-invalidation coverage and a CI compile step for `server.py`, `admin_routes.py`, `email_routes.py` and `site_routes.py`.
+- GitHub Actions run #84 is pending for the latest branch head `eb0556c4921f7a539d3f17d22e56e4c3921bde0d`; its result must be checked before declaring final validation complete.
 
-### M2 schema work started
+### Remaining gates
 
-Implemented on `feature/mysql-m2-identity-authz`:
-- SQLAlchemy `User` model with string UUID primary key, unique email, password hash nullable for Google accounts, role/status/auth-provider constraints, profile fields, and session invalidation timestamp.
-- SQLAlchemy `PasswordResetToken` model with unique token hash, user foreign key/cascade, one-time-use fields, expiry, and query indexes.
-- Alembic revision `0002_m2_identity_authz` creates the two tables after the M1 baseline.
-- Metadata tests cover identity columns, role/status/provider constraints, unique email/token hashes, and token ownership cascade.
-- Added a framework-independent `IdentityRepository` for MySQL user lookup/create/update/delete, hashed reset-token creation, and transactional reset-token consumption/password update/sibling-token invalidation.
-- Repository normalizes UTC timestamps, preserves legacy user dictionary fields, omits password hashes for public serialization, and translates duplicate-email conflicts.
-- Added repository serialization/time-normalization unit tests.
-- Added production JWT-secret policy and malformed identity-claim validation helpers with unit tests.
-- Updated auth handling to reject malformed JWT identity claims, validate session invalidation metadata, force public registration to `student`, and skip predictable demo-account seeding in production.
-- Protected existing `super_admin` targets in the main role-change endpoint as well as the admin user-management routes; added policy tests.
-- CI path filters now run the migration/auth test job when these auth files change.
+- Run the MongoDB identity import in read-only dry-run mode against the user's actual local data, inspect the report, and obtain explicit approval before any `--apply`.
+- Production migration requires a separately reviewed backup, import, cutover, smoke-test and rollback runbook. The local-only importer is not a production migration tool.
+- Complete final review of the current PR head and verify the latest CI run.
+- PR #2 remains a draft and has not been merged. No M2 changes are in `main`; do not merge without explicit repository-owner approval.
 
-M2 schema/repository/auth-security validation completed locally on 2026-11-11:
-- `python -m compileall -q server.py auth_security.py admin_routes.py email_routes.py` — passed.
-- `python -m pytest -n 0 tests/mysql_migration` — 40 passed (one non-blocking Starlette/AnyIO deprecation warning).
-- `git diff --check` — passed; `git status --short` — clean.
-- Local Alembic current/heads previously verified at `0002_m2_identity_authz (head)`; rerun after any schema changes.
-- `alembic current` and `alembic heads` — `0002_m2_identity_authz (head)`.
-- `git status --short` — clean before the repository-layer commits.
-
-Not yet complete:
-- Auth and admin user routes are not switched to MySQL.
-- Coordinated MySQL auth/admin route cutover, Google identity boundary, and API-level transactional password reset remain to implement.
-- Repository database integration/concurrency tests and full auth/API regression tests remain to implement.
-- Do not merge M2 until schema, route, API regression, authorization, and MySQL integration tests pass and the PR is reviewed.
-
-No M2 change is merged to `main`.
