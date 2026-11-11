@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Mapping
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 
@@ -36,15 +36,17 @@ def utc_naive(value: datetime | None = None) -> datetime:
     return current.astimezone(timezone.utc).replace(tzinfo=None)
 
 
+def _aware_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
+
+
 def user_to_dict(user: User, *, include_password_hash: bool = True) -> dict[str, Any]:
     """Convert an ORM identity to the legacy API's dictionary representation."""
-    created_at = user.created_at.replace(tzinfo=timezone.utc) if user.created_at.tzinfo is None else user.created_at
-    updated_at = user.updated_at
-    if updated_at is not None and updated_at.tzinfo is None:
-        updated_at = updated_at.replace(tzinfo=timezone.utc)
-    password_reset_at = user.password_reset_at
-    if password_reset_at is not None and password_reset_at.tzinfo is None:
-        password_reset_at = password_reset_at.replace(tzinfo=timezone.utc)
+    created_at = _aware_utc(user.created_at)
+    updated_at = _aware_utc(user.updated_at)
+    password_reset_at = _aware_utc(user.password_reset_at)
     result = {
         "id": user.id,
         "name": user.name,
@@ -54,7 +56,7 @@ def user_to_dict(user: User, *, include_password_hash: bool = True) -> dict[str,
         "auth_provider": user.auth_provider,
         "phone": user.phone,
         "avatar_url": user.avatar_url,
-        "created_at": created_at.isoformat(),
+        "created_at": created_at.isoformat() if created_at else None,
         "updated_at": updated_at.isoformat() if updated_at else None,
         "created_by": user.created_by,
         "tokens_valid_after": user.tokens_valid_after,
@@ -157,6 +159,53 @@ class IdentityRepository:
             session.add(token)
             await session.flush()
             return token.id
+
+    async def create_reset_token_if_below_limit(
+        self, *, token_hash: str, user_id: str, expires_at: datetime,
+        since: datetime, max_requests: int,
+    ) -> bool:
+        """Lock the identity row so concurrent requests cannot bypass the rate limit."""
+        instant = utc_naive()
+        window_start = utc_naive(since)
+        async with self._sessions() as session, session.begin():
+            user = await session.scalar(select(User).where(User.id == user_id).with_for_update())
+            if user is None or user.status != "active":
+                return False
+            recent_count = await session.scalar(
+                select(func.count(PasswordResetToken.id)).where(
+                    PasswordResetToken.user_id == user_id,
+                    PasswordResetToken.created_at > window_start,
+                )
+            )
+            if int(recent_count or 0) >= max_requests:
+                return False
+            session.add(PasswordResetToken(
+                token_hash=token_hash,
+                user_id=user_id,
+                used=False,
+                created_at=instant,
+                expires_at=utc_naive(expires_at),
+            ))
+            await session.flush()
+            return True
+
+    async def get_valid_reset_token(self, *, token_hash: str, now: datetime | None = None) -> dict | None:
+        """Return only a currently usable token; never expose the stored token hash."""
+        instant = utc_naive(now)
+        async with self._sessions() as session:
+            token = await session.scalar(
+                select(PasswordResetToken).where(
+                    PasswordResetToken.token_hash == token_hash,
+                    PasswordResetToken.used.is_(False),
+                    PasswordResetToken.expires_at > instant,
+                )
+            )
+            if token is None:
+                return None
+            return {
+                "user_id": token.user_id,
+                "expires_at": _aware_utc(token.expires_at),
+            }
 
     async def consume_reset_token(
         self, *, token_hash: str, new_password_hash: str, now: datetime | None = None,
