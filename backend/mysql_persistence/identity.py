@@ -24,6 +24,10 @@ class IdentityNotFound(LookupError):
     """Raised when a requested identity does not exist."""
 
 
+class ProtectedIdentity(PermissionError):
+    """Raised when an actor attempts to mutate a protected super-admin identity."""
+
+
 class InvalidOrExpiredResetToken(ValueError):
     """Raised when a reset token is missing, used, or expired."""
 
@@ -134,7 +138,9 @@ class IdentityRepository:
                 raise DuplicateIdentityEmail("Another account already uses this email") from exc
             raise
 
-    async def update_user(self, user_id: str, values: Mapping[str, Any]) -> dict:
+    async def update_user(
+        self, user_id: str, values: Mapping[str, Any], *, actor_role: str | None = None,
+    ) -> dict:
         allowed = {
             "name", "email", "role", "status", "auth_provider", "phone",
             "avatar_url", "tokens_valid_after", "password_hash",
@@ -148,6 +154,9 @@ class IdentityRepository:
                 user = await session.scalar(select(User).where(User.id == user_id).with_for_update())
                 if user is None:
                     raise IdentityNotFound("User not found")
+                if actor_role is not None and actor_role != "super_admin":
+                    if user.role == "super_admin" or payload.get("role") == "super_admin":
+                        raise ProtectedIdentity("Only a super admin can manage or grant a super admin")
                 invalidate_reset_tokens = (
                     "password_hash" in payload
                     or payload.get("status") == "suspended"
@@ -178,11 +187,13 @@ class IdentityRepository:
                 raise DuplicateIdentityEmail("Another account already uses this email") from exc
             raise
 
-    async def delete_user(self, user_id: str) -> bool:
+    async def delete_user(self, user_id: str, *, actor_role: str | None = None) -> bool:
         async with self._sessions() as session, session.begin():
             user = await session.scalar(select(User).where(User.id == user_id).with_for_update())
             if user is None:
                 return False
+            if actor_role is not None and actor_role != "super_admin" and user.role == "super_admin":
+                raise ProtectedIdentity("Only a super admin can delete a super admin")
             await session.delete(user)
             return True
 
