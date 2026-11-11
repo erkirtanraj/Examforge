@@ -89,6 +89,25 @@ In development, an empty database is seeded with sample content and demo identit
 
 > `requirements.txt` includes `emergentintegrations`, which is only on Emergent's package index. If it fails to install locally, remove that line; the app doesn't import it.
 
+### MySQL password-reset token retention
+
+Old reset-token rows are removed only by an explicit maintenance command. The command is read-only by default, retains terminal token records for 30 days by default, and deletes in bounded batches only when `--apply` and an exact database-name confirmation are supplied.
+
+Run from `backend/` after configuring `.env`:
+
+```powershell
+# Inspect eligible rows; no deletion occurs
+python scripts/purge_password_reset_tokens.py
+
+# Explicitly delete eligible rows from the named database
+python scripts/purge_password_reset_tokens.py --apply --confirm-database examforge_local
+
+# Optional retention and batch-size overrides
+python scripts/purge_password_reset_tokens.py --retention-days 45 --batch-size 250
+```
+
+Schedule the explicit apply command through your deployment's protected scheduler only after confirming the target database and retention policy. Do not put database passwords or tokens in scheduled command arguments.
+
 ### Frontend
 Create `frontend/.env`:
 ```
