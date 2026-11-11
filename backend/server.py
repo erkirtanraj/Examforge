@@ -1698,7 +1698,9 @@ async def startup():
     # development-only. Production content must be explicitly reviewed and
     # published by an operator, not created or mutated during API startup.
     if not IS_PRODUCTION:
-        if not await db.users.find_one({"email": "admin@lms.com"}):
+        if not await app.state.identity_repository.get_by_email(
+            "admin@lms.com", include_password_hash=False
+        ):
             await _seed_data()
         await _seed_sectional_mocks()
         await _seed_extras()
@@ -1715,8 +1717,11 @@ async def shutdown():
     client.close()
 
 async def _seed_data():
-    log.info("Seeding sample data...")
-    users = [
+    log.info("Seeding development sample data...")
+    # Demo identities must follow the same MySQL source of truth as normal
+    # authentication; never seed credentials into the legacy Mongo collection.
+    repository = app.state.identity_repository
+    demo_users = [
         {"id": gen_id(), "name": "Super Admin", "email": "admin@lms.com", "password_hash": hash_pw("admin123"),
          "role": "admin", "created_at": now_iso()},
         {"id": gen_id(), "name": "Prof. Mehta", "email": "teacher@lms.com", "password_hash": hash_pw("teacher123"),
@@ -1724,7 +1729,10 @@ async def _seed_data():
         {"id": gen_id(), "name": "Riya Student", "email": "student@lms.com", "password_hash": hash_pw("student123"),
          "role": "student", "created_at": now_iso()},
     ]
-    await db.users.insert_many(users)
+    users = []
+    for values in demo_users:
+        existing = await repository.get_by_email(values["email"], include_password_hash=False)
+        users.append(existing or await repository.create_user(values))
     teacher_id = users[1]["id"]
 
     categories = [
