@@ -1,4 +1,5 @@
 from datetime import datetime
+import argparse
 
 import pytest
 from sqlalchemy.dialects import mysql
@@ -53,5 +54,5 @@ def test_cleanup_cli_is_dry_run_by_default_and_supports_explicit_apply():
 
 @pytest.mark.parametrize("value", ["0", "-1", "abc"])
 def test_cleanup_numeric_arguments_must_be_positive_integers(value):
-    with pytest.raises(Exception):
+    with pytest.raises(argparse.ArgumentTypeError):
         positive_int(value)
