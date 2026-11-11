@@ -75,6 +75,10 @@ class StatusIn(BaseModel):
     suspended: bool
 
 
+class UserRoleIn(BaseModel):
+    role: Role
+
+
 def _now():
     return datetime.now(timezone.utc).isoformat()
 
@@ -193,6 +197,23 @@ def build_admin_router(db, require_roles, hash_pw, detach_questions):
         repository = _identity_repository(request)
         users, _total = await repository.list_users(offset=0, limit=1000)
         return [_public_identity(user) for user in users]
+
+    @r.put("/users/{user_id}/role")
+    async def set_user_role(user_id: str, data: UserRoleIn, request: Request, actor=admin):
+        if user_id == actor["id"]:
+            raise HTTPException(400, "You cannot change your own role")
+        repository = _identity_repository(request)
+        try:
+            # The repository locks and rechecks the target row, making this
+            # legacy API path obey the same MySQL authorization policy.
+            await repository.update_user(
+                user_id, {"role": data.role}, actor_role=actor["role"],
+            )
+        except ProtectedIdentity as exc:
+            raise HTTPException(403, str(exc)) from exc
+        except IdentityNotFound as exc:
+            raise HTTPException(404, "User not found") from exc
+        return {"ok": True}
 
     @r.get("/users/{user_id}")
     async def get_user(user_id: str, request: Request, actor=admin):
