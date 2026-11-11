@@ -20,7 +20,7 @@ from site_routes import build_site_router, seed_pages, UPLOAD_DIR
 from admin_routes import build_admin_router
 from email_routes import build_email_router, ensure_indexes as ensure_email_indexes
 from perf import PublicCacheMiddleware
-from auth_security import can_manage_target_role, has_valid_identity_claims, is_production_environment, resolve_jwt_secret
+from auth_security import can_manage_target_role, is_production_environment, resolve_jwt_secret
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.gzip import GZipMiddleware
 from mysql_persistence import create_database_runtime, load_mysql_settings, IdentityRepository
@@ -1698,7 +1698,11 @@ async def root():
 @app.on_event("startup")
 async def startup():
     mysql_runtime = create_database_runtime(load_mysql_settings())
-    await mysql_runtime.ping()
+    try:
+        await mysql_runtime.ping()
+    except Exception:
+        await mysql_runtime.dispose()
+        raise
     app.state.mysql_runtime = mysql_runtime
     app.state.identity_repository = IdentityRepository(mysql_runtime.sessions)
 
