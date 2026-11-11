@@ -79,6 +79,9 @@ async def test_mysql_identity_create_read_and_duplicate_email(mysql_identity_rep
     assert created["id"] == values["id"]
     assert await repository.get_by_id(values["id"]) is not None
     assert (await repository.get_by_email(values["email"].upper()))["id"] == values["id"]
+    listed = await repository.get_by_ids([values["id"], "missing-id"])
+    assert [row["id"] for row in listed] == [values["id"]]
+    assert "password_hash" not in listed[0]
 
     with pytest.raises(DuplicateIdentityEmail):
         await repository.create_user(identity_values(email=values["email"]))
