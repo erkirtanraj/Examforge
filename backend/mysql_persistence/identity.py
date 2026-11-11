@@ -148,9 +148,27 @@ class IdentityRepository:
                 user = await session.scalar(select(User).where(User.id == user_id).with_for_update())
                 if user is None:
                     raise IdentityNotFound("User not found")
+                invalidate_reset_tokens = (
+                    "password_hash" in payload
+                    or payload.get("status") == "suspended"
+                    or ("email" in payload and payload["email"] != user.email)
+                )
                 for key, value in payload.items():
+                    if key == "password_reset_at" and isinstance(value, datetime):
+                        value = utc_naive(value)
                     setattr(user, key, value)
-                user.updated_at = utc_naive()
+                instant = utc_naive()
+                user.updated_at = instant
+                if invalidate_reset_tokens:
+                    # Keep the same user-before-token lock order as reset flows.
+                    await session.execute(
+                        update(PasswordResetToken)
+                        .where(
+                            PasswordResetToken.user_id == user_id,
+                            PasswordResetToken.used.is_(False),
+                        )
+                        .values(used=True, used_at=instant)
+                    )
                 await session.flush()
                 return user_to_dict(user)
         except IntegrityError as exc:
