@@ -71,7 +71,7 @@ def normalize_user(source: dict[str, Any]) -> dict[str, Any]:
         raise ImportPreflightError(f"user {user_id} has a missing or invalid name")
     role = source.get("role", "student")
     status = source.get("status", "active")
-    provider = source.get("auth_provider", "email")
+    provider = source.get("auth_provider") or ("email" if source.get("password_hash") else "google")
     if role not in VALID_ROLES:
         raise ImportPreflightError(f"user {user_id} has unsupported role")
     if status not in VALID_STATUSES:
@@ -175,7 +175,7 @@ async def run(apply: bool) -> int:
         token_docs = await source_db.password_reset_tokens.find({}, {"_id": 0}).to_list(length=None)
         plan = build_import_plan(user_docs, token_docs)
 
-        async with runtime.sessions() as session:
+        async with runtime.sessions() as session, session.begin():
             target_users = (await session.scalars(select(User))).all()
             target_tokens = (await session.scalars(select(PasswordResetToken))).all()
             target_by_id = {u.id: u for u in target_users}
@@ -187,7 +187,7 @@ async def run(apply: bool) -> int:
                 by_id = target_by_id.get(source["id"])
                 by_email = target_by_email.get(source["email"])
                 if by_id:
-                    same = by_id.email.strip().lower() == source["email"] and by_id.name == source["name"]
+                    same = all(getattr(by_id, key) == source[key] for key in (\n                        "name", "email", "password_hash", "role", "status", "auth_provider", "phone",\n                        "avatar_url", "created_at", "updated_at", "created_by", "tokens_valid_after",\n                        "password_reset_at", "password_reset_by",\n                    ))
                     if not same:
                         plan["errors"].append(f"target MySQL identity conflict for user id {source['id']}")
                     else:
@@ -201,8 +201,9 @@ async def run(apply: bool) -> int:
             for source in plan["tokens"]:
                 existing = target_by_hash.get(source["token_hash"])
                 if existing:
-                    if existing.user_id != source["user_id"]:
-                        plan["errors"].append("target MySQL reset-token hash belongs to a different user")
+                    same = all(getattr(existing, key) == source[key] for key in (\n                        "user_id", "used", "created_at", "expires_at", "used_at",\n                    ))
+                    if not same:
+                        plan["errors"].append("target MySQL reset-token record conflicts with MongoDB source")
                     else:
                         already_tokens += 1
                 else:
@@ -226,24 +227,7 @@ async def run(apply: bool) -> int:
                 print("Review this report, then use --apply only against examforge_local.")
                 return 0
 
-            async with session.begin():
-                # Insert user rows with self-references deferred to the second pass.
-                for row in new_users:
-                    row = dict(row)
-                    row["created_by"] = None
-                    row["password_reset_by"] = None
-                    session.add(User(**row))
-                await session.flush()
-                for row in new_users:
-                    if row["created_by"] or row["password_reset_by"]:
-                        await session.execute(
-                            User.__table__.update().where(User.id == row["id"]).values(
-                                created_by=row["created_by"], password_reset_by=row["password_reset_by"]
-                            )
-                        )
-                for row in new_tokens:
-                    session.add(PasswordResetToken(**row))
-                await session.flush()
+            # Insert user rows with self-references deferred to the second pass.\n            for row in new_users:\n                row = dict(row)\n                row["created_by"] = None\n                row["password_reset_by"] = None\n                session.add(User(**row))\n            await session.flush()\n            for row in new_users:\n                if row["created_by"] or row["password_reset_by"]:\n                    await session.execute(\n                        User.__table__.update().where(User.id == row["id"]).values(\n                            created_by=row["created_by"], password_reset_by=row["password_reset_by"]\n                        )\n                    )\n            for row in new_tokens:\n                session.add(PasswordResetToken(**row))\n            await session.flush()
 
             print("RESULT: IMPORT COMMITTED to examforge_local.")
             print("MongoDB source records were not modified or deleted.")
