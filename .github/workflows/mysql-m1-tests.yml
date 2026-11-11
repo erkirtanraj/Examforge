@@ -15,6 +15,7 @@ on:
       - "backend/alembic/**"
       - "backend/requirements-mysql.txt"
       - "backend/tests/mysql_migration/**"
+      - "MYSQL_MIGRATION_PLAN.md"
       - ".github/workflows/mysql-m1-tests.yml"
   push:
     branches: [feature/mysql-full-migration, feature/mysql-m2-identity-authz]
@@ -29,6 +30,7 @@ on:
       - "backend/alembic/**"
       - "backend/requirements-mysql.txt"
       - "backend/tests/mysql_migration/**"
+      - "MYSQL_MIGRATION_PLAN.md"
       - ".github/workflows/mysql-m1-tests.yml"
 
 permissions:
