@@ -134,6 +134,25 @@ Security findings to address during M2 route migration:
 6. **Partially addressed in the current M2 branch:** the startup path no longer invokes the predictable demo-user seed routine in production. Review other sample-data seed routines and replace the development seed workflow with an explicit operator-provisioned initial super-admin before production cutover.
 7. Existing auth routes and admin user endpoints currently read/write MongoDB; they must switch together to the MySQL user repository so authorization cannot observe inconsistent identity stores. Do not dual-write.
 
+### MongoDB identity import utility (preflight stage)
+
+Added `backend/scripts/migrate_mongo_identities.py` and focused normalization/preflight tests.
+
+Safety properties:
+- Default invocation is read-only dry-run; `--dry-run` is explicit but optional.
+- `--apply` is restricted to the exact MySQL database name `examforge_local`; this utility cannot write to a production-named database.
+- Reads MongoDB `users` and `password_reset_tokens`; it never updates or deletes MongoDB records.
+- Preserves UUIDs, normalized email, password hashes, role/status/provider, profile fields, UTC timestamps, session invalidation metadata, user references, and reset-token use/expiry state.
+- Detects malformed records, case-insensitive duplicate source emails, missing user references, duplicate token hashes, and target identity/token mismatches. Any conflict blocks the entire import.
+- Uses a single MySQL transaction for new records and a two-pass insert for self-referencing user foreign keys.
+- Idempotent re-runs accept only exact existing-record parity; mismatched existing records are reported as conflicts, never overwritten.
+- Output excludes password hashes, reset-token hashes, and connection credentials.
+
+Important:
+- The utility has been committed to the M2 feature branch but has not yet been run against the user's local MongoDB/MySQL data.
+- Do not run `--apply` until the dry-run report is reviewed and explicitly approved. Production migration requires a separately reviewed process and cutover plan.
+- The migration does not switch any authentication or admin API route and does not perform dual writes.
+
 ### M2 schema work started
 
 Implemented on `feature/mysql-m2-identity-authz`:
