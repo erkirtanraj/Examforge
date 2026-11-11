@@ -112,6 +112,15 @@ class IdentityRepository:
             user = await session.scalar(select(User).where(User.email == normalized))
             return user_to_dict(user, include_password_hash=include_password_hash) if user else None
 
+    async def get_by_ids(self, user_ids: list[str]) -> list[dict[str, Any]]:
+        """Fetch public identities for a bounded set of known user IDs."""
+        ids = list(dict.fromkeys(user_ids))
+        if not ids:
+            return []
+        async with self._sessions() as session:
+            rows = (await session.scalars(select(User).where(User.id.in_(ids)))).all()
+            return [user_to_dict(row, include_password_hash=False) for row in rows]
+
     async def create_user(self, values: Mapping[str, Any]) -> dict:
         """Create one identity; unique-email races are translated consistently."""
         allowed = {
