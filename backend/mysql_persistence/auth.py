@@ -11,7 +11,32 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 
+from auth_security import has_valid_identity_claims
 from .identity import DuplicateIdentityEmail
+
+
+
+async def load_session_identity(repository, claims: Any) -> dict[str, Any]:
+    """Resolve and validate a decoded JWT against the current MySQL identity."""
+    if not has_valid_identity_claims(claims):
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    user = await repository.get_by_id(claims["uid"], include_password_hash=False)
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    if user.get("status") == "suspended":
+        raise HTTPException(
+            status_code=403,
+            detail="Your account has been suspended. Please contact support.",
+        )
+    tokens_valid_after = user.pop("tokens_valid_after", 0) or 0
+    if not isinstance(tokens_valid_after, (int, float)) or isinstance(tokens_valid_after, bool):
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    if claims["iat"] < tokens_valid_after:
+        raise HTTPException(
+            status_code=401,
+            detail="Your session has expired. Please sign in again.",
+        )
+    return user
 
 
 def _public_identity(user: Mapping[str, Any]) -> dict[str, str]:
