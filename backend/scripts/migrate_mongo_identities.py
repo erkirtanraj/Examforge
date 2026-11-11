@@ -175,10 +175,16 @@ async def run(apply: bool) -> int:
     if not mongo_url or not mongo_db_name:
         raise ImportPreflightError("MONGO_URL and DB_NAME must be configured in backend/.env")
     settings = load_mysql_settings()
-    if apply and settings.database_name != "examforge_local":
-        raise ImportPreflightError(
-            "Refusing --apply: target database must be exactly examforge_local; production imports are not supported by this tool"
-        )
+    if apply:
+        target_host = (settings.url.host or "").strip("[]").lower()
+        if settings.database_name != "examforge_local":
+            raise ImportPreflightError(
+                "Refusing --apply: target database must be exactly examforge_local; production imports are not supported by this tool"
+            )
+        if target_host not in {"localhost", "127.0.0.1", "::1"}:
+            raise ImportPreflightError(
+                "Refusing --apply: target MySQL host must be localhost, 127.0.0.1, or ::1"
+            )
 
     mongo = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=10000)
     runtime = create_database_runtime(settings)
