@@ -20,7 +20,8 @@ from site_routes import build_site_router, seed_pages, UPLOAD_DIR
 from admin_routes import build_admin_router
 from email_routes import build_email_router, ensure_indexes as ensure_email_indexes
 from perf import PublicCacheMiddleware
-from auth_security import can_manage_target_role, is_production_environment, resolve_jwt_secret
+from auth_security import is_production_environment, resolve_jwt_secret
+from mysql_persistence.identity import IdentityNotFound, ProtectedIdentity
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.gzip import GZipMiddleware
 from mysql_persistence import create_database_runtime, load_mysql_settings, IdentityRepository
@@ -1562,10 +1563,6 @@ async def admin_stats(user=Depends(require_roles("admin", "teacher"))):
         stats.pop("orders_paid")
     return stats
 
-@api.get("/admin/users")
-async def admin_users(_=Depends(require_roles("admin"))):
-    return await db.users.find({}, {"_id": 0, "password_hash": 0}).to_list(1000)
-
 @api.get("/admin/orders")
 async def admin_orders(_=Depends(require_roles("admin"))):
     return await db.orders.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
@@ -1574,17 +1571,30 @@ class RoleIn(BaseModel):
     role: Literal["super_admin", "admin", "teacher", "student", "support"]
 
 @api.put("/admin/users/{user_id}/role")
-async def set_user_role(user_id: str, data: RoleIn, user=Depends(require_roles("admin"))):
+async def set_user_role(
+    user_id: str,
+    data: RoleIn,
+    request: Request,
+    user=Depends(require_roles("admin")),
+):
     if user_id == user["id"]:
         raise HTTPException(400, "You cannot change your own role")
-    target = await db.users.find_one({"id": user_id}, {"_id": 0, "role": 1})
-    if not target:
-        raise HTTPException(404, "User not found")
-    if not can_manage_target_role(user["role"], target.get("role", "")):
-        raise HTTPException(403, "Only a super admin can manage a super admin")
-    if data.role == "super_admin" and user["role"] != "super_admin":
-        raise HTTPException(403, "Only a super admin can grant super admin")
-    await db.users.update_one({"id": user_id}, {"$set": {"role": data.role}})
+    repository = getattr(request.app.state, "identity_repository", None)
+    if repository is None:
+        raise HTTPException(503, "Identity service unavailable")
+    try:
+        # The repository locks and rechecks the target row so concurrent role
+        # changes cannot bypass super-admin protections. Never write identity
+        # roles to the legacy MongoDB collection after the MySQL cutover.
+        await repository.update_user(
+            user_id,
+            {"role": data.role},
+            actor_role=user["role"],
+        )
+    except ProtectedIdentity as exc:
+        raise HTTPException(403, str(exc)) from exc
+    except IdentityNotFound as exc:
+        raise HTTPException(404, "User not found") from exc
     return {"ok": True}
 
 @api.get("/admin/tests")
