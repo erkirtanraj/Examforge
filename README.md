@@ -61,11 +61,19 @@ Python 3.11+, Node 18+ with Yarn, MongoDB 6+
 cd backend
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
+# M2 identity/authentication requires the additional MySQL runtime dependencies:
+pip install -r requirements-mysql.txt
 ```
 Create `backend/.env`:
 ```
 MONGO_URL="mongodb://localhost:27017"
 DB_NAME="examforge"
+# Required by M2 identity/authentication (local MySQL 8.4 example):
+MYSQL_HOST="127.0.0.1"
+MYSQL_PORT=3306
+MYSQL_USER="examforge_app"
+MYSQL_PASSWORD="replace-with-a-local-password"
+MYSQL_DATABASE="examforge_local"
 CORS_ORIGINS="http://localhost:3000"
 JWT_SECRET="replace-with-a-long-random-string"
 JWT_ALGORITHM="HS256"
@@ -77,7 +85,7 @@ RAZORPAY_WEBHOOK_SECRET=""
 ```bash
 uvicorn server:app --host 0.0.0.0 --port 8001 --reload
 ```
-On first start, an empty database is filled with sample data automatically (demo accounts, categories, test series, sectional & live mocks, courses, the WELCOME20 coupon).
+In development, an empty database is seeded with sample content and demo identities. Demo identities are stored in MySQL. Production startup does not create demo accounts or sample content; provision the initial super-admin explicitly with `python scripts/bootstrap_super_admin.py` after configuring MySQL.
 
 > `requirements.txt` includes `emergentintegrations`, which is only on Emergent's package index. If it fails to install locally, remove that line; the app doesn't import it.
 
