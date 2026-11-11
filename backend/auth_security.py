@@ -44,3 +44,8 @@ def has_valid_identity_claims(payload: Any) -> bool:
         and not isinstance(issued_at, bool)
         and math.isfinite(issued_at)
     )
+
+
+def can_manage_target_role(actor_role: str, target_role: str) -> bool:
+    """Only a super admin may change the role of an existing super admin."""
+    return target_role != "super_admin" or actor_role == "super_admin"
