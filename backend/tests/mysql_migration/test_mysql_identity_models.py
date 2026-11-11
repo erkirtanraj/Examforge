@@ -21,11 +21,14 @@ def test_user_model_preserves_api_identity_fields():
 
 def test_user_model_enforces_roles_and_account_states():
     checks = {constraint.name: str(constraint.sqltext) for constraint in User.__table__.constraints if isinstance(constraint, sa.CheckConstraint)}
-    assert "valid_role" in checks
-    assert "super_admin" in checks["valid_role"]
-    assert "support" in checks["valid_role"]
-    assert "valid_status" in checks
-    assert "valid_auth_provider" in checks
+    role_check = next((sql for name, sql in checks.items() if name.endswith("valid_role")), None)
+    status_check = next((sql for name, sql in checks.items() if name.endswith("valid_status")), None)
+    provider_check = next((sql for name, sql in checks.items() if name.endswith("valid_auth_provider")), None)
+    assert role_check is not None
+    assert "super_admin" in role_check
+    assert "support" in role_check
+    assert status_check is not None
+    assert provider_check is not None
 
 
 def test_user_email_is_unique():
