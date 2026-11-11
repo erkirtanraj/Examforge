@@ -1,0 +1,4 @@
+# Install alongside requirements.txt. Keep Motor/PyMongo until route parity is complete.
+SQLAlchemy>=2.0,<2.1
+alembic>=1.13,<2.0
+asyncmy>=0.2,<0.3
