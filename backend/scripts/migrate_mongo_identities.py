@@ -15,7 +15,6 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
-from motor.motor_asyncio import AsyncIOMotorClient
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -164,6 +163,13 @@ def build_import_plan(user_docs: list[dict], token_docs: list[dict]) -> dict:
 
 
 async def run(apply: bool) -> int:
+    try:
+        from motor.motor_asyncio import AsyncIOMotorClient
+    except ImportError as exc:
+        raise ImportPreflightError(
+            "MongoDB driver is missing. Install the pinned backend dependency with: python -m pip install motor==3.3.1"
+        ) from exc
+
     mongo_url = __import__("os").environ.get("MONGO_URL")
     mongo_db_name = __import__("os").environ.get("DB_NAME")
     if not mongo_url or not mongo_db_name:
