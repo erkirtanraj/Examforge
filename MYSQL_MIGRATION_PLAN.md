@@ -128,7 +128,7 @@ Existing API contracts to preserve:
 Security findings to address during M2 route migration:
 1. **Addressed in the current M2 branch:** public registration no longer accepts a role field and always creates a `student`. Elevated roles remain staff-managed.
 2. **Addressed in the current M2 branch:** production (`APP_ENV`, `ENVIRONMENT`, or `NODE_ENV` set to `production`/`prod`) now fails startup unless `JWT_SECRET` is at least 32 characters and is not the development fallback. Non-production keeps the local fallback for compatibility.
-3. The `/api/admin/users/{user_id}/role` handler does not protect an existing `super_admin` target from modification by an ordinary admin; unify super-admin target/grant protections across both admin route implementations.
+3. **Addressed in the current M2 branch:** the main `/api/admin/users/{user_id}/role` handler and the separate admin user-management routes both protect existing `super_admin` targets from ordinary admins and prevent ordinary admins from granting that role.
 4. **Partially addressed in the current M2 branch:** JWT validation rejects missing/malformed `uid` and `iat` claims as 401 and validates the session invalidation timestamp. It still reads the current identity from Mongo until the coordinated MySQL route cutover; current role/status re-read must move with that cutover.
 5. Password-reset token consumption, password update, and invalidation of other reset tokens must be one database transaction; preserve one-time use, expiry, and generic forgot-password responses.
 6. **Partially addressed in the current M2 branch:** the startup path no longer invokes the predictable demo-user seed routine in production. Review other sample-data seed routines and replace the development seed workflow with an explicit operator-provisioned initial super-admin before production cutover.
@@ -149,14 +149,17 @@ Implemented on `feature/mysql-m2-identity-authz`:
 - Protected existing `super_admin` targets in the main role-change endpoint as well as the admin user-management routes; added policy tests.
 - CI path filters now run the migration/auth test job when these auth files change.
 
-M2 schema/repository validation completed locally on 2026-11-11:
-- `python -m pytest -n 0 tests/mysql_migration` — 18 passed (one non-blocking Starlette/AnyIO deprecation warning) before the latest auth-security test additions. The latest auth-security and super-admin protection changes still need local validation.
+M2 schema/repository/auth-security validation completed locally on 2026-11-11:
+- `python -m compileall -q server.py auth_security.py admin_routes.py email_routes.py` — passed.
+- `python -m pytest -n 0 tests/mysql_migration` — 40 passed (one non-blocking Starlette/AnyIO deprecation warning).
+- `git diff --check` — passed; `git status --short` — clean.
+- Local Alembic current/heads previously verified at `0002_m2_identity_authz (head)`; rerun after any schema changes.
 - `alembic current` and `alembic heads` — `0002_m2_identity_authz (head)`.
 - `git status --short` — clean before the repository-layer commits.
 
 Not yet complete:
 - Auth and admin user routes are not switched to MySQL.
-- Coordinated MySQL auth/admin route cutover, super-admin protections, Google identity boundary, and API-level transactional password reset remain to implement.
+- Coordinated MySQL auth/admin route cutover, Google identity boundary, and API-level transactional password reset remain to implement.
 - Repository database integration/concurrency tests and full auth/API regression tests remain to implement.
 - Do not merge M2 until schema, route, API regression, authorization, and MySQL integration tests pass and the PR is reviewed.
 
