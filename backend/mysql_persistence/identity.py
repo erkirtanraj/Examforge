@@ -42,6 +42,9 @@ def user_to_dict(user: User, *, include_password_hash: bool = True) -> dict[str,
     updated_at = user.updated_at
     if updated_at is not None and updated_at.tzinfo is None:
         updated_at = updated_at.replace(tzinfo=timezone.utc)
+    password_reset_at = user.password_reset_at
+    if password_reset_at is not None and password_reset_at.tzinfo is None:
+        password_reset_at = password_reset_at.replace(tzinfo=timezone.utc)
     result = {
         "id": user.id,
         "name": user.name,
@@ -55,7 +58,7 @@ def user_to_dict(user: User, *, include_password_hash: bool = True) -> dict[str,
         "updated_at": updated_at.isoformat() if updated_at else None,
         "created_by": user.created_by,
         "tokens_valid_after": user.tokens_valid_after,
-        "password_reset_at": user.password_reset_at,
+        "password_reset_at": password_reset_at.isoformat() if password_reset_at else None,
         "password_reset_by": user.password_reset_by,
     }
     if include_password_hash:
