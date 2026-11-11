@@ -13,7 +13,7 @@ class FakeSettings:
             "host": "smtp.example.test",
             "port": 587,
             "security": "starttls",
-            "from_email": "no-reply@example.test",
+            "from_email": "no-reply@example.com",
             "site_url": "https://examforge.example.test",
         }
 
@@ -71,12 +71,12 @@ def make_client(repository):
 
 def test_forgot_password_uses_mysql_repository_and_sends_generic_response(monkeypatch):
     repository = FakeResetRepository({
-        "id": "user-1", "name": "Student", "email": "student@example.test", "status": "active",
+        "id": "user-1", "name": "Student", "email": "student@example.com", "status": "active",
     })
     sent = []
     monkeypatch.setattr(email_routes, "_send_sync", lambda *args: sent.append(args))
     response = make_client(repository).post(
-        "/api/auth/forgot-password", json={"email": "STUDENT@example.test"},
+        "/api/auth/forgot-password", json={"email": "STUDENT@example.com"},
     )
     assert response.status_code == 200
     assert response.json() == GENERIC
@@ -90,15 +90,15 @@ def test_forgot_password_does_not_disclose_unknown_or_suspended_accounts(monkeyp
     monkeypatch.setattr(email_routes, "_send_sync", lambda *_args: pytest.fail("email must not be sent"))
     unknown = FakeResetRepository()
     response = make_client(unknown).post(
-        "/api/auth/forgot-password", json={"email": "missing@example.test"},
+        "/api/auth/forgot-password", json={"email": "missing@example.com"},
     )
     assert response.status_code == 200
     assert response.json() == GENERIC
     suspended = FakeResetRepository({
-        "id": "user-2", "name": "Suspended", "email": "suspended@example.test", "status": "suspended",
+        "id": "user-2", "name": "Suspended", "email": "suspended@example.com", "status": "suspended",
     })
     response = make_client(suspended).post(
-        "/api/auth/forgot-password", json={"email": "suspended@example.test"},
+        "/api/auth/forgot-password", json={"email": "suspended@example.com"},
     )
     assert response.status_code == 200
     assert response.json() == GENERIC
@@ -107,11 +107,11 @@ def test_forgot_password_does_not_disclose_unknown_or_suspended_accounts(monkeyp
 
 def test_forgot_password_enforces_repository_rate_limit(monkeypatch):
     repository = FakeResetRepository({
-        "id": "user-1", "name": "Student", "email": "student@example.test", "status": "active",
+        "id": "user-1", "name": "Student", "email": "student@example.com", "status": "active",
     }, allow_request=False)
     monkeypatch.setattr(email_routes, "_send_sync", lambda *_args: pytest.fail("email must not be sent"))
     response = make_client(repository).post(
-        "/api/auth/forgot-password", json={"email": "student@example.test"},
+        "/api/auth/forgot-password", json={"email": "student@example.com"},
     )
     assert response.status_code == 200
     assert response.json() == GENERIC
@@ -120,7 +120,7 @@ def test_forgot_password_enforces_repository_rate_limit(monkeypatch):
 
 def test_check_reset_token_uses_mysql_token_lookup():
     repository = FakeResetRepository({
-        "id": "user-1", "name": "Student", "email": "student@example.test", "status": "active",
+        "id": "user-1", "name": "Student", "email": "student@example.com", "status": "active",
     })
     client = make_client(repository)
     response = client.get("/api/auth/reset-password/this-is-a-long-reset-token-value")
