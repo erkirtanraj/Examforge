@@ -671,11 +671,11 @@ async def get_test(test_id: str, user=Depends(get_current_user)):
     return t
 
 # ========== Entitlement check ==========
-async def has_access(user_id: str, item_type: str, item_id: str) -> bool:
-    """Check if user has entitlement to this item."""
-    # Admins have all access
-    user = await db.users.find_one({"id": user_id}, {"role": 1})
-    if user and user["role"] in ("admin", "super_admin"):
+async def has_access(user_id: str, item_type: str, item_id: str, user_role: str | None = None) -> bool:
+    """Check access using the current MySQL-backed identity role."""
+    # Never consult the legacy MongoDB users collection for authorization:
+    # its role can be stale after the M2 identity cutover.
+    if user_role in ("admin", "super_admin"):
         return True
     # Check if series is free
     if item_type == "test_series":
@@ -705,7 +705,7 @@ async def start_attempt(test_id: str, user=Depends(get_current_user)):
     if live_start and datetime.now(timezone.utc) < live_start:
         raise HTTPException(403, "This live mock hasn't opened yet")
     series = await db.test_series.find_one({"id": t["series_id"]}, {"_id": 0})
-    if series and not await has_access(user["id"], "test_series", series["id"]):
+    if series and not await has_access(user["id"], "test_series", series["id"], user_role=user["role"]):
         raise HTTPException(403, "Purchase required")
     # Reuse existing in-progress attempt
     existing = await db.test_attempts.find_one(
@@ -1028,7 +1028,7 @@ async def submit_attempt(attempt_id: str, data: SubmitIn, user=Depends(get_curre
     return result
 
 @api.get("/attempts/{attempt_id}/result")
-async def get_result(attempt_id: str, user=Depends(get_current_user)):
+async def get_result(attempt_id: str, request: Request, user=Depends(get_current_user)):
     a = await db.test_attempts.find_one({"id": attempt_id})
     if not a or a["user_id"] != user["id"]:
         raise HTTPException(404, "Not found")
@@ -1039,7 +1039,7 @@ async def get_result(attempt_id: str, user=Depends(get_current_user)):
     qs = await db.questions.find({"id": {"$in": a["question_ids"]}}, {"_id": 0}).to_list(5000)
     res["questions"] = _apply_section_rules(qs, a.get("sections"))
     res["user_answers"] = a.get("answers", {})
-    res["rank"] = await _rank_for(res)
+    res["rank"] = await _rank_for(res, request.app.state.identity_repository)
     return res
 
 def _short_name(n: Optional[str]) -> str:
@@ -1063,21 +1063,21 @@ async def _board(test_id: str) -> list:
         e["percentile"] = 100.0 if n <= 1 else round(bisect.bisect_left(asc, e["score"]) / (n - 1) * 100, 2)
     return entries
 
-async def _names(user_ids) -> dict:
-    users = await db.users.find({"id": {"$in": list(user_ids)}}, {"_id": 0, "id": 1, "name": 1}).to_list(None)
-    return {u["id"]: _short_name(u["name"]) for u in users}
+async def _names(user_ids, repository) -> dict:
+    users = await repository.get_by_ids(list(user_ids))
+    return {u["id"]: _short_name(u.get("name")) for u in users}
 
 def _board_entry(e: dict, names: dict, me: Optional[str]) -> dict:
     return {"rank": e["rank"], "name": names.get(e["user_id"], "Student"), "score": e["score"],
             "accuracy": e.get("accuracy"), "time_taken_sec": e.get("time_taken_sec"),
             "percentile": e["percentile"], "is_you": e["user_id"] == me}
 
-async def _rank_for(result: dict) -> dict:
+async def _rank_for(result: dict, repository) -> dict:
     """All-India rank among all students, using each student's first attempt of this test."""
     board = await _board(result["test_id"])
     mine = next((e for e in board if e["user_id"] == result["user_id"]), None)
     top = board[:5]
-    names = await _names([e["user_id"] for e in top])
+    names = await _names([e["user_id"] for e in top], repository)
     return {"rank": mine["rank"] if mine else 1, "total": len(board), "percentile": mine["percentile"] if mine else 100.0,
             "top": [_board_entry(e, names, result["user_id"]) for e in top],
             "is_official": bool(mine and mine["attempt_id"] == result["attempt_id"])}
@@ -1091,7 +1091,7 @@ def _optional_user_id(creds: Optional[HTTPAuthorizationCredentials]) -> Optional
         return None
 
 @api.get("/tests/{test_id}/leaderboard")
-async def test_leaderboard(test_id: str, limit: int = 50, creds: HTTPAuthorizationCredentials = Depends(bearer)):
+async def test_leaderboard(test_id: str, request: Request, limit: int = 50, creds: HTTPAuthorizationCredentials = Depends(bearer)):
     t = await db.tests.find_one({"id": test_id}, {"_id": 0, "id": 1, "title": 1, "series_id": 1, "total_marks": 1, "duration_minutes": 1, "sections": 1})
     if not t:
         raise HTTPException(404, "Test not found")
@@ -1100,7 +1100,7 @@ async def test_leaderboard(test_id: str, limit: int = 50, creds: HTTPAuthorizati
     board = await _board(test_id)
     limit = max(1, min(limit, 200))
     mine = next((e for e in board if e["user_id"] == me), None) if me else None
-    names = await _names([e["user_id"] for e in board[:limit]] + ([me] if mine else []))
+    names = await _names([e["user_id"] for e in board[:limit]] + ([me] if mine else []), request.app.state.identity_repository)
     scores = [e["score"] for e in board]
     return {
         "test": {"id": t["id"], "title": t["title"], "total_marks": t.get("total_marks"), "duration_minutes": t.get("duration_minutes"),
@@ -1546,9 +1546,13 @@ async def student_dashboard(user=Depends(get_current_user)):
 
 # ========== Admin ==========
 @api.get("/admin/stats")
-async def admin_stats(user=Depends(require_roles("admin", "teacher"))):
+async def admin_stats(request: Request, user=Depends(require_roles("admin", "teacher"))):
+    repository = getattr(request.app.state, "identity_repository", None)
+    if repository is None:
+        raise HTTPException(503, "Identity service unavailable")
+    _users, total_users = await repository.list_users(offset=0, limit=1)
     stats = {
-        "users": await db.users.count_documents({}),
+        "users": total_users,
         "questions": await db.questions.count_documents({}),
         "test_series": await db.test_series.count_documents({}),
         "tests": await db.tests.count_documents({}),
