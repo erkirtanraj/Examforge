@@ -122,6 +122,7 @@ PR: [#2 — feat(mysql): migrate M2 identity and authorization to MySQL](https:/
 - Admin user list/detail/create/update/delete, role changes, status changes and password resets use MySQL. The legacy `GET /api/admin/users` response remains an array.
 - Super-admin protections are enforced again under MySQL row locks, including concurrent target-role changes. Ordinary admins cannot grant, modify or delete super-admin identities.
 - Password reset tokens are hashed at rest, expire, are one-time-use, rate-limited per account, and are consumed with the password update and sibling-token invalidation in one transaction. Session invalidation accounts for JWT second-level timestamp precision.
+- Added an explicit password-reset token retention utility: dry-run by default, exact database-name confirmation for deletion, configurable retention, and bounded independently committed batches. It removes used tokens after `used_at` retention and unused tokens after `expires_at` retention; no automatic startup purge or scheduler is installed.
 - Admin access checks, leaderboard names, admin user counts and public site student metrics read current identity data from MySQL. No MongoDB role read remains in the exam entitlement shortcut.
 - Production startup no longer creates demo accounts, sample mocks, demo coupons, default legal-page copy, or automatic subject backfills. The initial MySQL super-admin is provisioned explicitly with `backend/scripts/bootstrap_super_admin.py`.
 - Added a dry-run-first MongoDB identity importer. It preserves UUIDs and reset-token state, blocks conflicts, does not mutate MongoDB, and restricts `--apply` to `examforge_local`.
@@ -151,6 +152,6 @@ PR: [#2 — feat(mysql): migrate M2 identity and authorization to MySQL](https:/
 
 - Run the MongoDB identity import in read-only dry-run mode against the user's actual local data, inspect the report, and obtain explicit approval before any `--apply`.
 - Production migration requires a separately reviewed backup, import, cutover, smoke-test and rollback runbook. The local-only importer is not a production migration tool.
-- PR #2 has been marked ready for review after final code review and successful CI run #89. Obtain an independent repository-owner review before merge.
-- PR #2 remains a draft and has not been merged. No M2 changes are in `main`; do not merge without explicit repository-owner approval.
+- PR #2 is open and ready for review. A self-review comment is present; obtain an independent repository-owner review before merge.
+- The latest code changes and cleanup utility are on `feature/mysql-m2-identity-authz`; wait for CI to complete and review the final diff. No M2 changes are in `main`; do not merge without explicit repository-owner approval.
 
