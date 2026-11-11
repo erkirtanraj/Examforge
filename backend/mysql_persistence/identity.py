@@ -130,6 +130,11 @@ class IdentityRepository:
                 user = User(**payload)
                 session.add(user)
                 await session.flush()
+                # MySQL server defaults (for example tokens_valid_after and
+                # created_at) may not be populated on the ORM instance after
+                # INSERT. Refresh explicitly while still inside the async
+                # session so serialization never triggers implicit sync IO.
+                await session.refresh(user)
                 return user_to_dict(user)
         except IntegrityError as exc:
             original = getattr(exc, "orig", None)
