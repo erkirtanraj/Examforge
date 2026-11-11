@@ -2,6 +2,7 @@ import pytest
 
 from auth_security import (
     has_valid_identity_claims,
+    can_manage_target_role,
     is_production_environment,
     resolve_jwt_secret,
 )
@@ -55,3 +56,13 @@ def test_identity_claim_validation_rejects_malformed_payloads(payload):
 
 def test_identity_claim_validation_accepts_valid_payload():
     assert has_valid_identity_claims({"uid": "user-1", "iat": 123})
+
+
+@pytest.mark.parametrize("actor,target,expected", [
+    ("admin", "student", True),
+    ("admin", "admin", True),
+    ("admin", "super_admin", False),
+    ("super_admin", "super_admin", True),
+])
+def test_super_admin_target_role_protection(actor, target, expected):
+    assert can_manage_target_role(actor, target) is expected
