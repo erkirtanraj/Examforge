@@ -207,7 +207,9 @@ def build_admin_router(db, require_roles, hash_pw, detach_questions):
             # The repository locks and rechecks the target row, making this
             # legacy API path obey the same MySQL authorization policy.
             await repository.update_user(
-                user_id, {"role": data.role}, actor_role=actor["role"],
+                user_id,
+                {"role": data.role, "tokens_valid_after": int(time.time()) + 1},
+                actor_role=actor["role"],
             )
         except ProtectedIdentity as exc:
             raise HTTPException(403, str(exc)) from exc
