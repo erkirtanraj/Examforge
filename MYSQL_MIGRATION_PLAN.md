@@ -141,11 +141,19 @@ Implemented on `feature/mysql-m2-identity-authz`:
 - SQLAlchemy `PasswordResetToken` model with unique token hash, user foreign key/cascade, one-time-use fields, expiry, and query indexes.
 - Alembic revision `0002_m2_identity_authz` creates the two tables after the M1 baseline.
 - Metadata tests cover identity columns, role/status/provider constraints, unique email/token hashes, and token ownership cascade.
+- Added a framework-independent `IdentityRepository` for MySQL user lookup/create/update/delete, hashed reset-token creation, and transactional reset-token consumption/password update/sibling-token invalidation.
+- Repository normalizes UTC timestamps, preserves legacy user dictionary fields, omits password hashes for public serialization, and translates duplicate-email conflicts.
+- Added repository serialization/time-normalization unit tests. These tests still require local validation after pulling the latest branch.
+
+M2 schema validation completed locally on 2026-11-11:
+- `python -m pytest -n 0 tests/mysql_migration` — 15 passed (one non-blocking Starlette/AnyIO deprecation warning).
+- `alembic current` and `alembic heads` — `0002_m2_identity_authz (head)`.
+- `git status --short` — clean before the repository-layer commits.
 
 Not yet complete:
 - Auth and admin user routes are not switched to MySQL.
-- JWT secret policy, registration role restriction, super-admin protections, Google identity boundary, and transactional password reset remain to implement.
-- M2 migration and model tests have not yet been run locally against MySQL 8.4.
+- JWT secret policy, registration role restriction, super-admin protections, Google identity boundary, and API-level transactional password reset remain to implement.
+- Repository database integration/concurrency tests and full auth/API regression tests remain to implement.
 - Do not merge M2 until schema, route, API regression, authorization, and MySQL integration tests pass and the PR is reviewed.
 
 No M2 change is merged to `main`.
