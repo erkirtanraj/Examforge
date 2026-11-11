@@ -21,7 +21,6 @@ from admin_routes import build_admin_router
 from email_routes import build_email_router, ensure_indexes as ensure_email_indexes
 from perf import PublicCacheMiddleware
 from auth_security import is_production_environment, resolve_jwt_secret
-from mysql_persistence.identity import IdentityNotFound, ProtectedIdentity
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.gzip import GZipMiddleware
 from mysql_persistence import create_database_runtime, load_mysql_settings, IdentityRepository
@@ -1566,36 +1565,6 @@ async def admin_stats(user=Depends(require_roles("admin", "teacher"))):
 @api.get("/admin/orders")
 async def admin_orders(_=Depends(require_roles("admin"))):
     return await db.orders.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
-
-class RoleIn(BaseModel):
-    role: Literal["super_admin", "admin", "teacher", "student", "support"]
-
-@api.put("/admin/users/{user_id}/role")
-async def set_user_role(
-    user_id: str,
-    data: RoleIn,
-    request: Request,
-    user=Depends(require_roles("admin")),
-):
-    if user_id == user["id"]:
-        raise HTTPException(400, "You cannot change your own role")
-    repository = getattr(request.app.state, "identity_repository", None)
-    if repository is None:
-        raise HTTPException(503, "Identity service unavailable")
-    try:
-        # The repository locks and rechecks the target row so concurrent role
-        # changes cannot bypass super-admin protections. Never write identity
-        # roles to the legacy MongoDB collection after the MySQL cutover.
-        await repository.update_user(
-            user_id,
-            {"role": data.role},
-            actor_role=user["role"],
-        )
-    except ProtectedIdentity as exc:
-        raise HTTPException(403, str(exc)) from exc
-    except IdentityNotFound as exc:
-        raise HTTPException(404, "User not found") from exc
-    return {"ok": True}
 
 @api.get("/admin/tests")
 async def admin_tests(_=Depends(require_roles("admin", "teacher"))):
