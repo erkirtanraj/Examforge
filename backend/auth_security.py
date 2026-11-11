@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+import math
 from typing import Any
 
 
@@ -22,7 +23,7 @@ def resolve_jwt_secret(environ: Mapping[str, str]) -> str:
     """Keep local development convenient but fail closed in production."""
     secret = environ.get("JWT_SECRET", "")
     if is_production_environment(environ):
-        if len(secret) < 32 or secret == _DEVELOPMENT_SECRET:
+        if len(secret.strip()) < 32 or secret == _DEVELOPMENT_SECRET:
             raise RuntimeError(
                 "Production requires JWT_SECRET with at least 32 characters."
             )
@@ -41,4 +42,5 @@ def has_valid_identity_claims(payload: Any) -> bool:
         and bool(user_id.strip())
         and isinstance(issued_at, (int, float))
         and not isinstance(issued_at, bool)
+        and math.isfinite(issued_at)
     )
