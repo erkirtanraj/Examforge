@@ -24,7 +24,7 @@ from auth_security import can_manage_target_role, has_valid_identity_claims, is_
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.gzip import GZipMiddleware
 from mysql_persistence import create_database_runtime, load_mysql_settings, IdentityRepository
-from mysql_persistence.auth import register_identity, login_identity, login_google_identity
+from mysql_persistence.auth import register_identity, login_identity, login_google_identity, load_session_identity
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -92,22 +92,10 @@ async def get_current_user(request: Request, creds: HTTPAuthorizationCredentials
         data = pyjwt.decode(creds.credentials, JWT_SECRET, algorithms=[JWT_ALG])
     except Exception:
         raise HTTPException(401, "Invalid or expired token")
-    if not has_valid_identity_claims(data):
-        raise HTTPException(401, "Invalid or expired token")
     repository = getattr(request.app.state, "identity_repository", None)
     if repository is None:
         raise HTTPException(503, "Identity service unavailable")
-    user = await repository.get_by_id(data["uid"], include_password_hash=False)
-    if not user:
-        raise HTTPException(401, "User not found")
-    if user.get("status") == "suspended":
-        raise HTTPException(403, "Your account has been suspended. Please contact support.")
-    tokens_valid_after = user.pop("tokens_valid_after", 0) or 0
-    if not isinstance(tokens_valid_after, (int, float)) or isinstance(tokens_valid_after, bool):
-        raise HTTPException(401, "Invalid or expired token")
-    if data["iat"] < tokens_valid_after:
-        raise HTTPException(401, "Your session has expired. Please sign in again.")
-    return user
+    return await load_session_identity(repository, data)
 
 def require_roles(*roles):
     async def _dep(user=Depends(get_current_user)):
