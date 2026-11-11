@@ -146,10 +146,11 @@ Implemented on `feature/mysql-m2-identity-authz`:
 - Added repository serialization/time-normalization unit tests.
 - Added production JWT-secret policy and malformed identity-claim validation helpers with unit tests.
 - Updated auth handling to reject malformed JWT identity claims, validate session invalidation metadata, force public registration to `student`, and skip predictable demo-account seeding in production.
+- Protected existing `super_admin` targets in the main role-change endpoint as well as the admin user-management routes; added policy tests.
 - CI path filters now run the migration/auth test job when these auth files change.
 
 M2 schema/repository validation completed locally on 2026-11-11:
-- `python -m pytest -n 0 tests/mysql_migration` — 18 passed (one non-blocking Starlette/AnyIO deprecation warning) before the latest auth-security test additions. The latest auth-security changes still need local validation.
+- `python -m pytest -n 0 tests/mysql_migration` — 18 passed (one non-blocking Starlette/AnyIO deprecation warning) before the latest auth-security test additions. The latest auth-security and super-admin protection changes still need local validation.
 - `alembic current` and `alembic heads` — `0002_m2_identity_authz (head)`.
 - `git status --short` — clean before the repository-layer commits.
 
