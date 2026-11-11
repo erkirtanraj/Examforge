@@ -20,6 +20,7 @@ from site_routes import build_site_router, seed_pages, UPLOAD_DIR
 from admin_routes import build_admin_router
 from email_routes import build_email_router, ensure_indexes as ensure_email_indexes
 from perf import PublicCacheMiddleware
+from auth_security import has_valid_identity_claims, is_production_environment, resolve_jwt_secret
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.gzip import GZipMiddleware
 
@@ -28,7 +29,8 @@ load_dotenv(ROOT_DIR / ".env")
 
 MONGO_URL = os.environ["MONGO_URL"]
 DB_NAME = os.environ["DB_NAME"]
-JWT_SECRET = os.environ.get("JWT_SECRET", "dev-secret")
+IS_PRODUCTION = is_production_environment(os.environ)
+JWT_SECRET = resolve_jwt_secret(os.environ)
 JWT_ALG = os.environ.get("JWT_ALGORITHM", "HS256")
 JWT_EXPIRE_HOURS = int(os.environ.get("JWT_EXPIRE_HOURS", "168"))
 RZP_KEY = os.environ.get("RAZORPAY_KEY_ID", "")
@@ -88,12 +90,17 @@ async def get_current_user(creds: HTTPAuthorizationCredentials = Depends(bearer)
         data = pyjwt.decode(creds.credentials, JWT_SECRET, algorithms=[JWT_ALG])
     except Exception:
         raise HTTPException(401, "Invalid or expired token")
+    if not has_valid_identity_claims(data):
+        raise HTTPException(401, "Invalid or expired token")
     user = await db.users.find_one({"id": data["uid"]}, {"_id": 0, "password_hash": 0})
     if not user:
         raise HTTPException(401, "User not found")
     if user.get("status") == "suspended":
         raise HTTPException(403, "Your account has been suspended. Please contact support.")
-    if data.get("iat", 0) < user.pop("tokens_valid_after", 0):
+    tokens_valid_after = user.pop("tokens_valid_after", 0) or 0
+    if not isinstance(tokens_valid_after, (int, float)) or isinstance(tokens_valid_after, bool):
+        raise HTTPException(401, "Invalid or expired token")
+    if data["iat"] < tokens_valid_after:
         raise HTTPException(401, "Your session has expired. Please sign in again.")
     return user
 
@@ -109,7 +116,6 @@ class RegisterIn(BaseModel):
     name: str
     email: EmailStr
     password: str
-    role: Optional[Literal["student", "teacher"]] = "student"
 
 class LoginIn(BaseModel):
     email: EmailStr
@@ -258,7 +264,7 @@ async def register(data: RegisterIn):
         "name": data.name,
         "email": data.email.lower(),
         "password_hash": hash_pw(data.password),
-        "role": data.role or "student",
+        "role": "student",
         "created_at": now_iso(),
         "avatar_url": None,
     }
@@ -1718,7 +1724,8 @@ async def startup():
     await db.entitlements.create_index([("user_id", 1), ("item_type", 1), ("item_id", 1), ("order_id", 1)], unique=True)
     await db.orders.create_index("razorpay_order_id")
     # Seed admin + sample data if missing
-    if not await db.users.find_one({"email": "admin@lms.com"}):
+    # Predictable demo credentials must never be provisioned in production.
+    if not IS_PRODUCTION and not await db.users.find_one({"email": "admin@lms.com"}):
         await _seed_data()
     await _seed_sectional_mocks()
     await _seed_extras()
