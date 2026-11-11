@@ -5,7 +5,10 @@ These tests exercise the isolated SQLAlchemy foundation. They do not import or m
 ## Install (from backend/)
 
 ```powershell
+# Install the existing application dependencies first (includes FastAPI, httpx, pytest and pytest-xdist).
 python -m pip install -r requirements.txt
+
+# Then install the additional MySQL persistence dependencies.
 python -m pip install -r requirements-mysql.txt
 ```
 
