@@ -187,7 +187,11 @@ async def run(apply: bool) -> int:
                 by_id = target_by_id.get(source["id"])
                 by_email = target_by_email.get(source["email"])
                 if by_id:
-                    same = all(getattr(by_id, key) == source[key] for key in (\n                        "name", "email", "password_hash", "role", "status", "auth_provider", "phone",\n                        "avatar_url", "created_at", "updated_at", "created_by", "tokens_valid_after",\n                        "password_reset_at", "password_reset_by",\n                    ))
+                    same = all(getattr(by_id, key) == source[key] for key in (
+                        "name", "email", "password_hash", "role", "status", "auth_provider", "phone",
+                        "avatar_url", "created_at", "updated_at", "created_by", "tokens_valid_after",
+                        "password_reset_at", "password_reset_by",
+                    ))
                     if not same:
                         plan["errors"].append(f"target MySQL identity conflict for user id {source['id']}")
                     else:
@@ -201,7 +205,9 @@ async def run(apply: bool) -> int:
             for source in plan["tokens"]:
                 existing = target_by_hash.get(source["token_hash"])
                 if existing:
-                    same = all(getattr(existing, key) == source[key] for key in (\n                        "user_id", "used", "created_at", "expires_at", "used_at",\n                    ))
+                    same = all(getattr(existing, key) == source[key] for key in (
+                        "user_id", "used", "created_at", "expires_at", "used_at",
+                    ))
                     if not same:
                         plan["errors"].append("target MySQL reset-token record conflicts with MongoDB source")
                     else:
@@ -227,7 +233,23 @@ async def run(apply: bool) -> int:
                 print("Review this report, then use --apply only against examforge_local.")
                 return 0
 
-            # Insert user rows with self-references deferred to the second pass.\n            for row in new_users:\n                row = dict(row)\n                row["created_by"] = None\n                row["password_reset_by"] = None\n                session.add(User(**row))\n            await session.flush()\n            for row in new_users:\n                if row["created_by"] or row["password_reset_by"]:\n                    await session.execute(\n                        User.__table__.update().where(User.id == row["id"]).values(\n                            created_by=row["created_by"], password_reset_by=row["password_reset_by"]\n                        )\n                    )\n            for row in new_tokens:\n                session.add(PasswordResetToken(**row))\n            await session.flush()
+            # Insert user rows with self-references deferred to the second pass.
+            for row in new_users:
+                row = dict(row)
+                row["created_by"] = None
+                row["password_reset_by"] = None
+                session.add(User(**row))
+            await session.flush()
+            for row in new_users:
+                if row["created_by"] or row["password_reset_by"]:
+                    await session.execute(
+                        User.__table__.update().where(User.id == row["id"]).values(
+                            created_by=row["created_by"], password_reset_by=row["password_reset_by"]
+                        )
+                    )
+            for row in new_tokens:
+                session.add(PasswordResetToken(**row))
+            await session.flush()
 
             print("RESULT: IMPORT COMMITTED to examforge_local.")
             print("MongoDB source records were not modified or deleted.")
