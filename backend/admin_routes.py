@@ -5,7 +5,7 @@ from typing import List, Literal, Optional
 from datetime import datetime, timezone
 import re, uuid, time
 
-from mysql_persistence.identity import DuplicateIdentityEmail, IdentityNotFound
+from mysql_persistence.identity import DuplicateIdentityEmail, IdentityNotFound, ProtectedIdentity
 
 PAGE_SIZES = (10, 50, 100, 500, 1000, 5000)
 Role = Literal["super_admin", "admin", "teacher", "student", "support"]
@@ -255,7 +255,9 @@ def build_admin_router(db, require_roles, hash_pw, detach_questions):
         if data.role != user["role"] or email != user["email"]:
             changes["tokens_valid_after"] = int(time.time())
         try:
-            updated = await repository.update_user(user_id, changes)
+            updated = await repository.update_user(user_id, changes, actor_role=actor["role"])
+        except ProtectedIdentity as exc:
+            raise HTTPException(403, str(exc)) from exc
         except IdentityNotFound as exc:
             raise HTTPException(404, "User not found") from exc
         except DuplicateIdentityEmail as exc:
@@ -272,7 +274,9 @@ def build_admin_router(db, require_roles, hash_pw, detach_questions):
                 "password_reset_at": datetime.now(timezone.utc),
                 "password_reset_by": actor["id"],
                 "tokens_valid_after": int(time.time()),
-            })
+            }, actor_role=actor["role"])
+        except ProtectedIdentity as exc:
+            raise HTTPException(403, str(exc)) from exc
         except IdentityNotFound as exc:
             raise HTTPException(404, "User not found") from exc
         return {"ok": True}
@@ -288,7 +292,9 @@ def build_admin_router(db, require_roles, hash_pw, detach_questions):
         if data.suspended:
             changes["tokens_valid_after"] = int(time.time())
         try:
-            await repository.update_user(user_id, changes)
+            await repository.update_user(user_id, changes, actor_role=actor["role"])
+        except ProtectedIdentity as exc:
+            raise HTTPException(403, str(exc)) from exc
         except IdentityNotFound as exc:
             raise HTTPException(404, "User not found") from exc
         return {"ok": True, "status": status_value}
@@ -299,14 +305,19 @@ def build_admin_router(db, require_roles, hash_pw, detach_questions):
         if user_id == actor["id"]:
             raise HTTPException(400, "You cannot delete your own account")
         await _target(repository, user_id, actor)
-        # Related operational records remain in MongoDB for now. Clean them
-        # using the established legacy behavior, then delete the MySQL identity.
+        # Delete the MySQL identity first. If Mongo cleanup subsequently fails,
+        # legacy operational records may remain orphaned, but we avoid deleting
+        # those records while leaving a live identity behind after a MySQL error.
+        try:
+            deleted = await repository.delete_user(user_id, actor_role=actor["role"])
+        except ProtectedIdentity as exc:
+            raise HTTPException(403, str(exc)) from exc
+        if not deleted:
+            raise HTTPException(404, "User not found")
         removed = {
             collection: (await db[collection].delete_many({"user_id": user_id})).deleted_count
             for collection in USER_COLLECTIONS
         }
-        if not await repository.delete_user(user_id):
-            raise HTTPException(404, "User not found")
         return {"ok": True, "removed": removed}
 
     return r
