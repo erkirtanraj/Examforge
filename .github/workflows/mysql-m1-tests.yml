@@ -89,5 +89,8 @@ jobs:
       - name: Verify migration head
         run: python -m alembic -c alembic.ini current
 
+      - name: Compile migrated API modules
+        run: python -m py_compile server.py admin_routes.py email_routes.py site_routes.py
+
       - name: Run MySQL migration tests
         run: python -m pytest -n 0 tests/mysql_migration
