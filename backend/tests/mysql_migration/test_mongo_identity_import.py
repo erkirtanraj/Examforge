@@ -78,3 +78,21 @@ def test_build_import_plan_accepts_valid_reset_token_and_preserves_usage_state()
 def test_as_utc_naive_rejects_non_datetime():
     with pytest.raises(ImportPreflightError):
         as_utc_naive(123, "created_at", required=True)
+
+
+
+def test_apply_target_requires_the_exact_local_database_and_loopback_host():
+    from types import SimpleNamespace
+    from scripts.migrate_mongo_identities import require_local_apply_target
+
+    local = SimpleNamespace(database_name="examforge_local", url=SimpleNamespace(host="127.0.0.1"))
+    require_local_apply_target(local)
+
+    for host in ("db.example.com", "10.0.0.5", "mysql.internal"):
+        remote = SimpleNamespace(database_name="examforge_local", url=SimpleNamespace(host=host))
+        with pytest.raises(ImportPreflightError, match="host must be localhost"):
+            require_local_apply_target(remote)
+
+    wrong_database = SimpleNamespace(database_name="production", url=SimpleNamespace(host="localhost"))
+    with pytest.raises(ImportPreflightError, match="database must be exactly"):
+        require_local_apply_target(wrong_database)
