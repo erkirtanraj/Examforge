@@ -3,13 +3,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, EmailStr, Field
 from typing import List, Literal, Optional
 from datetime import datetime, timezone
-import re, uuid, time
+import re, uuid, time, logging
 
 from mysql_persistence.identity import DuplicateIdentityEmail, IdentityNotFound, ProtectedIdentity
 
 PAGE_SIZES = (10, 50, 100, 500, 1000, 5000)
 Role = Literal["super_admin", "admin", "teacher", "student", "support"]
 USER_COLLECTIONS = ("test_attempts", "test_results", "orders", "entitlements", "lesson_progress")
+log = logging.getLogger(__name__)
 
 
 class QuestionFilter(BaseModel):
@@ -314,10 +315,19 @@ def build_admin_router(db, require_roles, hash_pw, detach_questions):
             raise HTTPException(403, str(exc)) from exc
         if not deleted:
             raise HTTPException(404, "User not found")
-        removed = {
-            collection: (await db[collection].delete_many({"user_id": user_id})).deleted_count
-            for collection in USER_COLLECTIONS
-        }
-        return {"ok": True, "removed": removed}
+        removed = {}
+        cleanup_pending = False
+        for collection in USER_COLLECTIONS:
+            try:
+                result = await db[collection].delete_many({"user_id": user_id})
+                removed[collection] = result.deleted_count
+            except Exception:
+                # The identity is already deleted and cannot authenticate. Keep
+                # the API result explicit so clients do not retry as if deletion
+                # had failed; an operator can safely retry this idempotent cleanup.
+                cleanup_pending = True
+                log.exception("Legacy Mongo cleanup failed for deleted identity %s in %s", user_id, collection)
+                break
+        return {"ok": True, "removed": removed, "cleanup_pending": cleanup_pending}
 
     return r
