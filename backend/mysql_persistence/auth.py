@@ -36,7 +36,12 @@ async def load_session_identity(repository, claims: Any) -> dict[str, Any]:
             status_code=401,
             detail="Your session has expired. Please sign in again.",
         )
-    return user
+    # Return only the public identity fields expected by API consumers.
+    public_fields = (
+        "id", "name", "email", "role", "status", "auth_provider",
+        "phone", "avatar_url", "created_at",
+    )
+    return {key: user[key] for key in public_fields if key in user}
 
 
 def _public_identity(user: Mapping[str, Any]) -> dict[str, str]:
