@@ -18,7 +18,7 @@ from fastapi import UploadFile, File, Form
 import razorpay
 from site_routes import build_site_router, seed_pages, UPLOAD_DIR
 from admin_routes import build_admin_router
-from email_routes import build_email_router, ensure_indexes as ensure_email_indexes
+from email_routes import build_email_router
 from perf import PublicCacheMiddleware
 from auth_security import is_production_environment, resolve_jwt_secret
 from fastapi.staticfiles import StaticFiles
@@ -1707,7 +1707,6 @@ async def startup():
         await seed_pages(db)
         await _seed_subjects()
 
-    await ensure_email_indexes(db)
 
 @app.on_event("shutdown")
 async def shutdown():
