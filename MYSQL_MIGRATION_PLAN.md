@@ -145,12 +145,12 @@ PR: [#2 — feat(mysql): migrate M2 identity and authorization to MySQL](https:/
   - Real MySQL identity integration tests: 6 passed.
 - GitHub Actions run #70, commit `d6f6599dbad4cabbec3ed41c589ac86066da7631`: **91 passed, 1 warning**. Alembic reached `0002_m2_identity_authz (head)`.
 - Latest review added same-second session-invalidation coverage and a CI compile step for `server.py`, `admin_routes.py`, `email_routes.py` and `site_routes.py`.
-- GitHub Actions run #84 is pending for the latest branch head `eb0556c4921f7a539d3f17d22e56e4c3921bde0d`; its result must be checked before declaring final validation complete.
+- GitHub Actions run #89 on head `ce0645d955a7a68cbc6568f91edfe22bd2182ba5`: **92 passed, 1 warning**. Alembic reached `0002_m2_identity_authz (head)`; API module compilation passed.
 
 ### Remaining gates
 
 - Run the MongoDB identity import in read-only dry-run mode against the user's actual local data, inspect the report, and obtain explicit approval before any `--apply`.
 - Production migration requires a separately reviewed backup, import, cutover, smoke-test and rollback runbook. The local-only importer is not a production migration tool.
-- Complete final review of the current PR head and verify the latest CI run.
+- PR #2 has been marked ready for review after final code review and successful CI run #89. Obtain an independent repository-owner review before merge.
 - PR #2 remains a draft and has not been merged. No M2 changes are in `main`; do not merge without explicit repository-owner approval.
 
