@@ -194,10 +194,13 @@ class IdentityRepository:
         instant = utc_naive(now)
         async with self._sessions() as session:
             token = await session.scalar(
-                select(PasswordResetToken).where(
+                select(PasswordResetToken)
+                .join(User, User.id == PasswordResetToken.user_id)
+                .where(
                     PasswordResetToken.token_hash == token_hash,
                     PasswordResetToken.used.is_(False),
                     PasswordResetToken.expires_at > instant,
+                    User.status == "active",
                 )
             )
             if token is None:
