@@ -1690,14 +1690,19 @@ async def startup():
     await db.test_results.create_index("attempt_id", unique=True)
     await db.entitlements.create_index([("user_id", 1), ("item_type", 1), ("item_id", 1), ("order_id", 1)], unique=True)
     await db.orders.create_index("razorpay_order_id")
-    # Seed admin + sample data if missing
-    # Predictable demo credentials must never be provisioned in production.
-    if not IS_PRODUCTION and not await db.users.find_one({"email": "admin@lms.com"}):
-        await _seed_data()
-    await _seed_sectional_mocks()
-    await _seed_extras()
+    # All demo fixtures and subject backfills are development-only. In
+    # production, never create sample mocks/coupons or mutate question records
+    # as a side effect of starting the API.
+    if not IS_PRODUCTION:
+        if not await db.users.find_one({"email": "admin@lms.com"}):
+            await _seed_data()
+        await _seed_sectional_mocks()
+        await _seed_extras()
+        await _seed_subjects()
+
+    # Static legal/content pages are safe defaults and remain available when a
+    # fresh production database is first initialized.
     await seed_pages(db)
-    await _seed_subjects()
     await ensure_email_indexes(db)
 
 @app.on_event("shutdown")
