@@ -4,6 +4,7 @@ import pytest
 from mysql_persistence.auth import (
     login_google_identity,
     login_identity,
+    load_session_identity,
     register_identity,
 )
 from mysql_persistence.identity import DuplicateIdentityEmail
@@ -170,4 +171,67 @@ async def test_google_login_requires_verified_email():
     repository = FakeIdentityRepository()
     with pytest.raises(HTTPException) as error:
         await login_google_identity(repository, profile={"name": "No Email"}, make_token=token_for)
+    assert error.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_session_validation_loads_current_mysql_identity_without_password_hash():
+    class SessionRepository:
+        async def get_by_id(self, user_id, *, include_password_hash):
+            assert user_id == "user-1"
+            assert include_password_hash is False
+            return {
+                "id": "user-1", "name": "Student", "email": "student@example.test",
+                "role": "student", "status": "active", "tokens_valid_after": 100,
+            }
+
+    user = await load_session_identity(SessionRepository(), {"uid": "user-1", "iat": 101})
+    assert user["id"] == "user-1"
+    assert "tokens_valid_after" not in user
+    assert "password_hash" not in user
+
+
+@pytest.mark.asyncio
+async def test_session_validation_rejects_missing_mysql_identity():
+    class MissingRepository:
+        async def get_by_id(self, user_id, *, include_password_hash):
+            return None
+
+    with pytest.raises(HTTPException) as error:
+        await load_session_identity(MissingRepository(), {"uid": "missing", "iat": 101})
+    assert error.value.status_code == 401
+    assert error.value.detail == "User not found"
+
+
+@pytest.mark.asyncio
+async def test_session_validation_rejects_suspended_identity():
+    class SuspendedRepository:
+        async def get_by_id(self, user_id, *, include_password_hash):
+            return {"id": user_id, "status": "suspended", "tokens_valid_after": 0}
+
+    with pytest.raises(HTTPException) as error:
+        await load_session_identity(SuspendedRepository(), {"uid": "user-1", "iat": 101})
+    assert error.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_session_validation_rejects_token_issued_before_password_reset():
+    class ResetRepository:
+        async def get_by_id(self, user_id, *, include_password_hash):
+            return {"id": user_id, "status": "active", "tokens_valid_after": 200}
+
+    with pytest.raises(HTTPException) as error:
+        await load_session_identity(ResetRepository(), {"uid": "user-1", "iat": 199})
+    assert error.value.status_code == 401
+    assert "session has expired" in error.value.detail
+
+
+@pytest.mark.asyncio
+async def test_session_validation_rejects_malformed_identity_claims():
+    class MustNotQueryRepository:
+        async def get_by_id(self, *_args, **_kwargs):
+            pytest.fail("repository must not be queried for invalid claims")
+
+    with pytest.raises(HTTPException) as error:
+        await load_session_identity(MustNotQueryRepository(), {"uid": "user-1", "iat": True})
     assert error.value.status_code == 401
