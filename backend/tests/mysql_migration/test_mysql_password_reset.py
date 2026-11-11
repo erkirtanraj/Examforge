@@ -23,9 +23,10 @@ class FakeDatabase:
 
 
 class FakeResetRepository:
-    def __init__(self, user=None, allow_request=True):
+    def __init__(self, user=None, allow_request=True, valid_tokens=None):
         self.user = user
         self.allow_request = allow_request
+        self.valid_tokens = set(valid_tokens or [])
         self.created = []
         self.checked = []
         self.consumed = []
@@ -42,7 +43,7 @@ class FakeResetRepository:
 
     async def get_valid_reset_token(self, *, token_hash):
         self.checked.append(token_hash)
-        if self.created and self.created[-1]["token_hash"] == token_hash:
+        if token_hash in self.valid_tokens:
             return {"user_id": "user-1"}
         return None
 
@@ -128,10 +129,11 @@ def test_check_reset_token_uses_mysql_token_lookup():
 
 
 def test_reset_password_consumes_token_and_updates_password_through_repository():
-    repository = FakeResetRepository()
+    raw_token = "this-is-a-long-reset-token-value"
+    repository = FakeResetRepository(valid_tokens={email_routes._hash(raw_token)})
     response = make_client(repository).post(
         "/api/auth/reset-password",
-        json={"token": "this-is-a-long-reset-token-value", "password": "new-password"},
+        json={"token": raw_token, "password": "new-password"},
     )
     assert response.status_code == 200
     assert response.json() == {"ok": True}
