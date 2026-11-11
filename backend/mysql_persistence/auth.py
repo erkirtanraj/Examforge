@@ -107,6 +107,11 @@ async def login_google_identity(
     email = str(profile.get("email") or "").strip().lower()
     if not email:
         raise HTTPException(status_code=401, detail="Google account has no email")
+    email_verified = profile.get("email_verified")
+    if email_verified is False or (
+        isinstance(email_verified, str) and email_verified.strip().lower() in {"false", "0", "no"}
+    ):
+        raise HTTPException(status_code=401, detail="Google account email is not verified")
 
     user = await repository.get_by_email(email)
     if user is None:
