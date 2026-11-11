@@ -182,7 +182,7 @@ async def test_session_validation_loads_current_mysql_identity_without_password_
             assert include_password_hash is False
             return {
                 "id": "user-1", "name": "Student", "email": "student@example.test",
-                "role": "student", "status": "active", "tokens_valid_after": 100,
+                "role": "student", "status": "active", "tokens_valid_after": 100,\n                "created_by": "admin-1", "password_reset_by": "admin-2",
             }
 
     user = await load_session_identity(SessionRepository(), {"uid": "user-1", "iat": 101})
