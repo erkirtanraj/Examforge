@@ -6,6 +6,8 @@ on:
     branches: [main]
     paths:
       - "backend/mysql_persistence/**"
+      - "backend/auth_security.py"
+      - "backend/server.py"
       - "backend/alembic.ini"
       - "backend/alembic/**"
       - "backend/requirements-mysql.txt"
