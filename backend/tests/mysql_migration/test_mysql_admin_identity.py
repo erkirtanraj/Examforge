@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 import pytest
 
 from admin_routes import build_admin_router
-from mysql_persistence.identity import DuplicateIdentityEmail, IdentityNotFound
+from mysql_persistence.identity import DuplicateIdentityEmail, IdentityNotFound, ProtectedIdentity
 
 
 class FakeIdentityRepository:
@@ -49,10 +49,14 @@ class FakeIdentityRepository:
         self.created.append(dict(user))
         return dict(user)
 
-    async def update_user(self, user_id, values):
+    async def update_user(self, user_id, values, *, actor_role=None):
         user = self.users.get(user_id)
         if user is None:
             raise IdentityNotFound("missing")
+        if actor_role is not None and actor_role != "super_admin" and (
+            user["role"] == "super_admin" or values.get("role") == "super_admin"
+        ):
+            raise ProtectedIdentity("protected")
         if "email" in values and any(
             other["id"] != user_id and other["email"] == values["email"]
             for other in self.users.values()
@@ -63,9 +67,11 @@ class FakeIdentityRepository:
         self.updated.append((user_id, dict(values)))
         return dict(user)
 
-    async def delete_user(self, user_id):
+    async def delete_user(self, user_id, *, actor_role=None):
         if user_id not in self.users:
             return False
+        if actor_role is not None and actor_role != "super_admin" and self.users[user_id]["role"] == "super_admin":
+            raise ProtectedIdentity("protected")
         del self.users[user_id]
         self.deleted.append(user_id)
         return True
@@ -223,3 +229,29 @@ def test_admin_delete_removes_legacy_associated_records_and_mysql_identity():
     assert response.status_code == 200
     assert response.json()["removed"]["orders"] == 2
     assert repository.deleted == ["user-1"]
+
+
+class RacePromotionRepository(FakeIdentityRepository):
+    """Simulate a concurrent promotion after the route's initial read."""
+    async def get_by_id(self, user_id, *, include_password_hash=True):
+        result = await super().get_by_id(user_id, include_password_hash=include_password_hash)
+        if result and user_id == "user-1":
+            self.users[user_id]["role"] = "super_admin"
+        return result
+
+
+def test_admin_cannot_update_super_admin_if_role_changes_after_precheck():
+    repository = RacePromotionRepository([user()])
+    response = make_client(repository).put("/api/admin/users/user-1", json={
+        "name": "Changed", "email": "student@example.com", "phone": "",
+        "role": "teacher",
+    })
+    assert response.status_code == 403
+    assert repository.updated == []
+
+
+def test_admin_cannot_delete_super_admin_if_role_changes_after_precheck():
+    repository = RacePromotionRepository([user()])
+    response = make_client(repository).delete("/api/admin/users/user-1")
+    assert response.status_code == 403
+    assert repository.deleted == []
