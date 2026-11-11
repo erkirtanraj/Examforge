@@ -173,12 +173,20 @@ def build_email_router(db, require_roles, get_brand, hash_pw):
         repository = getattr(request.app.state, "identity_repository", None)
         if repository is None:
             raise HTTPException(503, "Identity service unavailable")
+        token_hash = _hash(data.token)
+        if await repository.get_valid_reset_token(token_hash=token_hash) is None:
+            raise HTTPException(
+                400,
+                "This reset link is invalid or has expired. Please request a new one.",
+            )
         try:
             await repository.consume_reset_token(
-                token_hash=_hash(data.token),
+                token_hash=token_hash,
                 new_password_hash=hash_pw(data.password),
             )
         except InvalidOrExpiredResetToken as exc:
+            # The token may have been consumed between the preflight read and
+            # the locked transactional consume; the repository remains authoritative.
             raise HTTPException(
                 400,
                 "This reset link is invalid or has expired. Please request a new one.",
