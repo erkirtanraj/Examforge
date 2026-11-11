@@ -23,7 +23,7 @@ from uuid import uuid4
 import bcrypt
 from dotenv import load_dotenv
 from pydantic import EmailStr, TypeAdapter
-from sqlalchemy import func, select, text
+from sqlalchemy import func, insert, select, text
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_DIR))
@@ -58,18 +58,22 @@ async def bootstrap() -> None:
     runtime = create_database_runtime(load_mysql_settings())
     lock_acquired = False
     try:
-        async with runtime.sessions() as session:
-            try:
-                async with session.begin():
-                    acquired = await session.scalar(
-                        text("SELECT GET_LOCK(:lock_name, 15)"),
-                        {"lock_name": LOCK_NAME},
-                    )
-                    if acquired != 1:
-                        raise SystemExit("Could not acquire the administrator bootstrap lock")
-                    lock_acquired = True
+        # Keep the same physical connection checked out for GET_LOCK and
+        # RELEASE_LOCK; MySQL advisory locks are connection-scoped.
+        async with runtime.engine.connect() as connection:
+            acquired = await connection.scalar(
+                text("SELECT GET_LOCK(:lock_name, 15)"),
+                {"lock_name": LOCK_NAME},
+            )
+            if acquired != 1:
+                await connection.commit()
+                raise SystemExit("Could not acquire the administrator bootstrap lock")
+            lock_acquired = True
+            await connection.commit()
 
-                    existing_admins = await session.scalar(
+            try:
+                async with connection.begin():
+                    existing_admins = await connection.scalar(
                         select(func.count(User.id)).where(User.role.in_(("admin", "super_admin")))
                     )
                     if int(existing_admins or 0) > 0:
@@ -77,7 +81,7 @@ async def bootstrap() -> None:
                             "A MySQL admin already exists. Bootstrap is one-time and will not modify accounts."
                         )
 
-                    session.add(User(
+                    await connection.execute(insert(User).values(
                         id=str(uuid4()),
                         name=name,
                         email=email,
@@ -89,14 +93,13 @@ async def bootstrap() -> None:
                         avatar_url=None,
                         created_at=utc_naive(),
                     ))
-                    await session.flush()
             finally:
                 if lock_acquired:
-                    await session.execute(
+                    await connection.execute(
                         text("SELECT RELEASE_LOCK(:lock_name)"),
                         {"lock_name": LOCK_NAME},
                     )
-                    await session.commit()
+                    await connection.commit()
         print(f"Created the initial MySQL super administrator: {email}")
     finally:
         await runtime.dispose()
