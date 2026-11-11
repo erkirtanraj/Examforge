@@ -187,27 +187,12 @@ def build_admin_router(db, require_roles, hash_pw, detach_questions):
                 if key not in ("password_hash", "tokens_valid_after")}
 
     @r.get("/users")
-    async def list_users(
-        request: Request,
-        page: int = Query(1, ge=1),
-        page_size: int = Query(50, ge=1, le=100),
-        search: str = "",
-        role: Optional[Role] = None,
-        status: Optional[Literal["active", "suspended"]] = None,
-        actor=admin,
-    ):
+    async def list_users(request: Request, actor=admin):
+        # Preserve the existing API contract: GET /api/admin/users returns
+        # an array of public users, while sourcing identities from MySQL.
         repository = _identity_repository(request)
-        users, total = await repository.list_users(
-            search=search, role=role, status=status,
-            offset=(page - 1) * page_size, limit=page_size,
-        )
-        return {
-            "items": [_public_identity(user) for user in users],
-            "total": total,
-            "page": page,
-            "page_size": page_size,
-            "pages": max(1, -(-total // page_size)),
-        }
+        users, _total = await repository.list_users(offset=0, limit=1000)
+        return [_public_identity(user) for user in users]
 
     @r.get("/users/{user_id}")
     async def get_user(user_id: str, request: Request, actor=admin):
