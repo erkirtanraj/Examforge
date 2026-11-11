@@ -1912,9 +1912,6 @@ async def _seed_extras():
                                      "valid_until": None, "item_ids": [], "active": True, "used_count": 0,
                                      "description": "20% off your first purchase", "created_at": now_iso()})
 
-@app.on_event("shutdown")
-async def shutdown():
-    client.close()
 
 SEED_SUBJECTS = {
     "SSC CGL": ["Quantitative Aptitude", "General Intelligence & Reasoning", "English Comprehension", "General Awareness"],
