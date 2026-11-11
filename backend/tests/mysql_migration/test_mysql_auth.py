@@ -236,3 +236,17 @@ async def test_session_validation_rejects_malformed_identity_claims():
     with pytest.raises(HTTPException) as error:
         await load_session_identity(MustNotQueryRepository(), {"uid": "user-1", "iat": True})
     assert error.value.status_code == 401
+
+
+
+@pytest.mark.asyncio
+async def test_google_login_rejects_explicitly_unverified_email():
+    repository = FakeIdentityRepository()
+    with pytest.raises(HTTPException) as error:
+        await login_google_identity(
+            repository,
+            profile={"email": "unverified@example.test", "email_verified": False},
+            make_token=token_for,
+        )
+    assert error.value.status_code == 401
+    assert repository.created == []
