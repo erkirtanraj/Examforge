@@ -146,6 +146,7 @@ async def test_mysql_password_reset_consumes_token_and_invalidates_siblings(mysq
     updated = await repository.get_by_id(user["id"])
     assert updated["password_hash"] == "new-integration-hash"
     assert updated["password_reset_at"] is not None
+    assert updated["tokens_valid_after"] > int(now.timestamp())
     with pytest.raises(InvalidOrExpiredResetToken):
         await repository.consume_reset_token(
             token_hash=first_hash, new_password_hash="replay-must-fail"
