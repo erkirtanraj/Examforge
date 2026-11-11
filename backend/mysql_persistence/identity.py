@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Mapping
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 
@@ -73,6 +73,29 @@ class IdentityRepository:
 
     def __init__(self, sessions: async_sessionmaker[AsyncSession]):
         self._sessions = sessions
+
+    async def list_users(
+        self, *, search: str = "", role: str | None = None, status: str | None = None,
+        offset: int = 0, limit: int = 50,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Return a stable, paginated user list without exposing credential fields."""
+        filters = []
+        if search.strip():
+            pattern = f"%{search.strip()}%"
+            filters.append(or_(User.name.ilike(pattern), User.email.ilike(pattern)))
+        if role:
+            filters.append(User.role == role)
+        if status:
+            filters.append(User.status == status)
+        async with self._sessions() as session:
+            count_query = select(func.count(User.id))
+            rows_query = select(User).order_by(User.created_at.desc(), User.id.asc())
+            if filters:
+                count_query = count_query.where(*filters)
+                rows_query = rows_query.where(*filters)
+            total = int(await session.scalar(count_query) or 0)
+            rows = (await session.scalars(rows_query.offset(offset).limit(limit))).all()
+            return [user_to_dict(row, include_password_hash=False) for row in rows], total
 
     async def get_by_id(self, user_id: str, *, include_password_hash: bool = True) -> dict | None:
         async with self._sessions() as session:
