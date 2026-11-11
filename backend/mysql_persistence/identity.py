@@ -213,21 +213,38 @@ class IdentityRepository:
         """Atomically consume a token, update password and invalidate sibling tokens."""
         instant = utc_naive(now)
         async with self._sessions() as session, session.begin():
+            # Read the owner without locking, then always lock the user row
+            # before any reset-token rows. This consistent lock order avoids
+            # deadlocks between simultaneous resets for the same identity.
+            candidate = await session.scalar(
+                select(PasswordResetToken).where(
+                    PasswordResetToken.token_hash == token_hash,
+                    PasswordResetToken.used.is_(False),
+                    PasswordResetToken.expires_at > instant,
+                )
+            )
+            if candidate is None:
+                raise InvalidOrExpiredResetToken(
+                    "This reset link is invalid or has expired. Please request a new one."
+                )
+            user = await session.scalar(
+                select(User).where(User.id == candidate.user_id).with_for_update()
+            )
+            if user is None or user.status != "active":
+                raise InvalidOrExpiredResetToken(
+                    "This reset link is invalid or has expired. Please request a new one."
+                )
             token = await session.scalar(
                 select(PasswordResetToken)
                 .where(
                     PasswordResetToken.token_hash == token_hash,
+                    PasswordResetToken.user_id == user.id,
                     PasswordResetToken.used.is_(False),
                     PasswordResetToken.expires_at > instant,
                 )
                 .with_for_update()
             )
             if token is None:
-                raise InvalidOrExpiredResetToken(
-                    "This reset link is invalid or has expired. Please request a new one."
-                )
-            user = await session.scalar(select(User).where(User.id == token.user_id).with_for_update())
-            if user is None:
                 raise InvalidOrExpiredResetToken(
                     "This reset link is invalid or has expired. Please request a new one."
                 )
