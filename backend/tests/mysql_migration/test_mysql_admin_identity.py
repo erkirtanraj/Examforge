@@ -140,7 +140,9 @@ def test_legacy_role_endpoint_updates_mysql_identity():
     )
     assert response.status_code == 200
     assert repository.users["user-1"]["role"] == "teacher"
-    assert repository.updated[-1][1] == {"role": "teacher"}
+    changes = repository.updated[-1][1]
+    assert changes["role"] == "teacher"
+    assert changes["tokens_valid_after"] > 0
 
 
 def test_legacy_role_endpoint_blocks_admin_from_granting_super_admin():
