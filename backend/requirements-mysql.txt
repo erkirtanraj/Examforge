@@ -3,3 +3,4 @@ SQLAlchemy>=2.0,<2.1
 alembic>=1.13,<2.0
 asyncmy>=0.2,<0.3
 python-dotenv>=1.0,<2.0
+cryptography>=42.0.0
