@@ -20,7 +20,7 @@ from site_routes import build_site_router, seed_pages, UPLOAD_DIR
 from admin_routes import build_admin_router
 from email_routes import build_email_router, ensure_indexes as ensure_email_indexes
 from perf import PublicCacheMiddleware
-from auth_security import has_valid_identity_claims, is_production_environment, resolve_jwt_secret
+from auth_security import can_manage_target_role, has_valid_identity_claims, is_production_environment, resolve_jwt_secret
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.gzip import GZipMiddleware
 
@@ -1601,11 +1601,14 @@ class RoleIn(BaseModel):
 async def set_user_role(user_id: str, data: RoleIn, user=Depends(require_roles("admin"))):
     if user_id == user["id"]:
         raise HTTPException(400, "You cannot change your own role")
+    target = await db.users.find_one({"id": user_id}, {"_id": 0, "role": 1})
+    if not target:
+        raise HTTPException(404, "User not found")
+    if not can_manage_target_role(user["role"], target.get("role", "")):
+        raise HTTPException(403, "Only a super admin can manage a super admin")
     if data.role == "super_admin" and user["role"] != "super_admin":
         raise HTTPException(403, "Only a super admin can grant super admin")
-    res = await db.users.update_one({"id": user_id}, {"$set": {"role": data.role}})
-    if not res.matched_count:
-        raise HTTPException(404, "User not found")
+    await db.users.update_one({"id": user_id}, {"$set": {"role": data.role}})
     return {"ok": True}
 
 @api.get("/admin/tests")
