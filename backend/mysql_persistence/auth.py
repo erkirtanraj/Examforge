@@ -7,6 +7,7 @@ provider; only the resulting identity is persisted here.
 from __future__ import annotations
 
 from typing import Any, Callable, Mapping
+from uuid import uuid4
 
 from fastapi import HTTPException
 
@@ -34,7 +35,7 @@ async def register_identity(
     normalized_email = email.strip().lower()
     try:
         user = await repository.create_user({
-            "id": __import__("uuid").uuid4().__str__(),
+            "id": str(uuid4()),
             "name": name.strip(),
             "email": normalized_email,
             "password_hash": hash_password(password),
@@ -80,7 +81,7 @@ async def login_google_identity(
     user = await repository.get_by_email(email)
     if user is None:
         user_values = {
-            "id": str(__import__("uuid").uuid4()),
+            "id": str(uuid4()),
             "name": str(profile.get("name") or email.split("@")[0]).strip(),
             "email": email,
             "password_hash": None,
