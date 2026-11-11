@@ -23,6 +23,8 @@ from perf import PublicCacheMiddleware
 from auth_security import can_manage_target_role, has_valid_identity_claims, is_production_environment, resolve_jwt_secret
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.gzip import GZipMiddleware
+from mysql_persistence import create_database_runtime, load_mysql_settings, IdentityRepository
+from mysql_persistence.auth import register_identity, login_identity, login_google_identity
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -83,7 +85,7 @@ def make_token(user_id: str, role: str) -> str:
     }
     return pyjwt.encode(payload, JWT_SECRET, algorithm=JWT_ALG)
 
-async def get_current_user(creds: HTTPAuthorizationCredentials = Depends(bearer)):
+async def get_current_user(request: Request, creds: HTTPAuthorizationCredentials = Depends(bearer)):
     if not creds:
         raise HTTPException(401, "Not authenticated")
     try:
@@ -92,7 +94,10 @@ async def get_current_user(creds: HTTPAuthorizationCredentials = Depends(bearer)
         raise HTTPException(401, "Invalid or expired token")
     if not has_valid_identity_claims(data):
         raise HTTPException(401, "Invalid or expired token")
-    user = await db.users.find_one({"id": data["uid"]}, {"_id": 0, "password_hash": 0})
+    repository = getattr(request.app.state, "identity_repository", None)
+    if repository is None:
+        raise HTTPException(503, "Identity service unavailable")
+    user = await repository.get_by_id(data["uid"], include_password_hash=False)
     if not user:
         raise HTTPException(401, "User not found")
     if user.get("status") == "suspended":
@@ -254,33 +259,24 @@ class VerifyPaymentIn(BaseModel):
 
 # ========== Auth ==========
 @api.post("/auth/register")
-async def register(data: RegisterIn):
-    existing = await db.users.find_one({"email": data.email.lower()})
-    if existing:
-        raise HTTPException(400, "Email already registered")
-    uid = gen_id()
-    doc = {
-        "id": uid,
-        "name": data.name,
-        "email": data.email.lower(),
-        "password_hash": hash_pw(data.password),
-        "role": "student",
-        "created_at": now_iso(),
-        "avatar_url": None,
-    }
-    await db.users.insert_one(doc)
-    token = make_token(uid, doc["role"])
-    return {"token": token, "user": {"id": uid, "name": doc["name"], "email": doc["email"], "role": doc["role"]}}
+async def register(data: RegisterIn, request: Request):
+    repository = getattr(request.app.state, "identity_repository", None)
+    if repository is None:
+        raise HTTPException(503, "Identity service unavailable")
+    return await register_identity(
+        repository, name=data.name, email=str(data.email), password=data.password,
+        hash_password=hash_pw, make_token=make_token,
+    )
 
 @api.post("/auth/login")
-async def login(data: LoginIn):
-    user = await db.users.find_one({"email": data.email.lower()})
-    if not user or not verify_pw(data.password, user.get("password_hash") or ""):
-        raise HTTPException(401, "Invalid credentials")
-    if user.get("status") == "suspended":
-        raise HTTPException(403, "Your account has been suspended. Please contact support.")
-    token = make_token(user["id"], user["role"])
-    return {"token": token, "user": {"id": user["id"], "name": user["name"], "email": user["email"], "role": user["role"]}}
+async def login(data: LoginIn, request: Request):
+    repository = getattr(request.app.state, "identity_repository", None)
+    if repository is None:
+        raise HTTPException(503, "Identity service unavailable")
+    return await login_identity(
+        repository, email=str(data.email), password=data.password,
+        verify_password=verify_pw, make_token=make_token,
+    )
 
 @api.get("/auth/me")
 async def me(user=Depends(get_current_user)):
@@ -290,7 +286,7 @@ class GoogleSessionIn(BaseModel):
     session_id: str
 
 @api.post("/auth/google")
-async def google_login(data: GoogleSessionIn):
+async def google_login(data: GoogleSessionIn, request: Request):
     try:
         r = await asyncio.to_thread(
             requests.get, "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
@@ -300,22 +296,14 @@ async def google_login(data: GoogleSessionIn):
         raise HTTPException(502, "Google sign-in service unavailable")
     if r.status_code != 200:
         raise HTTPException(401, "Google session invalid or expired")
-    info = r.json()
-    email = (info.get("email") or "").lower()
-    if not email:
-        raise HTTPException(401, "Google account has no email")
-    user = await db.users.find_one({"email": email}, {"_id": 0, "password_hash": 0})
-    if not user:
-        user = {"id": gen_id(), "name": info.get("name") or email.split("@")[0], "email": email,
-                "role": "student", "created_at": now_iso(), "avatar_url": info.get("picture"),
-                "auth_provider": "google"}
-        await db.users.insert_one(dict(user))
-    elif user.get("status") == "suspended":
-        raise HTTPException(403, "Your account has been suspended. Please contact support.")
-    elif not user.get("avatar_url") and info.get("picture"):
-        await db.users.update_one({"id": user["id"]}, {"$set": {"avatar_url": info["picture"]}})
-    token = make_token(user["id"], user["role"])
-    return {"token": token, "user": {"id": user["id"], "name": user["name"], "email": user["email"], "role": user["role"]}}
+    try:
+        info = r.json()
+    except ValueError:
+        raise HTTPException(502, "Google sign-in service returned an invalid response")
+    repository = getattr(request.app.state, "identity_repository", None)
+    if repository is None:
+        raise HTTPException(503, "Identity service unavailable")
+    return await login_google_identity(repository, profile=info, make_token=make_token)
 
 # ========== Categories & Subjects ==========
 @api.get("/categories")
@@ -1721,6 +1709,11 @@ async def root():
 # ========== Seed Data ==========
 @app.on_event("startup")
 async def startup():
+    mysql_runtime = create_database_runtime(load_mysql_settings())
+    await mysql_runtime.ping()
+    app.state.mysql_runtime = mysql_runtime
+    app.state.identity_repository = IdentityRepository(mysql_runtime.sessions)
+
     await db.users.create_index("email", unique=True)
     await db.test_attempts.create_index([("user_id", 1), ("test_id", 1), ("status", 1)])
     await db.test_results.create_index("attempt_id", unique=True)
@@ -1735,6 +1728,13 @@ async def startup():
     await seed_pages(db)
     await _seed_subjects()
     await ensure_email_indexes(db)
+
+@app.on_event("shutdown")
+async def shutdown():
+    runtime = getattr(app.state, "mysql_runtime", None)
+    if runtime is not None:
+        await runtime.dispose()
+    client.close()
 
 async def _seed_data():
     log.info("Seeding sample data...")
