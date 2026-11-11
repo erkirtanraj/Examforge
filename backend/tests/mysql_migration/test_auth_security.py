@@ -45,6 +45,8 @@ def test_environment_detection_supports_common_environment_names():
         {"uid": "", "iat": 123},
         {"uid": "user-1", "iat": True},
         {"uid": "user-1", "iat": "123"},
+        {"uid": "user-1", "iat": float("nan")},
+        {"uid": "user-1", "iat": float("inf")},
     ],
 )
 def test_identity_claim_validation_rejects_malformed_payloads(payload):
