@@ -228,6 +228,17 @@ async def test_session_validation_rejects_token_issued_before_password_reset():
 
 
 @pytest.mark.asyncio
+async def test_session_validation_rejects_token_from_same_second_as_password_reset():
+    class SameSecondRepository:
+        async def get_by_id(self, user_id, *, include_password_hash):
+            return {"id": user_id, "status": "active", "tokens_valid_after": 201}
+
+    with pytest.raises(HTTPException) as error:
+        await load_session_identity(SameSecondRepository(), {"uid": "user-1", "iat": 200})
+    assert error.value.status_code == 401
+
+
+@pytest.mark.asyncio
 async def test_session_validation_rejects_malformed_identity_claims():
     class MustNotQueryRepository:
         async def get_by_id(self, *_args, **_kwargs):
