@@ -1,5 +1,5 @@
 """Admin-managed site content: header, footer, home page and legal pages."""
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request
 from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Literal, Optional
@@ -195,9 +195,13 @@ def build_site_router(db, require_roles):
         out["header"] = {**DEFAULTS["header"], **out["header"]}
         return out
 
-    async def metrics():
+    async def metrics(request: Request):
+        repository = getattr(request.app.state, "identity_repository", None)
+        if repository is None:
+            raise HTTPException(503, "Identity service unavailable")
+        _students, student_count = await repository.list_users(role="student", offset=0, limit=1)
         return {
-            "students": await db.users.count_documents({"role": "student"}),
+            "students": student_count,
             "questions": await db.questions.count_documents({}),
             "tests": await db.tests.count_documents({}),
             "attempts": await db.test_attempts.count_documents({}),
@@ -209,8 +213,8 @@ def build_site_router(db, require_roles):
         return await content()
 
     @r.get("/site")
-    async def public_site():
-        c, m = await content(), await metrics()
+    async def public_site(request: Request):
+        c, m = await content(), await metrics(request)
         for s in c["stats"]:
             s["display"] = s["override"] or (_compact(m.get(s["source"], 0)) if s["source"] != "manual" else "")
         c["announcement"] = c["announcement"] if _ann_active(c["announcement"]) else None
@@ -218,8 +222,8 @@ def build_site_router(db, require_roles):
         return {**c, "metrics": m}
 
     @r.get("/admin/site")
-    async def admin_site(_=admin):
-        return {**(await content()), "metrics": await metrics()}
+    async def admin_site(request: Request, _=admin):
+        return {**(await content()), "metrics": await metrics(request)}
 
     @r.put("/admin/site/layout")
     async def save_layout(data: LayoutIn, user=admin):
