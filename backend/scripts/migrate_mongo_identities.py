@@ -66,6 +66,8 @@ def normalize_user(source: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(email, str) or "@" not in email.strip():
         raise ImportPreflightError(f"user {user_id} has an invalid email")
     email = email.strip().lower()
+    if len(email) > 320:
+        raise ImportPreflightError(f"user {user_id} email exceeds the MySQL column limit")
     name = source.get("name")
     if not isinstance(name, str) or not name.strip() or len(name.strip()) > 120:
         raise ImportPreflightError(f"user {user_id} has a missing or invalid name")
@@ -78,6 +80,12 @@ def normalize_user(source: dict[str, Any]) -> dict[str, Any]:
         raise ImportPreflightError(f"user {user_id} has unsupported status")
     if provider not in VALID_PROVIDERS:
         raise ImportPreflightError(f"user {user_id} has unsupported auth provider")
+    phone = str(source.get("phone") or "")
+    if len(phone) > 20:
+        raise ImportPreflightError(f"user {user_id} phone exceeds the MySQL column limit")
+    avatar_url = source.get("avatar_url")
+    if avatar_url is not None and (not isinstance(avatar_url, str) or len(avatar_url) > 2048):
+        raise ImportPreflightError(f"user {user_id} has invalid avatar_url")
     password_hash = source.get("password_hash")
     if password_hash is not None and not isinstance(password_hash, str):
         raise ImportPreflightError(f"user {user_id} has invalid password hash field")
@@ -93,8 +101,8 @@ def normalize_user(source: dict[str, Any]) -> dict[str, Any]:
         "role": role,
         "status": status,
         "auth_provider": provider,
-        "phone": str(source.get("phone") or "")[:20],
-        "avatar_url": source.get("avatar_url"),
+        "phone": phone,
+        "avatar_url": avatar_url,
         "created_at": created_at,
         "updated_at": as_utc_naive(source.get("updated_at"), f"user {user_id} updated_at"),
         "created_by": source.get("created_by"),
@@ -251,9 +259,12 @@ async def run(apply: bool) -> int:
                 session.add(PasswordResetToken(**row))
             await session.flush()
 
-            print("RESULT: IMPORT COMMITTED to examforge_local.")
-            print("MongoDB source records were not modified or deleted.")
-            return 0
+            imported_user_count = len(new_users)
+            imported_token_count = len(new_tokens)
+
+        print(f"RESULT: IMPORT COMMITTED to examforge_local ({imported_user_count} users, {imported_token_count} reset tokens).")
+        print("MongoDB source records were not modified or deleted.")
+        return 0
     except IntegrityError:
         print("RESULT: BLOCKED by a database integrity conflict. Transaction rolled back.")
         return 2
