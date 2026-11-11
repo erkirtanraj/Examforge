@@ -260,7 +260,7 @@ def build_admin_router(db, require_roles, hash_pw, detach_questions):
             "role": data.role,
         }
         if data.role != user["role"] or email != user["email"]:
-            changes["tokens_valid_after"] = int(time.time())
+            changes["tokens_valid_after"] = int(time.time()) + 1 + 1
         try:
             updated = await repository.update_user(user_id, changes, actor_role=actor["role"])
         except ProtectedIdentity as exc:
@@ -280,7 +280,7 @@ def build_admin_router(db, require_roles, hash_pw, detach_questions):
                 "password_hash": hash_pw(data.password),
                 "password_reset_at": datetime.now(timezone.utc),
                 "password_reset_by": actor["id"],
-                "tokens_valid_after": int(time.time()),
+                "tokens_valid_after": int(time.time()) + 1,
             }, actor_role=actor["role"])
         except ProtectedIdentity as exc:
             raise HTTPException(403, str(exc)) from exc
