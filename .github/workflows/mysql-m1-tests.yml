@@ -1,4 +1,4 @@
-name: MySQL M1 Tests
+name: MySQL Migration Tests
 
 on:
   pull_request:
@@ -6,32 +6,67 @@ on:
     branches: [main]
     paths:
       - "backend/mysql_persistence/**"
+      - "backend/auth_security.py"
+      - "backend/server.py"
+      - "backend/admin_routes.py"
+      - "backend/email_routes.py"
+      - "backend/site_routes.py"
       - "backend/alembic.ini"
       - "backend/alembic/**"
       - "backend/requirements-mysql.txt"
+      - "backend/scripts/**"
       - "backend/tests/mysql_migration/**"
+      - "MYSQL_MIGRATION_PLAN.md"
       - ".github/workflows/mysql-m1-tests.yml"
   push:
-    branches: [feature/mysql-full-migration]
+    branches: [feature/mysql-full-migration, feature/mysql-m2-identity-authz]
     paths:
       - "backend/mysql_persistence/**"
+      - "backend/auth_security.py"
+      - "backend/server.py"
+      - "backend/admin_routes.py"
+      - "backend/email_routes.py"
+      - "backend/site_routes.py"
       - "backend/alembic.ini"
       - "backend/alembic/**"
       - "backend/requirements-mysql.txt"
+      - "backend/scripts/**"
       - "backend/tests/mysql_migration/**"
+      - "MYSQL_MIGRATION_PLAN.md"
       - ".github/workflows/mysql-m1-tests.yml"
 
 permissions:
   contents: read
 
 concurrency:
-  group: mysql-m1-${{ github.workflow }}-${{ github.ref }}
+  group: mysql-migration-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  mysql-m1-unit-tests:
-    name: M1 unit tests (Python 3.11)
+  mysql-migration-tests:
+    name: MySQL 8.4 migration and unit tests (Python 3.11)
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: examforge_test
+          MYSQL_USER: examforge_app
+          MYSQL_PASSWORD: test-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      MYSQL_HOST: 127.0.0.1
+      MYSQL_PORT: "3306"
+      MYSQL_USER: examforge_app
+      MYSQL_PASSWORD: test-password
+      MYSQL_DATABASE: examforge_test
     defaults:
       run:
         working-directory: backend
@@ -44,14 +79,22 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: |
-            backend/requirements-mysql.txt
+          cache-dependency-path: backend/requirements-mysql.txt
 
       - name: Install isolated test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install "fastapi==0.110.1" "starlette==0.37.2" "httpx==0.28.1" "pytest==9.1.1" "pytest-xdist==3.8.0"
+          python -m pip install "fastapi==0.110.1" "starlette==0.37.2" "httpx==0.28.1" "pytest==9.1.1" "pytest-xdist==3.8.0" "pytest-asyncio>=0.23,<2.0" "email-validator>=2.0,<3.0"
           python -m pip install -r requirements-mysql.txt
 
-      - name: Run M1 tests
+      - name: Apply MySQL schema migrations
+        run: python -m alembic -c alembic.ini upgrade head
+
+      - name: Verify migration head
+        run: python -m alembic -c alembic.ini current
+
+      - name: Compile migrated API modules
+        run: python -m py_compile server.py admin_routes.py email_routes.py site_routes.py
+
+      - name: Run MySQL migration tests
         run: python -m pytest -n 0 tests/mysql_migration

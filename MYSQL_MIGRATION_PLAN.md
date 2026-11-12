@@ -81,7 +81,7 @@ Each phase must be independently testable and reviewed before proceeding to the 
 - Do not merge automatically. The repository owner must explicitly approve the final review and merge.
 - Keep `main` unchanged until that approval is given.
 
-## M1 implementation status (implementation complete; PR review pending)
+## M1 implementation status (implementation complete; merged to main)
 
 Implemented on `feature/mysql-full-migration`:
 - Validated `mysql+asyncmy` configuration from `DATABASE_URL` or `MYSQL_*` variables, including URL-safe credential handling and redacted URL output.
@@ -102,10 +102,56 @@ Implemented on `feature/mysql-full-migration`:
 - `git diff main...feature/mysql-full-migration --check` — no whitespace errors.
 - Local `backend/.env` is ignored by Git and is not part of the PR.
 
-### Review status and remaining gates
+### Review and merge status
 
-- Draft PR #1 is open for review; no GitHub Actions workflow runs or commit status checks were reported for the reviewed head commit.
-- Complete code review and address any review comments before marking M1 ready.
-- Add CI coverage for the isolated M1 test suite before relying on automated PR validation.
+- PR #1 was reviewed and squash-merged to `main` on 2026-11-11.
+- Merge commit: `bd0629706704bb46b57e1ba629344d8d270b26c1`.
+- Added `.github/workflows/mysql-m1-tests.yml` for isolated M1 tests. No workflow run or commit status was visible immediately after merge; confirm the first run in GitHub Actions.
+- No production database, MongoDB export, or existing Mongo-backed API route was touched by M1.
 
-No production database, MongoDB export, or existing Mongo-backed API route is touched by M1. Do not merge to `main` without explicit approval.
+## M2 implementation status (implemented; final validation and review pending)
+
+Branch: `feature/mysql-m2-identity-authz`, based on merged M1 commit `bd0629706704bb46b57e1ba629344d8d270b26c1`.
+
+PR: [#2 — feat(mysql): migrate M2 identity and authorization to MySQL](https://github.com/erkirtanraj/Examforge/pull/2)
+
+### Implemented
+
+- MySQL `User` and `PasswordResetToken` schema, Alembic revision `0002_m2_identity_authz`, and async SQLAlchemy identity repository.
+- Registration, password login, current-user session validation, and Google session exchange now use MySQL identities. Public registration always creates a `student`; JWT role claims are not trusted as the current role.
+- Admin user list/detail/create/update/delete, role changes, status changes and password resets use MySQL. The legacy `GET /api/admin/users` response remains an array.
+- Super-admin protections are enforced again under MySQL row locks, including concurrent target-role changes. Ordinary admins cannot grant, modify or delete super-admin identities.
+- Password reset tokens are hashed at rest, expire, are one-time-use, rate-limited per account, and are consumed with the password update and sibling-token invalidation in one transaction. Session invalidation accounts for JWT second-level timestamp precision.
+- Added an explicit password-reset token retention utility: dry-run by default, exact database-name confirmation for deletion, configurable retention, and bounded independently committed batches. It removes used tokens after `used_at` retention and unused tokens after `expires_at` retention; no automatic startup purge or scheduler is installed.
+- Admin access checks, leaderboard names, admin user counts and public site student metrics read current identity data from MySQL. No MongoDB role read remains in the exam entitlement shortcut.
+- Production startup no longer creates demo accounts, sample mocks, demo coupons, default legal-page copy, or automatic subject backfills. The initial MySQL super-admin is provisioned explicitly with `backend/scripts/bootstrap_super_admin.py`.
+- Added a dry-run-first MongoDB identity importer. It preserves UUIDs and reset-token state, blocks conflicts, does not mutate MongoDB, and restricts `--apply` to `examforge_local`.
+- MongoDB remains in use for catalog, tests, attempts, results, commerce and other operational collections that are outside M2. No dual-write was introduced.
+
+### Security and compatibility review
+
+- Production JWT startup requires a non-default secret of at least 32 characters.
+- JWT identity claims are validated and each authenticated request re-reads current user status and role from MySQL.
+- Password reset and admin identity mutations invalidate existing sessions.
+- Legacy admin list and role endpoints are consolidated onto the MySQL identity repository.
+- The import and bootstrap utilities are explicit operator actions; neither runs automatically at application startup.
+- Existing API response shapes and role names are preserved for the migrated endpoints.
+
+### Validation
+
+- User-verified local run on Windows / Python 3.11 / MySQL 8.4 before the final review hardening:
+  - API module compilation passed.
+  - Admin identity tests: 15 passed.
+  - Full `tests/mysql_migration` suite: 91 passed.
+  - Real MySQL identity integration tests: 6 passed.
+- GitHub Actions run #70, commit `d6f6599dbad4cabbec3ed41c589ac86066da7631`: **91 passed, 1 warning**. Alembic reached `0002_m2_identity_authz (head)`.
+- Latest review added same-second session-invalidation coverage and a CI compile step for `server.py`, `admin_routes.py`, `email_routes.py` and `site_routes.py`.
+- GitHub Actions run #89 on head `ce0645d955a7a68cbc6568f91edfe22bd2182ba5`: **92 passed, 1 warning**. Alembic reached `0002_m2_identity_authz (head)`; API module compilation passed.
+
+### Remaining gates
+
+- Run the MongoDB identity import in read-only dry-run mode against the user's actual local data, inspect the report, and obtain explicit approval before any `--apply`.
+- Production migration requires a separately reviewed backup, import, cutover, smoke-test and rollback runbook. The local-only importer is not a production migration tool.
+- PR #2 is open and ready for review. A self-review comment is present; obtain an independent repository-owner review before merge.
+- The latest code changes and cleanup utility are on `feature/mysql-m2-identity-authz`; wait for CI to complete and review the final diff. No M2 changes are in `main`; do not merge without explicit repository-owner approval.
+

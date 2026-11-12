@@ -1,13 +1,16 @@
 """Admin: paginated question bank with bulk delete, and full user management."""
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, EmailStr, Field
 from typing import List, Literal, Optional
 from datetime import datetime, timezone
-import re, uuid, time
+import re, uuid, time, logging
+
+from mysql_persistence.identity import DuplicateIdentityEmail, IdentityNotFound, ProtectedIdentity
 
 PAGE_SIZES = (10, 50, 100, 500, 1000, 5000)
 Role = Literal["super_admin", "admin", "teacher", "student", "support"]
 USER_COLLECTIONS = ("test_attempts", "test_results", "orders", "entitlements", "lesson_progress")
+log = logging.getLogger(__name__)
 
 
 class QuestionFilter(BaseModel):
@@ -70,6 +73,10 @@ class PasswordIn(BaseModel):
 
 class StatusIn(BaseModel):
     suspended: bool
+
+
+class UserRoleIn(BaseModel):
+    role: Role
 
 
 def _now():
@@ -160,84 +167,175 @@ def build_admin_router(db, require_roles, hash_pw, detach_questions):
         res = await db.tests.update_many(q, {"$set": {**upd, "updated_at": _now()}})
         return {"affected": res.matched_count}
 
-    # ---- Users ----
-    async def _target(user_id: str, actor: dict) -> dict:
-        u = await db.users.find_one({"id": user_id}, {"_id": 0})
-        if not u:
+    # ---- MySQL-backed identity management ----
+    def _identity_repository(request: Request):
+        repository = getattr(request.app.state, "identity_repository", None)
+        if repository is None:
+            raise HTTPException(503, "Identity service unavailable")
+        return repository
+
+    async def _target(repository, user_id: str, actor: dict) -> dict:
+        user = await repository.get_by_id(user_id, include_password_hash=False)
+        if not user:
             raise HTTPException(404, "User not found")
-        if u["role"] == "super_admin" and actor["role"] != "super_admin":
+        if user["role"] == "super_admin" and actor["role"] != "super_admin":
             raise HTTPException(403, "Only a super admin can manage a super admin")
-        return u
+        return user
 
     def _check_role(role: str, actor: dict):
         if role == "super_admin" and actor["role"] != "super_admin":
             raise HTTPException(403, "Only a super admin can grant super admin")
 
-    async def _email_free(email: str, exclude: Optional[str] = None):
-        q = {"email": email, **({"id": {"$ne": exclude}} if exclude else {})}
-        if await db.users.find_one(q, {"_id": 1}):
-            raise HTTPException(400, "Another account already uses this email")
+    def _public_identity(user: dict) -> dict:
+        return {key: value for key, value in user.items()
+                if key not in ("password_hash", "tokens_valid_after")}
+
+    @r.get("/users")
+    async def list_users(request: Request, actor=admin):
+        # Preserve the existing API contract: GET /api/admin/users returns
+        # an array of public users, while sourcing identities from MySQL.
+        repository = _identity_repository(request)
+        users, _total = await repository.list_users(offset=0, limit=1000)
+        return [_public_identity(user) for user in users]
+
+    @r.put("/users/{user_id}/role")
+    async def set_user_role(user_id: str, data: UserRoleIn, request: Request, actor=admin):
+        if user_id == actor["id"]:
+            raise HTTPException(400, "You cannot change your own role")
+        repository = _identity_repository(request)
+        try:
+            # The repository locks and rechecks the target row, making this
+            # legacy API path obey the same MySQL authorization policy.
+            await repository.update_user(
+                user_id,
+                {"role": data.role, "tokens_valid_after": int(time.time()) + 1},
+                actor_role=actor["role"],
+            )
+        except ProtectedIdentity as exc:
+            raise HTTPException(403, str(exc)) from exc
+        except IdentityNotFound as exc:
+            raise HTTPException(404, "User not found") from exc
+        return {"ok": True}
 
     @r.get("/users/{user_id}")
-    async def get_user(user_id: str, actor=admin):
-        u = await db.users.find_one({"id": user_id}, {"_id": 0})
-        if not u:
-            raise HTTPException(404, "User not found")
-        stats = {c: await db[c].count_documents({"user_id": user_id}) for c in USER_COLLECTIONS}
-        return {**_public_user(u), "stats": stats}
+    async def get_user(user_id: str, request: Request, actor=admin):
+        repository = _identity_repository(request)
+        user = await _target(repository, user_id, actor)
+        stats = {collection: await db[collection].count_documents({"user_id": user_id})
+                 for collection in USER_COLLECTIONS}
+        return {**_public_identity(user), "stats": stats}
 
     @r.post("/users")
-    async def create_user(data: UserCreateIn, actor=admin):
+    async def create_user(data: UserCreateIn, request: Request, actor=admin):
+        repository = _identity_repository(request)
         _check_role(data.role, actor)
-        email = data.email.lower()
-        await _email_free(email)
-        doc = {"id": str(uuid.uuid4()), "name": data.name.strip(), "email": email, "phone": data.phone.strip(),
-               "role": data.role, "password_hash": hash_pw(data.password), "status": "active",
-               "auth_provider": "email", "avatar_url": None, "created_at": _now(), "created_by": actor["id"]}
-        await db.users.insert_one(doc)
-        return _public_user(doc)
+        try:
+            user = await repository.create_user({
+                "id": str(uuid.uuid4()),
+                "name": data.name.strip(),
+                "email": str(data.email).strip().lower(),
+                "phone": data.phone.strip(),
+                "role": data.role,
+                "password_hash": hash_pw(data.password),
+                "status": "active",
+                "auth_provider": "email",
+                "avatar_url": None,
+                "created_by": actor["id"],
+            })
+        except DuplicateIdentityEmail as exc:
+            raise HTTPException(400, "Another account already uses this email") from exc
+        return _public_identity(user)
 
     @r.put("/users/{user_id}")
-    async def update_user(user_id: str, data: UserUpdateIn, actor=admin):
-        u = await _target(user_id, actor)
-        if user_id == actor["id"] and data.role != u["role"]:
+    async def update_user(user_id: str, data: UserUpdateIn, request: Request, actor=admin):
+        repository = _identity_repository(request)
+        user = await _target(repository, user_id, actor)
+        if user_id == actor["id"] and data.role != user["role"]:
             raise HTTPException(400, "You cannot change your own role")
-        if data.role != u["role"]:
+        if data.role != user["role"]:
             _check_role(data.role, actor)
-        email = data.email.lower()
-        await _email_free(email, user_id)
-        upd = {"name": data.name.strip(), "email": email, "phone": data.phone.strip(), "role": data.role, "updated_at": _now()}
-        if data.role != u["role"] or email != u["email"]:
-            upd["tokens_valid_after"] = int(time.time())
-        await db.users.update_one({"id": user_id}, {"$set": upd})
-        return _public_user(await db.users.find_one({"id": user_id}, {"_id": 0}))
+        email = str(data.email).strip().lower()
+        changes = {
+            "name": data.name.strip(),
+            "email": email,
+            "phone": data.phone.strip(),
+            "role": data.role,
+        }
+        if data.role != user["role"] or email != user["email"]:
+            changes["tokens_valid_after"] = int(time.time()) + 1
+        try:
+            updated = await repository.update_user(user_id, changes, actor_role=actor["role"])
+        except ProtectedIdentity as exc:
+            raise HTTPException(403, str(exc)) from exc
+        except IdentityNotFound as exc:
+            raise HTTPException(404, "User not found") from exc
+        except DuplicateIdentityEmail as exc:
+            raise HTTPException(400, "Another account already uses this email") from exc
+        return _public_identity(updated)
 
     @r.post("/users/{user_id}/reset-password")
-    async def reset_password(user_id: str, data: PasswordIn, actor=admin):
-        await _target(user_id, actor)
-        await db.users.update_one({"id": user_id}, {"$set": {
-            "password_hash": hash_pw(data.password), "password_reset_at": _now(), "password_reset_by": actor["id"],
-            "tokens_valid_after": int(time.time())}})
+    async def reset_user_password(user_id: str, data: PasswordIn, request: Request, actor=admin):
+        repository = _identity_repository(request)
+        await _target(repository, user_id, actor)
+        try:
+            await repository.update_user(user_id, {
+                "password_hash": hash_pw(data.password),
+                "password_reset_at": datetime.now(timezone.utc),
+                "password_reset_by": actor["id"],
+                "tokens_valid_after": int(time.time()) + 1,
+            }, actor_role=actor["role"])
+        except ProtectedIdentity as exc:
+            raise HTTPException(403, str(exc)) from exc
+        except IdentityNotFound as exc:
+            raise HTTPException(404, "User not found") from exc
         return {"ok": True}
 
     @r.put("/users/{user_id}/status")
-    async def set_status(user_id: str, data: StatusIn, actor=admin):
-        if user_id == actor["id"]:
+    async def set_status(user_id: str, data: StatusIn, request: Request, actor=admin):
+        repository = _identity_repository(request)
+        if user_id == actor["id"] and data.suspended:
             raise HTTPException(400, "You cannot suspend your own account")
-        await _target(user_id, actor)
-        upd = {"status": "suspended" if data.suspended else "active", "updated_at": _now()}
+        await _target(repository, user_id, actor)
+        status_value = "suspended" if data.suspended else "active"
+        changes = {"status": status_value}
         if data.suspended:
-            upd["tokens_valid_after"] = int(time.time())
-        await db.users.update_one({"id": user_id}, {"$set": upd})
-        return {"ok": True, "status": upd["status"]}
+            changes["tokens_valid_after"] = int(time.time()) + 1
+        try:
+            await repository.update_user(user_id, changes, actor_role=actor["role"])
+        except ProtectedIdentity as exc:
+            raise HTTPException(403, str(exc)) from exc
+        except IdentityNotFound as exc:
+            raise HTTPException(404, "User not found") from exc
+        return {"ok": True, "status": status_value}
 
     @r.delete("/users/{user_id}")
-    async def delete_user(user_id: str, actor=admin):
+    async def delete_user(user_id: str, request: Request, actor=admin):
+        repository = _identity_repository(request)
         if user_id == actor["id"]:
             raise HTTPException(400, "You cannot delete your own account")
-        await _target(user_id, actor)
-        removed = {c: (await db[c].delete_many({"user_id": user_id})).deleted_count for c in USER_COLLECTIONS}
-        await db.users.delete_one({"id": user_id})
-        return {"ok": True, "removed": removed}
+        await _target(repository, user_id, actor)
+        # Delete the MySQL identity first. If Mongo cleanup subsequently fails,
+        # legacy operational records may remain orphaned, but we avoid deleting
+        # those records while leaving a live identity behind after a MySQL error.
+        try:
+            deleted = await repository.delete_user(user_id, actor_role=actor["role"])
+        except ProtectedIdentity as exc:
+            raise HTTPException(403, str(exc)) from exc
+        if not deleted:
+            raise HTTPException(404, "User not found")
+        removed = {}
+        cleanup_pending = False
+        for collection in USER_COLLECTIONS:
+            try:
+                result = await db[collection].delete_many({"user_id": user_id})
+                removed[collection] = result.deleted_count
+            except Exception:
+                # The identity is already deleted and cannot authenticate. Keep
+                # the API result explicit so clients do not retry as if deletion
+                # had failed; an operator can safely retry this idempotent cleanup.
+                cleanup_pending = True
+                log.exception("Legacy Mongo cleanup failed for deleted identity %s in %s", user_id, collection)
+                break
+        return {"ok": True, "removed": removed, "cleanup_pending": cleanup_pending}
 
     return r

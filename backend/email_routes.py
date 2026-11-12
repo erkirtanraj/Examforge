@@ -1,11 +1,20 @@
-"""SMTP email settings (admin) and self-service password reset."""
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, EmailStr, Field
-from typing import Literal, Optional
+"""SMTP email settings and MySQL-backed self-service password reset."""
 from datetime import datetime, timezone, timedelta
 from email.message import EmailMessage
 from email.utils import formataddr
-import asyncio, hashlib, secrets, smtplib, ssl, time, logging
+from html import escape
+import asyncio
+import hashlib
+import logging
+import secrets
+import smtplib
+import ssl
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, EmailStr, Field
+from typing import Literal, Optional
+
+from mysql_persistence.identity import InvalidOrExpiredResetToken
 
 log = logging.getLogger("lms.email")
 RESET_TTL = timedelta(hours=1)
@@ -101,61 +110,87 @@ def build_email_router(db, require_roles, get_brand, hash_pw):
     async def test_email(data: TestEmailIn, _=admin):
         brand = await get_brand()
         await send(data.to, f"{brand} · test email", f"SMTP is working for {brand}.",
-                   f"<p>SMTP is working for <b>{brand}</b>.</p>")
+                   f"<p>SMTP is working for <b>{escape(brand)}</b>.</p>")
         return {"ok": True}
 
     @r.post("/auth/forgot-password")
-    async def forgot_password(data: ForgotIn):
-        email = data.email.lower()
-        user = await db.users.find_one({"email": email}, {"_id": 0, "id": 1, "name": 1, "status": 1})
-        if not user or user.get("status") == "suspended":
+    async def forgot_password(data: ForgotIn, request: Request):
+        repository = getattr(request.app.state, "identity_repository", None)
+        if repository is None:
+            raise HTTPException(503, "Identity service unavailable")
+
+        email = str(data.email).strip().lower()
+        user = await repository.get_by_email(email, include_password_hash=False)
+        if not user or user.get("status") != "active":
             return GENERIC
-        now = datetime.now(timezone.utc)
-        if await db.password_reset_tokens.count_documents({"user_id": user["id"], "created_at": {"$gt": now - WINDOW}}) >= MAX_REQUESTS:
-            return GENERIC
+
         c = await cfg()
         if not c.get("host") or not c.get("site_url"):
-            log.warning("Password reset requested for %s but SMTP is not configured", email)
+            log.warning("Password reset requested while SMTP is not configured")
             return GENERIC
+
+        now = datetime.now(timezone.utc)
         token = secrets.token_urlsafe(32)
-        await db.password_reset_tokens.insert_one({"token_hash": _hash(token), "user_id": user["id"], "used": False,
-                                                   "created_at": now, "expires_at": now + RESET_TTL})
-        link = f"{c['site_url']}/reset-password?token={token}"
+        allowed = await repository.create_reset_token_if_below_limit(
+            token_hash=_hash(token),
+            user_id=user["id"],
+            expires_at=now + RESET_TTL,
+            since=now - WINDOW,
+            max_requests=MAX_REQUESTS,
+        )
+        if not allowed:
+            return GENERIC
+
+        link = f"{c['site_url'].rstrip('/')}/reset-password?token={token}"
         brand = await get_brand()
-        text = f"Hi {user['name']},\n\nReset your {brand} password using this link (valid for 1 hour):\n{link}\n\nIf you didn't request this, ignore this email."
-        html = (f"<div style='font-family:Arial,sans-serif;max-width:520px'><p>Hi {user['name']},</p>"
-                f"<p>We received a request to reset your <b>{brand}</b> password.</p>"
-                f"<p><a href='{link}' style='display:inline-block;background:#2563eb;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none'>Reset password</a></p>"
-                f"<p style='color:#666;font-size:13px'>This link expires in 1 hour and can be used once. If you didn't request it, you can ignore this email.</p></div>")
+        safe_name, safe_brand, safe_link = escape(user.get("name") or "there"), escape(brand), escape(link, quote=True)
+        text = (f"Hi {user.get('name') or 'there'},\n\nReset your {brand} password using this link "
+                f"(valid for 1 hour):\n{link}\n\nIf you didn't request this, ignore this email.")
+        html = (
+            "<div style='font-family:Arial,sans-serif;max-width:520px'>"
+            f"<p>Hi {safe_name},</p><p>We received a request to reset your <b>{safe_brand}</b> password.</p>"
+            f"<p><a href='{safe_link}' style='display:inline-block;background:#2563eb;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none'>Reset password</a></p>"
+            "<p style='color:#666;font-size:13px'>This link expires in 1 hour and can be used once. "
+            "If you didn't request this, you can ignore this email.</p></div>"
+        )
         try:
             await send(email, f"Reset your {brand} password", text, html)
-        except HTTPException as e:
-            log.error("Password reset email failed for %s: %s", email, e.detail)
+        except HTTPException as exc:
+            # Preserve the generic response to avoid disclosing account existence.
+            log.error("Password reset email delivery failed: %s", exc.detail)
         return GENERIC
 
     @r.get("/auth/reset-password/{token}")
-    async def check_reset_token(token: str):
-        t = await db.password_reset_tokens.find_one({"token_hash": _hash(token)}, {"_id": 0})
-        if not t or t["used"]:
-            return {"valid": False}
-        return {"valid": t["expires_at"].replace(tzinfo=timezone.utc) > datetime.now(timezone.utc)}
+    async def check_reset_token(token: str, request: Request):
+        repository = getattr(request.app.state, "identity_repository", None)
+        if repository is None:
+            raise HTTPException(503, "Identity service unavailable")
+        reset = await repository.get_valid_reset_token(token_hash=_hash(token))
+        return {"valid": reset is not None}
 
     @r.post("/auth/reset-password")
-    async def reset_password(data: ResetIn):
-        now = datetime.now(timezone.utc)
-        t = await db.password_reset_tokens.find_one_and_update(
-            {"token_hash": _hash(data.token), "used": False, "expires_at": {"$gt": now}},
-            {"$set": {"used": True, "used_at": now}})
-        if not t:
-            raise HTTPException(400, "This reset link is invalid or has expired. Please request a new one.")
-        await db.users.update_one({"id": t["user_id"]}, {"$set": {
-            "password_hash": hash_pw(data.password), "tokens_valid_after": int(time.time()), "password_reset_at": now.isoformat()}})
-        await db.password_reset_tokens.update_many({"user_id": t["user_id"], "used": False}, {"$set": {"used": True}})
+    async def reset_password(data: ResetIn, request: Request):
+        repository = getattr(request.app.state, "identity_repository", None)
+        if repository is None:
+            raise HTTPException(503, "Identity service unavailable")
+        token_hash = _hash(data.token)
+        if await repository.get_valid_reset_token(token_hash=token_hash) is None:
+            raise HTTPException(
+                400,
+                "This reset link is invalid or has expired. Please request a new one.",
+            )
+        try:
+            await repository.consume_reset_token(
+                token_hash=token_hash,
+                new_password_hash=hash_pw(data.password),
+            )
+        except InvalidOrExpiredResetToken as exc:
+            # The token may have been consumed between the preflight read and
+            # the locked transactional consume; the repository remains authoritative.
+            raise HTTPException(
+                400,
+                "This reset link is invalid or has expired. Please request a new one.",
+            ) from exc
         return {"ok": True}
 
     return r
-
-
-async def ensure_indexes(db):
-    await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
-    await db.password_reset_tokens.create_index("token_hash", unique=True)

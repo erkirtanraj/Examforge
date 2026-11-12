@@ -18,17 +18,21 @@ from fastapi import UploadFile, File, Form
 import razorpay
 from site_routes import build_site_router, seed_pages, UPLOAD_DIR
 from admin_routes import build_admin_router
-from email_routes import build_email_router, ensure_indexes as ensure_email_indexes
+from email_routes import build_email_router
 from perf import PublicCacheMiddleware
+from auth_security import is_production_environment, resolve_jwt_secret
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.gzip import GZipMiddleware
+from mysql_persistence import create_database_runtime, load_mysql_settings, IdentityRepository
+from mysql_persistence.auth import register_identity, login_identity, login_google_identity, load_session_identity
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
 MONGO_URL = os.environ["MONGO_URL"]
 DB_NAME = os.environ["DB_NAME"]
-JWT_SECRET = os.environ.get("JWT_SECRET", "dev-secret")
+IS_PRODUCTION = is_production_environment(os.environ)
+JWT_SECRET = resolve_jwt_secret(os.environ)
 JWT_ALG = os.environ.get("JWT_ALGORITHM", "HS256")
 JWT_EXPIRE_HOURS = int(os.environ.get("JWT_EXPIRE_HOURS", "168"))
 RZP_KEY = os.environ.get("RAZORPAY_KEY_ID", "")
@@ -81,21 +85,17 @@ def make_token(user_id: str, role: str) -> str:
     }
     return pyjwt.encode(payload, JWT_SECRET, algorithm=JWT_ALG)
 
-async def get_current_user(creds: HTTPAuthorizationCredentials = Depends(bearer)):
+async def get_current_user(request: Request, creds: HTTPAuthorizationCredentials = Depends(bearer)):
     if not creds:
         raise HTTPException(401, "Not authenticated")
     try:
         data = pyjwt.decode(creds.credentials, JWT_SECRET, algorithms=[JWT_ALG])
     except Exception:
         raise HTTPException(401, "Invalid or expired token")
-    user = await db.users.find_one({"id": data["uid"]}, {"_id": 0, "password_hash": 0})
-    if not user:
-        raise HTTPException(401, "User not found")
-    if user.get("status") == "suspended":
-        raise HTTPException(403, "Your account has been suspended. Please contact support.")
-    if data.get("iat", 0) < user.pop("tokens_valid_after", 0):
-        raise HTTPException(401, "Your session has expired. Please sign in again.")
-    return user
+    repository = getattr(request.app.state, "identity_repository", None)
+    if repository is None:
+        raise HTTPException(503, "Identity service unavailable")
+    return await load_session_identity(repository, data)
 
 def require_roles(*roles):
     async def _dep(user=Depends(get_current_user)):
@@ -109,7 +109,6 @@ class RegisterIn(BaseModel):
     name: str
     email: EmailStr
     password: str
-    role: Optional[Literal["student", "teacher"]] = "student"
 
 class LoginIn(BaseModel):
     email: EmailStr
@@ -248,33 +247,24 @@ class VerifyPaymentIn(BaseModel):
 
 # ========== Auth ==========
 @api.post("/auth/register")
-async def register(data: RegisterIn):
-    existing = await db.users.find_one({"email": data.email.lower()})
-    if existing:
-        raise HTTPException(400, "Email already registered")
-    uid = gen_id()
-    doc = {
-        "id": uid,
-        "name": data.name,
-        "email": data.email.lower(),
-        "password_hash": hash_pw(data.password),
-        "role": data.role or "student",
-        "created_at": now_iso(),
-        "avatar_url": None,
-    }
-    await db.users.insert_one(doc)
-    token = make_token(uid, doc["role"])
-    return {"token": token, "user": {"id": uid, "name": doc["name"], "email": doc["email"], "role": doc["role"]}}
+async def register(data: RegisterIn, request: Request):
+    repository = getattr(request.app.state, "identity_repository", None)
+    if repository is None:
+        raise HTTPException(503, "Identity service unavailable")
+    return await register_identity(
+        repository, name=data.name, email=str(data.email), password=data.password,
+        hash_password=hash_pw, make_token=make_token,
+    )
 
 @api.post("/auth/login")
-async def login(data: LoginIn):
-    user = await db.users.find_one({"email": data.email.lower()})
-    if not user or not verify_pw(data.password, user.get("password_hash") or ""):
-        raise HTTPException(401, "Invalid credentials")
-    if user.get("status") == "suspended":
-        raise HTTPException(403, "Your account has been suspended. Please contact support.")
-    token = make_token(user["id"], user["role"])
-    return {"token": token, "user": {"id": user["id"], "name": user["name"], "email": user["email"], "role": user["role"]}}
+async def login(data: LoginIn, request: Request):
+    repository = getattr(request.app.state, "identity_repository", None)
+    if repository is None:
+        raise HTTPException(503, "Identity service unavailable")
+    return await login_identity(
+        repository, email=str(data.email), password=data.password,
+        verify_password=verify_pw, make_token=make_token,
+    )
 
 @api.get("/auth/me")
 async def me(user=Depends(get_current_user)):
@@ -284,7 +274,7 @@ class GoogleSessionIn(BaseModel):
     session_id: str
 
 @api.post("/auth/google")
-async def google_login(data: GoogleSessionIn):
+async def google_login(data: GoogleSessionIn, request: Request):
     try:
         r = await asyncio.to_thread(
             requests.get, "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
@@ -294,22 +284,14 @@ async def google_login(data: GoogleSessionIn):
         raise HTTPException(502, "Google sign-in service unavailable")
     if r.status_code != 200:
         raise HTTPException(401, "Google session invalid or expired")
-    info = r.json()
-    email = (info.get("email") or "").lower()
-    if not email:
-        raise HTTPException(401, "Google account has no email")
-    user = await db.users.find_one({"email": email}, {"_id": 0, "password_hash": 0})
-    if not user:
-        user = {"id": gen_id(), "name": info.get("name") or email.split("@")[0], "email": email,
-                "role": "student", "created_at": now_iso(), "avatar_url": info.get("picture"),
-                "auth_provider": "google"}
-        await db.users.insert_one(dict(user))
-    elif user.get("status") == "suspended":
-        raise HTTPException(403, "Your account has been suspended. Please contact support.")
-    elif not user.get("avatar_url") and info.get("picture"):
-        await db.users.update_one({"id": user["id"]}, {"$set": {"avatar_url": info["picture"]}})
-    token = make_token(user["id"], user["role"])
-    return {"token": token, "user": {"id": user["id"], "name": user["name"], "email": user["email"], "role": user["role"]}}
+    try:
+        info = r.json()
+    except ValueError:
+        raise HTTPException(502, "Google sign-in service returned an invalid response")
+    repository = getattr(request.app.state, "identity_repository", None)
+    if repository is None:
+        raise HTTPException(503, "Identity service unavailable")
+    return await login_google_identity(repository, profile=info, make_token=make_token)
 
 # ========== Categories & Subjects ==========
 @api.get("/categories")
@@ -689,11 +671,11 @@ async def get_test(test_id: str, user=Depends(get_current_user)):
     return t
 
 # ========== Entitlement check ==========
-async def has_access(user_id: str, item_type: str, item_id: str) -> bool:
-    """Check if user has entitlement to this item."""
-    # Admins have all access
-    user = await db.users.find_one({"id": user_id}, {"role": 1})
-    if user and user["role"] in ("admin", "super_admin"):
+async def has_access(user_id: str, item_type: str, item_id: str, user_role: str | None = None) -> bool:
+    """Check access using the current MySQL-backed identity role."""
+    # Never consult the legacy MongoDB users collection for authorization:
+    # its role can be stale after the M2 identity cutover.
+    if user_role in ("admin", "super_admin"):
         return True
     # Check if series is free
     if item_type == "test_series":
@@ -723,7 +705,7 @@ async def start_attempt(test_id: str, user=Depends(get_current_user)):
     if live_start and datetime.now(timezone.utc) < live_start:
         raise HTTPException(403, "This live mock hasn't opened yet")
     series = await db.test_series.find_one({"id": t["series_id"]}, {"_id": 0})
-    if series and not await has_access(user["id"], "test_series", series["id"]):
+    if series and not await has_access(user["id"], "test_series", series["id"], user_role=user["role"]):
         raise HTTPException(403, "Purchase required")
     # Reuse existing in-progress attempt
     existing = await db.test_attempts.find_one(
@@ -1046,7 +1028,7 @@ async def submit_attempt(attempt_id: str, data: SubmitIn, user=Depends(get_curre
     return result
 
 @api.get("/attempts/{attempt_id}/result")
-async def get_result(attempt_id: str, user=Depends(get_current_user)):
+async def get_result(attempt_id: str, request: Request, user=Depends(get_current_user)):
     a = await db.test_attempts.find_one({"id": attempt_id})
     if not a or a["user_id"] != user["id"]:
         raise HTTPException(404, "Not found")
@@ -1057,7 +1039,7 @@ async def get_result(attempt_id: str, user=Depends(get_current_user)):
     qs = await db.questions.find({"id": {"$in": a["question_ids"]}}, {"_id": 0}).to_list(5000)
     res["questions"] = _apply_section_rules(qs, a.get("sections"))
     res["user_answers"] = a.get("answers", {})
-    res["rank"] = await _rank_for(res)
+    res["rank"] = await _rank_for(res, request.app.state.identity_repository)
     return res
 
 def _short_name(n: Optional[str]) -> str:
@@ -1081,21 +1063,21 @@ async def _board(test_id: str) -> list:
         e["percentile"] = 100.0 if n <= 1 else round(bisect.bisect_left(asc, e["score"]) / (n - 1) * 100, 2)
     return entries
 
-async def _names(user_ids) -> dict:
-    users = await db.users.find({"id": {"$in": list(user_ids)}}, {"_id": 0, "id": 1, "name": 1}).to_list(None)
-    return {u["id"]: _short_name(u["name"]) for u in users}
+async def _names(user_ids, repository) -> dict:
+    users = await repository.get_by_ids(list(user_ids))
+    return {u["id"]: _short_name(u.get("name")) for u in users}
 
 def _board_entry(e: dict, names: dict, me: Optional[str]) -> dict:
     return {"rank": e["rank"], "name": names.get(e["user_id"], "Student"), "score": e["score"],
             "accuracy": e.get("accuracy"), "time_taken_sec": e.get("time_taken_sec"),
             "percentile": e["percentile"], "is_you": e["user_id"] == me}
 
-async def _rank_for(result: dict) -> dict:
+async def _rank_for(result: dict, repository) -> dict:
     """All-India rank among all students, using each student's first attempt of this test."""
     board = await _board(result["test_id"])
     mine = next((e for e in board if e["user_id"] == result["user_id"]), None)
     top = board[:5]
-    names = await _names([e["user_id"] for e in top])
+    names = await _names([e["user_id"] for e in top], repository)
     return {"rank": mine["rank"] if mine else 1, "total": len(board), "percentile": mine["percentile"] if mine else 100.0,
             "top": [_board_entry(e, names, result["user_id"]) for e in top],
             "is_official": bool(mine and mine["attempt_id"] == result["attempt_id"])}
@@ -1109,7 +1091,7 @@ def _optional_user_id(creds: Optional[HTTPAuthorizationCredentials]) -> Optional
         return None
 
 @api.get("/tests/{test_id}/leaderboard")
-async def test_leaderboard(test_id: str, limit: int = 50, creds: HTTPAuthorizationCredentials = Depends(bearer)):
+async def test_leaderboard(test_id: str, request: Request, limit: int = 50, creds: HTTPAuthorizationCredentials = Depends(bearer)):
     t = await db.tests.find_one({"id": test_id}, {"_id": 0, "id": 1, "title": 1, "series_id": 1, "total_marks": 1, "duration_minutes": 1, "sections": 1})
     if not t:
         raise HTTPException(404, "Test not found")
@@ -1118,7 +1100,7 @@ async def test_leaderboard(test_id: str, limit: int = 50, creds: HTTPAuthorizati
     board = await _board(test_id)
     limit = max(1, min(limit, 200))
     mine = next((e for e in board if e["user_id"] == me), None) if me else None
-    names = await _names([e["user_id"] for e in board[:limit]] + ([me] if mine else []))
+    names = await _names([e["user_id"] for e in board[:limit]] + ([me] if mine else []), request.app.state.identity_repository)
     scores = [e["score"] for e in board]
     return {
         "test": {"id": t["id"], "title": t["title"], "total_marks": t.get("total_marks"), "duration_minutes": t.get("duration_minutes"),
@@ -1564,9 +1546,13 @@ async def student_dashboard(user=Depends(get_current_user)):
 
 # ========== Admin ==========
 @api.get("/admin/stats")
-async def admin_stats(user=Depends(require_roles("admin", "teacher"))):
+async def admin_stats(request: Request, user=Depends(require_roles("admin", "teacher"))):
+    repository = getattr(request.app.state, "identity_repository", None)
+    if repository is None:
+        raise HTTPException(503, "Identity service unavailable")
+    _users, total_users = await repository.list_users(offset=0, limit=1)
     stats = {
-        "users": await db.users.count_documents({}),
+        "users": total_users,
         "questions": await db.questions.count_documents({}),
         "test_series": await db.test_series.count_documents({}),
         "tests": await db.tests.count_documents({}),
@@ -1580,27 +1566,9 @@ async def admin_stats(user=Depends(require_roles("admin", "teacher"))):
         stats.pop("orders_paid")
     return stats
 
-@api.get("/admin/users")
-async def admin_users(_=Depends(require_roles("admin"))):
-    return await db.users.find({}, {"_id": 0, "password_hash": 0}).to_list(1000)
-
 @api.get("/admin/orders")
 async def admin_orders(_=Depends(require_roles("admin"))):
     return await db.orders.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
-
-class RoleIn(BaseModel):
-    role: Literal["super_admin", "admin", "teacher", "student", "support"]
-
-@api.put("/admin/users/{user_id}/role")
-async def set_user_role(user_id: str, data: RoleIn, user=Depends(require_roles("admin"))):
-    if user_id == user["id"]:
-        raise HTTPException(400, "You cannot change your own role")
-    if data.role == "super_admin" and user["role"] != "super_admin":
-        raise HTTPException(403, "Only a super admin can grant super admin")
-    res = await db.users.update_one({"id": user_id}, {"$set": {"role": data.role}})
-    if not res.matched_count:
-        raise HTTPException(404, "User not found")
-    return {"ok": True}
 
 @api.get("/admin/tests")
 async def admin_tests(_=Depends(require_roles("admin", "teacher"))):
@@ -1712,23 +1680,47 @@ async def root():
 # ========== Seed Data ==========
 @app.on_event("startup")
 async def startup():
+    mysql_runtime = create_database_runtime(load_mysql_settings())
+    try:
+        await mysql_runtime.ping()
+    except Exception:
+        await mysql_runtime.dispose()
+        raise
+    app.state.mysql_runtime = mysql_runtime
+    app.state.identity_repository = IdentityRepository(mysql_runtime.sessions)
+
     await db.users.create_index("email", unique=True)
     await db.test_attempts.create_index([("user_id", 1), ("test_id", 1), ("status", 1)])
     await db.test_results.create_index("attempt_id", unique=True)
     await db.entitlements.create_index([("user_id", 1), ("item_type", 1), ("item_id", 1), ("order_id", 1)], unique=True)
     await db.orders.create_index("razorpay_order_id")
-    # Seed admin + sample data if missing
-    if not await db.users.find_one({"email": "admin@lms.com"}):
-        await _seed_data()
-    await _seed_sectional_mocks()
-    await _seed_extras()
-    await seed_pages(db)
-    await _seed_subjects()
-    await ensure_email_indexes(db)
+    # Demo fixtures, default legal-page copy and subject backfills are
+    # development-only. Production content must be explicitly reviewed and
+    # published by an operator, not created or mutated during API startup.
+    if not IS_PRODUCTION:
+        if not await app.state.identity_repository.get_by_email(
+            "admin@lms.com", include_password_hash=False
+        ):
+            await _seed_data()
+        await _seed_sectional_mocks()
+        await _seed_extras()
+        await seed_pages(db)
+        await _seed_subjects()
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    runtime = getattr(app.state, "mysql_runtime", None)
+    if runtime is not None:
+        await runtime.dispose()
+    client.close()
 
 async def _seed_data():
-    log.info("Seeding sample data...")
-    users = [
+    log.info("Seeding development sample data...")
+    # Demo identities must follow the same MySQL source of truth as normal
+    # authentication; never seed credentials into the legacy Mongo collection.
+    repository = app.state.identity_repository
+    demo_users = [
         {"id": gen_id(), "name": "Super Admin", "email": "admin@lms.com", "password_hash": hash_pw("admin123"),
          "role": "admin", "created_at": now_iso()},
         {"id": gen_id(), "name": "Prof. Mehta", "email": "teacher@lms.com", "password_hash": hash_pw("teacher123"),
@@ -1736,7 +1728,10 @@ async def _seed_data():
         {"id": gen_id(), "name": "Riya Student", "email": "student@lms.com", "password_hash": hash_pw("student123"),
          "role": "student", "created_at": now_iso()},
     ]
-    await db.users.insert_many(users)
+    users = []
+    for values in demo_users:
+        existing = await repository.get_by_email(values["email"], include_password_hash=False)
+        users.append(existing or await repository.create_user(values))
     teacher_id = users[1]["id"]
 
     categories = [
@@ -1931,9 +1926,6 @@ async def _seed_extras():
                                      "valid_until": None, "item_ids": [], "active": True, "used_count": 0,
                                      "description": "20% off your first purchase", "created_at": now_iso()})
 
-@app.on_event("shutdown")
-async def shutdown():
-    client.close()
 
 SEED_SUBJECTS = {
     "SSC CGL": ["Quantitative Aptitude", "General Intelligence & Reasoning", "English Comprehension", "General Awareness"],

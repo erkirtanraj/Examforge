@@ -61,11 +61,19 @@ Python 3.11+, Node 18+ with Yarn, MongoDB 6+
 cd backend
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
+# M2 identity/authentication requires the additional MySQL runtime dependencies:
+pip install -r requirements-mysql.txt
 ```
 Create `backend/.env`:
 ```
 MONGO_URL="mongodb://localhost:27017"
 DB_NAME="examforge"
+# Required by M2 identity/authentication (local MySQL 8.4 example):
+MYSQL_HOST="127.0.0.1"
+MYSQL_PORT=3306
+MYSQL_USER="examforge_app"
+MYSQL_PASSWORD="replace-with-a-local-password"
+MYSQL_DATABASE="examforge_local"
 CORS_ORIGINS="http://localhost:3000"
 JWT_SECRET="replace-with-a-long-random-string"
 JWT_ALGORITHM="HS256"
@@ -77,9 +85,28 @@ RAZORPAY_WEBHOOK_SECRET=""
 ```bash
 uvicorn server:app --host 0.0.0.0 --port 8001 --reload
 ```
-On first start, an empty database is filled with sample data automatically (demo accounts, categories, test series, sectional & live mocks, courses, the WELCOME20 coupon).
+In development, an empty database is seeded with sample content and demo identities. Demo identities are stored in MySQL. Production startup does not create demo accounts or sample content; provision the initial super-admin explicitly with `python scripts/bootstrap_super_admin.py` after configuring MySQL.
 
 > `requirements.txt` includes `emergentintegrations`, which is only on Emergent's package index. If it fails to install locally, remove that line; the app doesn't import it.
+
+### MySQL password-reset token retention
+
+Old reset-token rows are removed only by an explicit maintenance command. The command is read-only by default, retains terminal token records for 30 days by default, and deletes in bounded batches only when `--apply` and an exact database-name confirmation are supplied. Used rows are aged from `used_at`; for legacy imported rows where `used_at` is absent, `created_at` is used as the retention fallback. Unused rows are aged from `expires_at`.
+
+Run from `backend/` after configuring `.env`:
+
+```powershell
+# Inspect eligible rows; no deletion occurs
+python scripts/purge_password_reset_tokens.py
+
+# Explicitly delete eligible rows from the named database
+python scripts/purge_password_reset_tokens.py --apply --confirm-database examforge_local
+
+# Optional retention and batch-size overrides
+python scripts/purge_password_reset_tokens.py --retention-days 45 --batch-size 250
+```
+
+Schedule the explicit apply command through your deployment's protected scheduler only after confirming the target database and retention policy. Do not put database passwords or tokens in scheduled command arguments.
 
 ### Frontend
 Create `frontend/.env`:
