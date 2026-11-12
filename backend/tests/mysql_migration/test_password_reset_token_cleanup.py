@@ -22,7 +22,18 @@ def test_cleanup_criteria_targets_used_and_expired_tokens_only():
     assert "used_at" in sql
     assert "expires_at" in sql
     assert "password_reset_tokens.used" in sql
+    assert "coalesce(password_reset_tokens.used_at, password_reset_tokens.created_at)" in sql
     assert "password_reset_tokens.id" in sql
+
+
+def test_used_tokens_without_used_at_fall_back_to_created_at_for_retention():
+    cutoff = datetime(2026, 1, 1, 0, 0, 0)
+    statement = select(PasswordResetToken.id).where(cleanup_criteria(cutoff))
+    sql = str(statement.compile(dialect=mysql.dialect())).lower()
+
+    # Legacy imported rows may have used=True but no used_at timestamp.
+    # created_at provides a deterministic retention anchor for those rows.
+    assert "coalesce(password_reset_tokens.used_at, password_reset_tokens.created_at)" in sql
 
 
 def test_apply_requires_exact_configured_database_confirmation():
