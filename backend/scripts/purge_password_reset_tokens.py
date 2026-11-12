@@ -43,8 +43,8 @@ def cleanup_criteria(cutoff: datetime):
     """Select only tokens that have been terminal for at least the retention period."""
     return or_(
         and_(
-            PasswordResetToken.used_at.is_not(None),
-            PasswordResetToken.used_at < cutoff,
+            PasswordResetToken.used.is_(True),
+            func.coalesce(PasswordResetToken.used_at, PasswordResetToken.created_at) < cutoff,
         ),
         and_(
             PasswordResetToken.used.is_(False),
