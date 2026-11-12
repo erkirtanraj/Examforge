@@ -91,7 +91,7 @@ In development, an empty database is seeded with sample content and demo identit
 
 ### MySQL password-reset token retention
 
-Old reset-token rows are removed only by an explicit maintenance command. The command is read-only by default, retains terminal token records for 30 days by default, and deletes in bounded batches only when `--apply` and an exact database-name confirmation are supplied.
+Old reset-token rows are removed only by an explicit maintenance command. The command is read-only by default, retains terminal token records for 30 days by default, and deletes in bounded batches only when `--apply` and an exact database-name confirmation are supplied. Used rows are aged from `used_at`; for legacy imported rows where `used_at` is absent, `created_at` is used as the retention fallback. Unused rows are aged from `expires_at`.
 
 Run from `backend/` after configuring `.env`:
 
