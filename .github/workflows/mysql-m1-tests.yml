@@ -3,7 +3,7 @@ name: MySQL Migration Tests
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    branches: [main]
+    branches: [main, feature/mysql-m2-identity-authz]
     paths:
       - "backend/mysql_persistence/**"
       - "backend/auth_security.py"
