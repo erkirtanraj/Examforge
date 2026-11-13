@@ -151,6 +151,7 @@ class Question(Base):
     created_by: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=sql_text("CURRENT_TIMESTAMP"))
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    import_batch: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
 
 
 class QuestionOption(Base):
