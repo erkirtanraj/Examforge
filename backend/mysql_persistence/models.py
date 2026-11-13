@@ -122,6 +122,7 @@ class Subject(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False, server_default=sql_text("0"))
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=sql_text("1"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=sql_text("CURRENT_TIMESTAMP"))
 
 
 class Question(Base):
