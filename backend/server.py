@@ -23,7 +23,7 @@ from perf import PublicCacheMiddleware
 from auth_security import is_production_environment, resolve_jwt_secret
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.gzip import GZipMiddleware
-from mysql_persistence import create_database_runtime, load_mysql_settings, IdentityRepository
+from mysql_persistence import create_database_runtime, load_mysql_settings, IdentityRepository, CatalogRepository
 from mysql_persistence.auth import register_identity, login_identity, login_google_identity, load_session_identity
 
 ROOT_DIR = Path(__file__).parent
@@ -294,47 +294,56 @@ async def google_login(data: GoogleSessionIn, request: Request):
     return await login_google_identity(repository, profile=info, make_token=make_token)
 
 # ========== Categories & Subjects ==========
+def _catalog(request: Request) -> CatalogRepository:
+    repository = getattr(request.app.state, "catalog_repository", None)
+    if repository is None:
+        raise HTTPException(503, "MySQL catalog service unavailable")
+    return repository
+
 @api.get("/categories")
-async def list_categories():
-    rows = await db.categories.find({}, {"_id": 0}).to_list(1000)
-    return rows
+async def list_categories(request: Request):
+    return await _catalog(request).list_categories()
 
 @api.post("/categories")
-async def create_category(data: CategoryIn, _=Depends(require_roles("admin"))):
-    doc = {"id": gen_id(), **data.model_dump(), "created_at": now_iso()}
-    await db.categories.insert_one(doc)
-    doc.pop("_id", None)
-    return doc
+async def create_category(data: CategoryIn, request: Request, _=Depends(require_roles("admin"))):
+    try:
+        return await _catalog(request).create_category(data.model_dump())
+    except Exception as exc:
+        if "uq_categories_slug" in str(exc) or "Duplicate entry" in str(exc):
+            raise HTTPException(409, "A category with this slug already exists")
+        raise
 
 @api.get("/subjects")
-async def list_subjects(category_id: Optional[str] = None):
-    q = {"category_id": category_id} if category_id else {}
-    return await db.subjects.find(q, {"_id": 0}).to_list(1000)
+async def list_subjects(request: Request, category_id: Optional[str] = None):
+    return await _catalog(request).list_subjects(category_id)
 
 @api.post("/subjects")
-async def create_subject(data: SubjectIn, _=Depends(require_roles("admin", "teacher"))):
-    doc = {"id": gen_id(), **data.model_dump(), "created_at": now_iso()}
-    await db.subjects.insert_one(doc)
-    doc.pop("_id", None)
-    return doc
+async def create_subject(data: SubjectIn, request: Request, _=Depends(require_roles("admin", "teacher"))):
+    try:
+        return await _catalog(request).create_subject(data.model_dump())
+    except Exception as exc:
+        if "foreign key" in str(exc).lower():
+            raise HTTPException(404, "Category not found")
+        if "Duplicate entry" in str(exc):
+            raise HTTPException(409, "A subject with this name already exists in the category")
+        raise
 
 # ========== Questions ==========
 @api.get("/questions")
-async def list_questions(category_id: Optional[str] = None, subject_id: Optional[str] = None,
+async def list_questions(request: Request, category_id: Optional[str] = None, subject_id: Optional[str] = None,
                          difficulty: Optional[str] = None, limit: int = 2000,
                          _=Depends(require_roles("admin", "teacher"))):
-    q = {}
-    if category_id: q["category_id"] = category_id
-    if subject_id: q["subject_id"] = subject_id
-    if difficulty: q["difficulty"] = difficulty
-    return await db.questions.find(q, {"_id": 0}).to_list(limit)
+    return await _catalog(request).list_questions(category_id=category_id, subject_id=subject_id,
+                                                   difficulty=difficulty, limit=limit)
 
 @api.post("/questions")
-async def create_question(data: QuestionIn, user=Depends(require_roles("admin", "teacher"))):
-    doc = {"id": gen_id(), **data.model_dump(), "created_by": user["id"], "created_at": now_iso()}
-    await db.questions.insert_one(doc)
-    doc.pop("_id", None)
-    return doc
+async def create_question(data: QuestionIn, request: Request, user=Depends(require_roles("admin", "teacher"))):
+    try:
+        return await _catalog(request).create_question(data.model_dump(), created_by=user["id"])
+    except Exception as exc:
+        if "foreign key" in str(exc).lower():
+            raise HTTPException(422, "The selected category or subject does not exist")
+        raise
 
 async def _detach_questions(ids: list):
     await db.tests.update_many({"question_ids": {"$in": ids}}, {"$pull": {"question_ids": {"$in": ids}}})
@@ -493,7 +502,7 @@ def _parse_import_row(row: dict, cats: dict, defaults: dict, subjects: dict):
     return q.model_dump(), None
 
 @api.post("/questions/import")
-async def import_questions(file: UploadFile = File(...), commit: bool = Form(False), category_id: str = Form(""),
+async def import_questions(request: Request, file: UploadFile = File(...), commit: bool = Form(False), category_id: str = Form(""),
                            positive_marks: float = Form(1.0), negative_marks: float = Form(0.0), subject_id: str = Form(""),
                            user=Depends(require_roles("admin", "teacher"))):
     content = await file.read()
@@ -504,13 +513,14 @@ async def import_questions(file: UploadFile = File(...), commit: bool = Form(Fal
         raise HTTPException(400, "The file has no question rows")
     if len(rows) > MAX_IMPORT_ROWS:
         raise HTTPException(400, f"Up to {MAX_IMPORT_ROWS} questions per file")
+    repository = _catalog(request)
     cats = {}
-    async for c in db.categories.find({}, {"_id": 0, "id": 1, "name": 1, "slug": 1}):
+    for c in await repository.list_categories():
         cats[c["name"].lower()] = c["id"]
         cats[c["slug"].lower()] = c["id"]
     subjects = {}
-    async for x in db.subjects.find({}, {"_id": 0, "id": 1, "name": 1, "category_id": 1}):
-        subjects.setdefault(x["name"].strip().lower(), []).append(x)
+    for item in await repository.list_subjects():
+        subjects.setdefault(item["name"].strip().lower(), []).append(item)
     defaults = {"category_id": category_id or None, "positive_marks": positive_marks, "negative_marks": negative_marks,
                 "subject_id": subject_id or None}
     valid, errors = [], []
@@ -522,27 +532,21 @@ async def import_questions(file: UploadFile = File(...), commit: bool = Form(Fal
             valid.append(q)
     resp = {"total": len(rows), "valid": len(valid), "error_count": len(errors), "errors": errors[:200], "preview": valid[:5]}
     if commit and valid:
-        batch = gen_id()
-        docs = [{"id": gen_id(), **q, "created_by": user["id"], "created_at": now_iso(), "import_batch": batch} for q in valid]
-        await db.questions.insert_many(docs)
-        resp.update(inserted=len(docs), batch_id=batch)
+        inserted = await repository.bulk_create_questions(valid, created_by=user["id"])
+        resp.update(inserted=inserted["inserted"], batch_id=inserted["batch_id"])
     return resp
 
 @api.delete("/questions/import/{batch_id}")
-async def undo_import(batch_id: str, _=Depends(require_roles("admin", "teacher"))):
-    ids = [q["id"] async for q in db.questions.find({"import_batch": batch_id}, {"id": 1})]
-    if not ids:
+async def undo_import(batch_id: str, request: Request, _=Depends(require_roles("admin", "teacher"))):
+    deleted = await _catalog(request).undo_import(batch_id)
+    if deleted is None:
         raise HTTPException(404, "Import not found")
-    await db.questions.delete_many({"import_batch": batch_id})
-    await _detach_questions(ids)
-    return {"deleted": len(ids)}
+    return {"deleted": deleted}
 
 @api.post("/questions/bulk")
-async def bulk_questions(items: List[QuestionIn], user=Depends(require_roles("admin", "teacher"))):
-    docs = [{"id": gen_id(), **q.model_dump(), "created_by": user["id"], "created_at": now_iso()} for q in items]
-    if docs:
-        await db.questions.insert_many(docs)
-    return {"inserted": len(docs)}
+async def bulk_questions(items: List[QuestionIn], request: Request, user=Depends(require_roles("admin", "teacher"))):
+    result = await _catalog(request).bulk_create_questions([item.model_dump() for item in items], created_by=user["id"])
+    return {"inserted": result["inserted"]}
 
 # ========== Test Series & Tests ==========
 @api.get("/test-series")
@@ -1688,6 +1692,7 @@ async def startup():
         raise
     app.state.mysql_runtime = mysql_runtime
     app.state.identity_repository = IdentityRepository(mysql_runtime.sessions)
+    app.state.catalog_repository = CatalogRepository(mysql_runtime.sessions)
 
     await db.users.create_index("email", unique=True)
     await db.test_attempts.create_index([("user_id", 1), ("test_id", 1), ("status", 1)])
