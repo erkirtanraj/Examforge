@@ -147,4 +147,4 @@ class CatalogRepository:
                 return None
             await session.execute(delete(TestSectionQuestion).where(TestSectionQuestion.question_id.in_(ids)))
             await session.execute(delete(Question).where(Question.id.in_(ids)))
-            return len(ids)
+            return ids
