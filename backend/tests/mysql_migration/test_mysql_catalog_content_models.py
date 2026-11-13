@@ -87,6 +87,13 @@ def test_course_material_hierarchy_has_cascading_parent_relationships():
     assert StudyMaterial.__table__.c.category_id.nullable is True
 
 
+def test_non_nullable_text_columns_do_not_use_mysql_incompatible_defaults():
+    for table in Base.metadata.tables.values():
+        for column in table.columns:
+            if isinstance(column.type, sa.Text) and not column.nullable:
+                assert column.server_default is None
+
+
 def test_catalog_indexes_cover_public_listing_and_question_bank_filters():
     index_names = {
         index.name
