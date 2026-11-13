@@ -5,7 +5,6 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy import delete, select
-from sqlalchemy.exc import IntegrityError
 
 from .models import Category, Subject, Question, QuestionOption, TestSectionQuestion
 
@@ -92,7 +91,7 @@ class CatalogRepository:
                 stmt = stmt.where(Question.subject_id == subject_id)
             if difficulty:
                 stmt = stmt.where(Question.difficulty == difficulty)
-            rows = (await session.scalars(stmt.order_by(Question.created_at.desc()).limit(max(1, min(limit, 5000)))).all())
+            rows = (await session.scalars(stmt.order_by(Question.created_at.desc()).limit(max(1, min(limit, 5000))))).all()
             if not rows:
                 return []
             ids = [row.id for row in rows]
@@ -119,9 +118,9 @@ class CatalogRepository:
             session.add_all([QuestionOption(question_id=question_id, option_key=o["key"], text=o["text"],
                 text_hi=o.get("text_hi"), position=i) for i, o in enumerate(data.get("options") or [])])
             await session.flush()
-            return self._question(row, sorted(row.options, key=lambda x: x.position) if hasattr(row, "options") else
-                                  (await session.scalars(select(QuestionOption).where(
-                                      QuestionOption.question_id == question_id).order_by(QuestionOption.position))).all())
+            options = (await session.scalars(select(QuestionOption).where(
+                QuestionOption.question_id == question_id).order_by(QuestionOption.position))).all()
+            return self._question(row, options)
 
     async def bulk_create_questions(self, items: list[dict], *, created_by: str):
         batch = str(uuid4())
