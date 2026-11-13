@@ -538,9 +538,14 @@ async def import_questions(request: Request, file: UploadFile = File(...), commi
 
 @api.delete("/questions/import/{batch_id}")
 async def undo_import(batch_id: str, request: Request, _=Depends(require_roles("admin", "teacher"))):
-    deleted = await _catalog(request).undo_import(batch_id)
+    repository = _catalog(request)
+    deleted = await repository.undo_import(batch_id)
     if deleted is None:
         raise HTTPException(404, "Import not found")
+    # Until M4 moves exam construction to MySQL, also detach IDs from legacy
+    # Mongo-backed test documents to preserve the current API's undo semantics.
+    await _detach_questions([q["id"] for q in await repository.list_questions(limit=5000)
+                             if q.get("import_batch") == batch_id])
     return {"deleted": deleted}
 
 @api.post("/questions/bulk")
