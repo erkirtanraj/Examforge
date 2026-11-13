@@ -3,7 +3,7 @@ name: MySQL Migration Tests
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    branches: [main]
+    branches: [main, feature/mysql-m2-identity-authz]
     paths:
       - "backend/mysql_persistence/**"
       - "backend/auth_security.py"
@@ -19,7 +19,7 @@ on:
       - "MYSQL_MIGRATION_PLAN.md"
       - ".github/workflows/mysql-m1-tests.yml"
   push:
-    branches: [feature/mysql-full-migration, feature/mysql-m2-identity-authz]
+    branches: [feature/mysql-full-migration, feature/mysql-m2-identity-authz, feature/mysql-m3-catalog-content]
     paths:
       - "backend/mysql_persistence/**"
       - "backend/auth_security.py"

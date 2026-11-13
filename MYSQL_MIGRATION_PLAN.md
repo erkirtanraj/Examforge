@@ -155,3 +155,19 @@ PR: [#2 — feat(mysql): migrate M2 identity and authorization to MySQL](https:/
 - PR #2 is open and ready for review. A self-review comment is present; obtain an independent repository-owner review before merge.
 - The latest code changes and cleanup utility are on `feature/mysql-m2-identity-authz`; wait for CI to complete and review the final diff. No M2 changes are in `main`; do not merge without explicit repository-owner approval.
 
+
+
+## Owner-directed phase sequencing update (2026-11-12)
+
+The repository owner explicitly requested proceeding past M2 without waiting for its approval. M2 remains unmerged and is retained as the parent branch for stacked work; this does not imply M2 has passed independent review or is approved for production.
+
+- M3 work is isolated on `feature/mysql-m3-catalog-content`, based on the current M2 feature head.
+- The M3 pull request targets `feature/mysql-m2-identity-authz` rather than `main`. This keeps the M2 dependency visible and prevents unreviewed M2 commits from being merged to `main` through an M3 PR.
+- M3 initial schema slice: categories, subjects, questions/options, test series/tests/sections, courses/sections/lessons, and study materials.
+- M3 remains in progress until route/repository migration, import preview/undo parity, API contract tests, MySQL integration tests, and independent review are complete.
+- M3 local validation of the initial schema: 109 migration tests passed; Alembic reached `0003_m3_catalog_content (head)` on the isolated local database.
+- Follow-on migrations `0004_m3_question_import_batches` and `0005_m3_subject_created_at` add indexed import-batch IDs for transactional undo and preserve the subject `created_at` API field.
+- Added `CatalogRepository` and moved category/subject listing and creation plus question listing/creation/bulk insert and CSV/Excel import preview/commit/undo onto MySQL. Existing response keys are serialized to the legacy API shape.
+- During the transition, import undo also detaches deleted question IDs from legacy Mongo-backed test documents because M4 has not moved exam construction yet; this compatibility cleanup is temporary and must be removed once the exam engine is relational.
+- Added repository serialization/import-batch unit tests. The new route/repository slice still needs local MySQL validation, API regression tests, and independent review. Test-series, exam, course, lesson and study-material handlers remain on MongoDB.
+- M4–M7 will be stacked on the preceding phase branch and will not be represented as complete merely because their schema/planning work exists.
