@@ -2,7 +2,11 @@ from datetime import datetime
 from types import SimpleNamespace
 
 from mysql_persistence.catalog import CatalogRepository
-from mysql_persistence.models import Question
+from mysql_persistence.models import Question, Subject
+
+
+def test_subject_model_preserves_created_at_for_legacy_response():
+    assert "created_at" in Subject.__table__.columns
 
 
 def test_question_model_tracks_import_batch_for_undo():
