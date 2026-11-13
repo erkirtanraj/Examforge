@@ -166,7 +166,7 @@ The repository owner explicitly requested proceeding past M2 without waiting for
 - M3 initial schema slice: categories, subjects, questions/options, test series/tests/sections, courses/sections/lessons, and study materials.
 - M3 remains in progress until route/repository migration, import preview/undo parity, API contract tests, MySQL integration tests, and independent review are complete.
 - M3 local validation of the initial schema: 109 migration tests passed; Alembic reached `0003_m3_catalog_content (head)` on the isolated local database.
-- Follow-on migration `0004_m3_question_import_batches` adds indexed import-batch IDs so question import undo can be transactional.
+- Follow-on migrations `0004_m3_question_import_batches` and `0005_m3_subject_created_at` add indexed import-batch IDs for transactional undo and preserve the subject `created_at` API field.
 - Added `CatalogRepository` and moved category/subject listing and creation plus question listing/creation/bulk insert and CSV/Excel import preview/commit/undo onto MySQL. Existing response keys are serialized to the legacy API shape.
 - During the transition, import undo also detaches deleted question IDs from legacy Mongo-backed test documents because M4 has not moved exam construction yet; this compatibility cleanup is temporary and must be removed once the exam engine is relational.
 - Added repository serialization/import-batch unit tests. The new route/repository slice still needs local MySQL validation, API regression tests, and independent review. Test-series, exam, course, lesson and study-material handlers remain on MongoDB.
