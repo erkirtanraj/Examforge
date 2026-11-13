@@ -16,7 +16,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
-    text,
+    text as sql_text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -57,15 +57,15 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     email: Mapped[str] = mapped_column(String(320), nullable=False)
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    role: Mapped[str] = mapped_column(String(20), nullable=False, server_default=text("'student'"))
-    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default=text("'active'"))
-    auth_provider: Mapped[str] = mapped_column(String(20), nullable=False, server_default=text("'email'"))
-    phone: Mapped[str] = mapped_column(String(20), nullable=False, server_default=text("''"))
+    role: Mapped[str] = mapped_column(String(20), nullable=False, server_default=sql_text("'student'"))
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default=sql_text("'active'"))
+    auth_provider: Mapped[str] = mapped_column(String(20), nullable=False, server_default=sql_text("'email'"))
+    phone: Mapped[str] = mapped_column(String(20), nullable=False, server_default=sql_text("''"))
     avatar_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=sql_text("CURRENT_TIMESTAMP"))
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    tokens_valid_after: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=text("0"))
+    tokens_valid_after: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=sql_text("0"))
     password_reset_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     password_reset_by: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
@@ -87,8 +87,8 @@ class PasswordResetToken(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
-    used: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("0"))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    used: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=sql_text("0"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=sql_text("CURRENT_TIMESTAMP"))
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -102,11 +102,11 @@ class Category(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     name: Mapped[str] = mapped_column(String(160), nullable=False)
     slug: Mapped[str] = mapped_column(String(180), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("''"))
-    icon: Mapped[str] = mapped_column(String(120), nullable=False, server_default=text("'GraduationCap'"))
-    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
-    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("1"))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    description: Mapped[str] = mapped_column(Text, nullable=False, server_default=sql_text("''"))
+    icon: Mapped[str] = mapped_column(String(120), nullable=False, server_default=sql_text("'GraduationCap'"))
+    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default=sql_text("0"))
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=sql_text("1"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=sql_text("CURRENT_TIMESTAMP"))
 
 
 class Subject(Base):
@@ -119,9 +119,9 @@ class Subject(Base):
     category_id: Mapped[str] = mapped_column(ForeignKey("categories.id", ondelete="RESTRICT"), nullable=False)
     name: Mapped[str] = mapped_column(String(160), nullable=False)
     slug: Mapped[str] = mapped_column(String(180), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("''"))
-    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
-    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("1"))
+    description: Mapped[str] = mapped_column(Text, nullable=False, server_default=sql_text("''"))
+    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default=sql_text("0"))
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=sql_text("1"))
 
 
 class Question(Base):
@@ -136,20 +136,20 @@ class Question(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     text_hi: Mapped[str | None] = mapped_column(Text, nullable=True)
-    question_type: Mapped[str] = mapped_column(String(24), nullable=False, server_default=text("'mcq_single'"))
+    question_type: Mapped[str] = mapped_column(String(24), nullable=False, server_default=sql_text("'mcq_single'"))
     correct_answers: Mapped[list] = mapped_column(JSON, nullable=False)
-    explanation: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("''"))
+    explanation: Mapped[str] = mapped_column(Text, nullable=False, server_default=sql_text("''"))
     explanation_hi: Mapped[str | None] = mapped_column(Text, nullable=True)
     subject_id: Mapped[str | None] = mapped_column(ForeignKey("subjects.id", ondelete="SET NULL"), nullable=True)
     category_id: Mapped[str | None] = mapped_column(ForeignKey("categories.id", ondelete="SET NULL"), nullable=True)
-    difficulty: Mapped[str] = mapped_column(String(12), nullable=False, server_default=text("'medium'"))
-    language: Mapped[str] = mapped_column(String(12), nullable=False, server_default=text("'en'"))
-    positive_marks: Mapped[float] = mapped_column(Float, nullable=False, server_default=text("1"))
-    negative_marks: Mapped[float] = mapped_column(Float, nullable=False, server_default=text("0"))
+    difficulty: Mapped[str] = mapped_column(String(12), nullable=False, server_default=sql_text("'medium'"))
+    language: Mapped[str] = mapped_column(String(12), nullable=False, server_default=sql_text("'en'"))
+    positive_marks: Mapped[float] = mapped_column(Float, nullable=False, server_default=sql_text("1"))
+    negative_marks: Mapped[float] = mapped_column(Float, nullable=False, server_default=sql_text("0"))
     image_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
-    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'active'"))
+    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=sql_text("'active'"))
     created_by: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=sql_text("CURRENT_TIMESTAMP"))
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
@@ -161,7 +161,7 @@ class QuestionOption(Base):
     option_key: Mapped[str] = mapped_column(String(8), nullable=False)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     text_hi: Mapped[str | None] = mapped_column(Text, nullable=True)
-    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default=sql_text("0"))
 
 
 class TestSeries(Base):
@@ -169,16 +169,16 @@ class TestSeries(Base):
     __table_args__ = (Index("ix_test_series_published_position", "is_published", "position"),)
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     title: Mapped[str] = mapped_column(String(240), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("''"))
+    description: Mapped[str] = mapped_column(Text, nullable=False, server_default=sql_text("''"))
     category_id: Mapped[str | None] = mapped_column(ForeignKey("categories.id", ondelete="SET NULL"), nullable=True)
     thumbnail: Mapped[str | None] = mapped_column(String(2048), nullable=True)
-    language: Mapped[str] = mapped_column(String(12), nullable=False, server_default=text("'en'"))
-    is_free: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("1"))
-    price: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=text("0"))
-    validity_days: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("365"))
-    is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("0"))
-    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    language: Mapped[str] = mapped_column(String(12), nullable=False, server_default=sql_text("'en'"))
+    is_free: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=sql_text("1"))
+    price: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=sql_text("0"))
+    validity_days: Mapped[int] = mapped_column(Integer, nullable=False, server_default=sql_text("365"))
+    is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=sql_text("0"))
+    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default=sql_text("0"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=sql_text("CURRENT_TIMESTAMP"))
 
 
 class ExamTest(Base):
@@ -187,15 +187,15 @@ class ExamTest(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     series_id: Mapped[str] = mapped_column(ForeignKey("test_series.id", ondelete="CASCADE"), nullable=False)
     title: Mapped[str] = mapped_column(String(240), nullable=False)
-    duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("60"))
+    duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, server_default=sql_text("60"))
     total_marks: Mapped[float | None] = mapped_column(Float, nullable=True)
     passing_marks: Mapped[float | None] = mapped_column(Float, nullable=True)
-    instructions: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("''"))
-    sectional_timing: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("0"))
-    is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("0"))
+    instructions: Mapped[str] = mapped_column(Text, nullable=False, server_default=sql_text("''"))
+    sectional_timing: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=sql_text("0"))
+    is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=sql_text("0"))
     live_start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    live_window_minutes: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("120"))
-    allow_pause: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("1"))
+    live_window_minutes: Mapped[int] = mapped_column(Integer, nullable=False, server_default=sql_text("120"))
+    allow_pause: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=sql_text("1"))
 
 
 class TestSection(Base):
@@ -207,8 +207,8 @@ class TestSection(Base):
     duration_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     positive_marks: Mapped[float | None] = mapped_column(Float, nullable=True)
     negative_marks: Mapped[float | None] = mapped_column(Float, nullable=True)
-    language: Mapped[str] = mapped_column(String(12), nullable=False, server_default=text("'bilingual'"))
-    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    language: Mapped[str] = mapped_column(String(12), nullable=False, server_default=sql_text("'bilingual'"))
+    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default=sql_text("0"))
 
 
 class TestSectionQuestion(Base):
@@ -217,7 +217,7 @@ class TestSectionQuestion(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     section_id: Mapped[str] = mapped_column(ForeignKey("test_sections.id", ondelete="CASCADE"), nullable=False)
     question_id: Mapped[str] = mapped_column(ForeignKey("questions.id", ondelete="RESTRICT"), nullable=False)
-    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default=sql_text("0"))
 
 
 class Course(Base):
@@ -225,14 +225,14 @@ class Course(Base):
     __table_args__ = (Index("ix_courses_published_position", "is_published", "position"),)
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     title: Mapped[str] = mapped_column(String(240), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("''"))
+    description: Mapped[str] = mapped_column(Text, nullable=False, server_default=sql_text("''"))
     category_id: Mapped[str | None] = mapped_column(ForeignKey("categories.id", ondelete="SET NULL"), nullable=True)
     thumbnail: Mapped[str | None] = mapped_column(String(2048), nullable=True)
-    is_free: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("1"))
-    price: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=text("0"))
-    certificate_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("0"))
-    is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("0"))
-    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    is_free: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=sql_text("1"))
+    price: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=sql_text("0"))
+    certificate_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=sql_text("0"))
+    is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=sql_text("0"))
+    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default=sql_text("0"))
 
 
 class CourseSection(Base):
@@ -241,7 +241,7 @@ class CourseSection(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     course_id: Mapped[str] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)
     title: Mapped[str] = mapped_column(String(240), nullable=False)
-    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default=sql_text("0"))
 
 
 class Lesson(Base):
@@ -250,11 +250,11 @@ class Lesson(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     section_id: Mapped[str] = mapped_column(ForeignKey("course_sections.id", ondelete="CASCADE"), nullable=False)
     title: Mapped[str] = mapped_column(String(240), nullable=False)
-    content_type: Mapped[str] = mapped_column(String(12), nullable=False, server_default=text("'video'"))
+    content_type: Mapped[str] = mapped_column(String(12), nullable=False, server_default=sql_text("'video'"))
     content_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     text_content: Mapped[str | None] = mapped_column(Text, nullable=True)
-    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
-    duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default=sql_text("0"))
+    duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, server_default=sql_text("0"))
 
 
 class StudyMaterial(Base):
@@ -262,10 +262,10 @@ class StudyMaterial(Base):
     __table_args__ = (Index("ix_study_materials_category_created", "category_id", "created_at"),)
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     title: Mapped[str] = mapped_column(String(240), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("''"))
+    description: Mapped[str] = mapped_column(Text, nullable=False, server_default=sql_text("''"))
     category_id: Mapped[str | None] = mapped_column(ForeignKey("categories.id", ondelete="SET NULL"), nullable=True)
     file_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     thumbnail: Mapped[str | None] = mapped_column(String(2048), nullable=True)
-    is_free: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("1"))
-    is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("0"))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    is_free: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=sql_text("1"))
+    is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=sql_text("0"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=sql_text("CURRENT_TIMESTAMP"))
