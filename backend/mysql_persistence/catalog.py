@@ -31,7 +31,7 @@ class CatalogRepository:
     @staticmethod
     def _subject(row):
         return {"id": row.id, "name": row.name, "slug": row.slug, "description": row.description,
-                "category_id": row.category_id}
+                "category_id": row.category_id, "created_at": _iso(row.created_at)}
 
     @staticmethod
     def _question(row, options):
@@ -76,7 +76,7 @@ class CatalogRepository:
     async def create_subject(self, data: dict):
         slug = data.get("slug") or "-".join(data["name"].strip().lower().split())
         row = Subject(id=str(uuid4()), category_id=data["category_id"], name=data["name"],
-                      slug=slug, description=data.get("description") or "")
+                      slug=slug, description=data.get("description") or "", created_at=_now())
         async with self._sessions() as session, session.begin():
             session.add(row)
             await session.flush()
