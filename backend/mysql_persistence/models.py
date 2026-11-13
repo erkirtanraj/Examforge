@@ -166,6 +166,7 @@ class QuestionOption(Base):
 
 
 class TestSeries(Base):
+    __test__ = False  # Prevent pytest from treating this ORM model as a test class.
     __tablename__ = "test_series"
     __table_args__ = (Index("ix_test_series_published_position", "is_published", "position"),)
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
@@ -200,6 +201,7 @@ class ExamTest(Base):
 
 
 class TestSection(Base):
+    __test__ = False  # Prevent pytest from treating this ORM model as a test class.
     __tablename__ = "test_sections"
     __table_args__ = (UniqueConstraint("test_id", "position", name="uq_test_sections_test_position"),)
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
@@ -213,6 +215,7 @@ class TestSection(Base):
 
 
 class TestSectionQuestion(Base):
+    __test__ = False  # Prevent pytest from treating this ORM model as a test class.
     __tablename__ = "test_section_questions"
     __table_args__ = (UniqueConstraint("section_id", "question_id", name="uq_test_section_questions_pair"),)
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
